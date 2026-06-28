@@ -1,10 +1,8 @@
 package model;
 
-
-
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
+import lombok.Builder;
+import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
@@ -13,22 +11,20 @@ import java.time.LocalDateTime;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class User
+public class Tweet
 {
     // --- Identity ---
     private Long id;
-    private String username;
-    private String email;
 
-    // --- Security ---
-    private String passwordHash;
+    // --- Author ---
+    private Long authorId;
 
-    // --- Profile ---
-    private String displayName;
-    private String bio;
-    private String profilePictureUrl;
+    // --- Content ---
+    private String content;
 
     // --- Metadata ---
     private LocalDateTime createdAt;
 
+    // --- Relationships ---
+    private Long quotedTweetId; // null for normal tweets, non-null for quote tweets
 }
