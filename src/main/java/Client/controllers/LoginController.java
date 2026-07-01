@@ -67,7 +67,18 @@ public class LoginController {
 
     @FXML
     void handleForgotPassword(ActionEvent event) {
-        System.out.println();
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/Client/ForgotPassword.fxml"));
+            Parent forgotPasswordRoot = loader.load();
+
+            Stage stage = (Stage) forgotPasswordLink.getScene().getWindow();
+            stage.setScene(new Scene(forgotPasswordRoot));
+            stage.setTitle("X - Forgot Password");
+            stage.show();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
 
