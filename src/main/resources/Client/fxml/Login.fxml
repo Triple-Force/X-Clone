@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<StackPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="650.0" prefWidth="850.0" style="-fx-background-color: linear-gradient(to bottom, #fcf2e2 0%, #ffffff 100%);" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Client.controllers.LoginController">
+    <children>
+        <ImageView fx:id="logoImageView" fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true" StackPane.alignment="TOP_CENTER">
+            <image>
+                <Image url="@../images/x-logo-1.png" />
+            </image>
+            <StackPane.margin>
+                <Insets top="50.0" />
+            </StackPane.margin>
+        </ImageView>
+
+        <VBox alignment="CENTER" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="355.0" prefWidth="410.0" spacing="20.0" style="-fx-background-color: white; -fx-background-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.06), 20, 0.5, 0, 8); -fx-padding: 35;">
+            <children>
+      
+              <Label text="Good to see you again" textFill="#222222">
+                  <font>
+                      <Font name="System Bold" size="32.0" />
+                  </font>
+              </Label>
+                <HBox prefHeight="34.0" prefWidth="310.0" style="-fx-border-color: #e0e0e0; -fx-border-radius: 25; -fx-background-radius: 25;">
+                    <children>
+                        <ImageView fitHeight="24.0" fitWidth="24.0" pickOnBounds="true" preserveRatio="true">
+                            <image>
+                                <Image url="@../images/user%20(1).png" />
+                            </image>
+                            <HBox.margin>
+                                <Insets left="5.0" top="10.0" />
+                            </HBox.margin>
+                        </ImageView>
+                        <TextField fx:id="usernameField" prefHeight="43.0" prefWidth="314.0" promptText="Username or Email" style="-fx-background-color: #ffffff; -fx-border-color: #e0e0e0; -fx-border-radius: 25; -fx-background-radius: 25; -fx-padding: 12;">
+                            <HBox.margin>
+                                <Insets />
+                            </HBox.margin>
+                        </TextField>
+                    </children>
+                </HBox>
+                <HBox prefHeight="17.0" prefWidth="330.0" style="-fx-border-color: #e0e0e0; -fx-background-radius: 25; -fx-border-radius: 25;">
+                    <children>
+                        <ImageView fitHeight="26.0" fitWidth="26.0" pickOnBounds="true" preserveRatio="true">
+                            <image>
+                                <Image url="@../images/lock.png" />
+                            </image>
+                     <HBox.margin>
+                        <Insets left="5.0" top="9.0" />
+                     </HBox.margin>
+                        </ImageView>
+                        <PasswordField fx:id="passwordField" prefHeight="43.0" prefWidth="316.0" promptText="Password" style="-fx-background-color: #ffffff; -fx-border-color: #e0e0e0; -fx-border-radius: 25; -fx-background-radius: 25; -fx-padding: 12;">
+                            <HBox.margin>
+                                <Insets left="4.0" />
+                            </HBox.margin>
+                        </PasswordField>
+                    </children>
+                </HBox>
+                <Button fx:id="loginButton" mnemonicParsing="false" onAction="#handleLogin" prefWidth="310.0" style="-fx-background-color: #28cf69; -fx-text-fill: white; -fx-background-radius: 25; -fx-font-weight: bold; -fx-font-size: 15px; -fx-padding: 12;" text="Log in">
+               <font>
+                  <Font name="System Bold" size="15.0" />
+               </font></Button>
+
+                <HBox alignment="CENTER" spacing="15.0">
+                    <children>
+                        <Hyperlink fx:id="signUpLink" alignment="CENTER" onAction="#handleSignUp" styleClass="sign-up-link" stylesheets="@../css/style.css" text="Don't have an account?" />
+                        <Hyperlink fx:id="forgotPasswordLink" alignment="CENTER" onAction="#handleForgotPassword" styleClass="sign-up-link" stylesheets="@../css/style.css" text="Forgot password?" />
+                    </children>
+                </HBox>
+            </children>
+        </VBox>
+    </children>
+</StackPane>
