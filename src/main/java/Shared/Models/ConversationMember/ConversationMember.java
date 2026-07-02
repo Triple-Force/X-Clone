@@ -16,7 +16,8 @@ import java.time.OffsetDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "conversation_members")
+@Table(name = "conversation_members",
+        indexes = {@Index(name = "idx_conversation_members_user_id", columnList = "user_id")})
 @IdClass(ConversationMemberId.class)
 public class ConversationMember
 {

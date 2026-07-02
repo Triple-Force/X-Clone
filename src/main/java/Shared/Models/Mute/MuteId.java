@@ -1,9 +1,9 @@
 package Shared.Models.Mute;
 
-import Shared.Models.User.User;
 import lombok.*;
 
 import java.io.Serializable;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -12,6 +12,6 @@ import java.io.Serializable;
 @AllArgsConstructor
 public class MuteId implements Serializable
 {
-    private User muter;
-    private User muted;
+    private UUID muter;
+    private UUID muted;
 }

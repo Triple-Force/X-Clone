@@ -15,7 +15,8 @@ import java.time.OffsetDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "mutes", check = @CheckConstraint(name = "no_self_mute", constraint = "muter_id <> muted_id"))
+@Table(name = "mutes", check = @CheckConstraint(name = "no_self_mute", constraint = "muter_id <> muted_id"),
+        indexes = {@Index(name = "idx_mutes_muted_id", columnList = "muted_id")})
 @IdClass(MuteId.class)
 public class Mute
 {

@@ -1,23 +1,17 @@
 package Shared.Database.DAO;
 
+import Shared.Models.SoftDeletable;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.TypedQuery;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-@Getter
-@AllArgsConstructor
-public class GenericDAO<T>
+public record GenericDAO<T>(Class<T> type, EntityManagerFactory emf)
 {
-    private final Class<T> type;
-    private final EntityManagerFactory emf;
-
     private <R> R executeRead(Function<EntityManager, R> action)
     {
         try (EntityManager em = emf.createEntityManager())
@@ -58,9 +52,9 @@ public class GenericDAO<T>
         });
     }
 
-    public T insert(T obj)
+    public void insert(T obj)
     {
-        return executeWrite(em ->
+        executeWrite(em ->
         {
             em.persist(obj);
             return obj;
@@ -79,7 +73,9 @@ public class GenericDAO<T>
 
     public List<T> findAll()
     {
-        String jpql = "SELECT e FROM " + type.getSimpleName() + " e";
+        String jpql = SoftDeletable.class.isAssignableFrom(
+                type) ? "SELECT e FROM " + type.getSimpleName() + " e WHERE e.isDeleted = false" : "SELECT e FROM " + type.getSimpleName() + " e";
+
         return executeRead(em -> em.createQuery(jpql, type).getResultList());
     }
 
@@ -140,7 +136,10 @@ public class GenericDAO<T>
 
     public long count()
     {
-        return countByJpql("SELECT COUNT(e) FROM " + type.getSimpleName() + " e", null);
+        String jpql = SoftDeletable.class.isAssignableFrom(
+                type) ? "SELECT COUNT(e) FROM " + type.getSimpleName() + " e WHERE e.isDeleted = false" : "SELECT COUNT(e) FROM " + type.getSimpleName() + " e";
+
+        return countByJpql(jpql, null);
     }
 
     public boolean existsById(Object id)
@@ -176,12 +175,32 @@ public class GenericDAO<T>
         return executeWrite(em -> em.merge(obj));
     }
 
-    public T commit(T obj)
+    public void delete(T obj)
     {
-        return update(obj);
+        if (obj instanceof SoftDeletable softDeletable)
+        {
+            executeWriteVoid(em ->
+            {
+                softDeletable.setDeleted(true);
+                softDeletable.redact();
+                softDeletable.onSoftDelete(em);
+                em.merge(obj);
+            });
+        }
+        else
+        {
+            hardDelete(obj);
+        }
     }
 
-    public void delete(T obj)
+    public void deleteById(Object id)
+    {
+        T entity = findById(id);
+        if (entity != null)
+            delete(entity);
+    }
+
+    public void hardDelete(T obj)
     {
         executeWriteVoid(em ->
         {
@@ -190,10 +209,10 @@ public class GenericDAO<T>
         });
     }
 
-    public void deleteById(Object id)
+    public void hardDeleteById(Object id)
     {
         T entity = findById(id);
         if (entity != null)
-            delete(entity);
+            hardDelete(entity);
     }
 }

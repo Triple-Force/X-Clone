@@ -1,10 +1,9 @@
 package Shared.Models.ConversationMember;
 
-import Shared.Models.Conversation.Conversation;
-import Shared.Models.User.User;
 import lombok.*;
 
 import java.io.Serializable;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -13,6 +12,6 @@ import java.io.Serializable;
 @AllArgsConstructor
 public class ConversationMemberId implements Serializable
 {
-    private Conversation conversation;
-    private User user;
+    private UUID conversation;
+    private UUID user;
 }

@@ -1,10 +1,9 @@
 package Shared.Models.TweetMention;
 
-import Shared.Models.Tweet.Tweet;
-import Shared.Models.User.User;
 import lombok.*;
 
 import java.io.Serializable;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -13,6 +12,6 @@ import java.io.Serializable;
 @AllArgsConstructor
 public class TweetMentionId implements Serializable
 {
-    private Tweet tweet;
-    private User mentionedUser;
+    private UUID tweet;
+    private UUID mentionedUser;
 }

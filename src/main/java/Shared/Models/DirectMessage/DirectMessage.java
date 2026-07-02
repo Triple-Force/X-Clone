@@ -15,7 +15,9 @@ import org.hibernate.annotations.OnDeleteAction;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "direct_messages")
+@Table(name = "direct_messages", indexes = {@Index(name = "idx_direct_messages_conversation_id_created_at",
+        columnList = "conversation_id, created_at"), @Index(name = "idx_direct_messages_sender_id",
+        columnList = "sender_id"), @Index(name = "idx_direct_messages_is_read", columnList = "is_read")})
 public class DirectMessage extends MutableEntity
 {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -40,4 +42,10 @@ public class DirectMessage extends MutableEntity
     @ColumnDefault("false")
     @Builder.Default
     private boolean isEdited = false;
+
+    @Override
+    public void redact()
+    {
+        this.content = "This message has been deleted.";
+    }
 }

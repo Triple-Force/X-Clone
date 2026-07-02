@@ -9,7 +9,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class ConnectionDAO
+public class ConnectionDTO
 {
     private String url;
     private String user;

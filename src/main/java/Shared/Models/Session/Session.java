@@ -15,7 +15,8 @@ import java.time.OffsetDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "sessions")
+@Table(name = "sessions", indexes = {@Index(name = "idx_sessions_user_id", columnList = "user_id"), @Index(
+        name = "idx_sessions_expires_at", columnList = "expires_at")})
 public class Session extends ImmutableEntity
 {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

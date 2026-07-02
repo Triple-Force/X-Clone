@@ -1,12 +1,12 @@
 package Shared.Database.DatabaseInitializer;
 
-import Shared.Database.ConnectionDAO;
+import Shared.Database.ConnectionDTO;
 
 import java.sql.*;
 
 public class DatabaseCreator
 {
-    public static void createDatabaseIfNotExists(ConnectionDAO connectionData, String databaseName)
+    public static void createDatabaseIfNotExists(ConnectionDTO connectionData, String databaseName)
     {
         try (Connection connection = DriverManager.getConnection(connectionData.getUrl(), connectionData.getUser(),
                 connectionData.getPassword()); Statement statement = connection.createStatement())

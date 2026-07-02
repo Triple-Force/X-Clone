@@ -37,6 +37,7 @@
             <!-- Hibernate Core -->
             <property name="hibernate.hbm2ddl.auto" value="update"/>
             <property name="hibernate.default_schema" value="public"/>
+            <property name="hibernate.enable_lazy_load_no_trans" value="true"/>
 
             <!-- HikariCP Connection Pool -->
             <property name="hibernate.connection.provider_class"

@@ -3,12 +3,15 @@ package Shared.Models.Tweet;
 import Shared.Models.Like.Like;
 import Shared.Models.Media.Media;
 import Shared.Models.MutableEntity;
+import Shared.Models.Notification.Notification;
+import Shared.Models.Poll.Poll;
 import Shared.Models.TweetEdit.TweetEdit;
 import Shared.Models.TweetHashtag.TweetHashtag;
 import Shared.Models.TweetMention.TweetMention;
 import Shared.Models.User.User;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
@@ -22,7 +25,12 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "tweets")
+@Table(name = "tweets",
+        indexes = {@Index(name = "idx_tweets_author_id_published_at", columnList = "author_id, published_at"), @Index(
+                name = "idx_tweets_reply_to_id", columnList = "reply_to_id"), @Index(name = "idx_tweets_retweet_of_id",
+                columnList = "retweet_of_id"), @Index(name = "idx_tweets_quote_of_id",
+                columnList = "quote_of_id"), @Index(name = "idx_tweets_published_at",
+                columnList = "published_at"), @Index(name = "idx_tweets_is_deleted", columnList = "is_deleted")})
 public class Tweet extends MutableEntity
 {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -60,27 +68,63 @@ public class Tweet extends MutableEntity
     @Builder.Default
     private OffsetDateTime publishedAt = OffsetDateTime.now();
 
+    @BatchSize(size = 20)
     @OneToMany(mappedBy = "repliedToTweet", fetch = FetchType.LAZY)
     private List<Tweet> replies;
 
+    @BatchSize(size = 20)
     @OneToMany(mappedBy = "retweetedTweet", fetch = FetchType.LAZY)
     private List<Tweet> retweets;
 
+    @BatchSize(size = 20)
     @OneToMany(mappedBy = "quotedTweet", fetch = FetchType.LAZY)
     private List<Tweet> quoteTweets;
 
+    @BatchSize(size = 20)
     @OneToMany(mappedBy = "tweet", fetch = FetchType.LAZY)
     private List<TweetHashtag> hashtags;
 
+    @BatchSize(size = 20)
     @OneToMany(mappedBy = "tweet", fetch = FetchType.LAZY)
     private List<TweetMention> mentions;
 
+    @BatchSize(size = 20)
     @OneToMany(mappedBy = "tweet", fetch = FetchType.LAZY)
     private List<Media> media;
 
+    @BatchSize(size = 20)
     @OneToMany(mappedBy = "tweet", fetch = FetchType.LAZY)
     private List<Like> likes;
 
+    @BatchSize(size = 20)
     @OneToMany(mappedBy = "tweet", fetch = FetchType.LAZY)
     private List<TweetEdit> editHistory;
+
+    @OneToOne(mappedBy = "tweet", fetch = FetchType.LAZY)
+    private Poll poll;
+
+    @BatchSize(size = 20)
+    @OneToMany(mappedBy = "tweet", fetch = FetchType.LAZY)
+    private List<Notification> notifications;
+
+    @Override
+    public void redact()
+    {
+        this.content = "This post has been deleted.";
+        this.scheduledAt = null;
+        this.isPinned = false;
+    }
+
+    @Override
+    public void onSoftDelete(EntityManager em)
+    {
+        hardDeleteWhere(em, Poll.class, "tweet", this);
+
+        hardDeleteWhere(em, Media.class, "tweet", this);
+        hardDeleteWhere(em, Like.class, "tweet", this);
+        hardDeleteWhere(em, TweetHashtag.class, "tweet", this);
+        hardDeleteWhere(em, TweetMention.class, "tweet", this);
+        hardDeleteWhere(em, TweetEdit.class, "tweet", this);
+        hardDeleteWhere(em, Notification.class, "tweet", this);
+    }
 }

@@ -29,7 +29,7 @@ public class Database
         String databaseName = url.substring(url.lastIndexOf('/') + 1);
         String defaultDatabaseUrl = url.substring(0, url.lastIndexOf('/')) + "/postgres";
 
-        ConnectionDAO connectionDAO = new ConnectionDAO(defaultDatabaseUrl, user, password);
+        ConnectionDTO connectionDAO = new ConnectionDTO(defaultDatabaseUrl, user, password);
 
         DatabaseCreator.createDatabaseIfNotExists(connectionDAO, databaseName);
 
