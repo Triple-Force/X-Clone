@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<StackPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="650.0" prefWidth="850.0" style="-fx-background-color: linear-gradient(to bottom, #fcf2e2 0%, #ffffff 100%);" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Client.controllers.VerifyCodeController">
+    <children>
+        <VBox alignment="CENTER" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefWidth="420.0" spacing="18.0" style="-fx-background-color: white; -fx-background-radius: 20; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 25, 0.5, 0, 10); -fx-padding: 35 35 35 35;">
+            <children>
+                <ImageView fx:id="logoImageView" fitHeight="45.0" fitWidth="45.0" pickOnBounds="true" preserveRatio="true">
+                    <image>
+                        <Image url="@../images/x-logo-1.png" />
+                    </image>
+                </ImageView>
+
+                <Label text="Enter Verification Code" textFill="#111111">
+                    <font>
+                        <Font name="System Bold" size="24.0" />
+                    </font>
+                </Label>
+
+                <Label alignment="CENTER" prefWidth="310.0" text="We've sent a 6-digit verification code to your email. Please enter it below." textAlignment="CENTER" textFill="#666666" wrapText="true">
+                    <font>
+                        <Font size="13.0" />
+                    </font>
+                    <VBox.margin>
+                        <Insets bottom="5.0" top="-5.0" />
+                    </VBox.margin>
+                </Label>
+
+                <HBox alignment="CENTER_LEFT" prefHeight="45.0" prefWidth="310.0" style="-fx-border-color: #e0e0e0; -fx-border-radius: 25; -fx-background-radius: 25; -fx-background-color: #fafafa; -fx-padding: 0 15 0 15;">
+                    <children>
+                        <ImageView fitHeight="20.0" fitWidth="20.0" pickOnBounds="true" preserveRatio="true" style="-fx-opacity: 0.6;">
+                            <image>
+                                <Image url="@../images/lock.png" />
+                            </image>
+                        </ImageView>
+                        <TextField fx:id="verificationCodeField" alignment="CENTER" prefHeight="40.0" promptText="Enter 6-digit code" style="-fx-background-color: transparent; -fx-padding: 5 10 5 10; -fx-font-weight: bold; -fx-letter-spacing: 5;" HBox.hgrow="ALWAYS">
+                            <font>
+                                <Font size="15.0" />
+                            </font>
+                        </TextField>
+                    </children>
+                </HBox>
+
+                <Button fx:id="verifyButton" mnemonicParsing="false" onAction="#handleVerifyCode" prefWidth="350.0" style="-fx-background-color: #28cf69; -fx-text-fill: white; -fx-background-radius: 25; -fx-border-radius: 25; -fx-font-weight: bold; -fx-font-size: 15px; -fx-padding: 12;" text="Verify Code" />
+
+                <VBox alignment="CENTER" spacing="8.0">
+                    <children>
+                        <Hyperlink fx:id="resendCodeLink" onAction="#handleResendCode" styleClass="forgot-password-link" text="Didn't receive the code? Resend" textFill="#28cf69">
+                            <font>
+                                <Font size="12.0" />
+                            </font></Hyperlink>
+                        <Hyperlink fx:id="backToLoginLink" onAction="#handleBackToLogin" styleClass="sign-up-link" stylesheets="@../css/style.css" text="Back to Log in" />
+                    </children>
+                    <VBox.margin>
+                        <Insets top="5.0" />
+                    </VBox.margin>
+                </VBox>
+            </children>
+        </VBox>
+    </children>
+</StackPane>
