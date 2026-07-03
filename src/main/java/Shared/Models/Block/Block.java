@@ -15,7 +15,8 @@ import java.time.OffsetDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "blocks", check = @CheckConstraint(name = "no_self_block", constraint = "blocker_id <> blocked_id"))
+@Table(name = "blocks", check = @CheckConstraint(name = "no_self_block", constraint = "blocker_id <> blocked_id"),
+        indexes = {@Index(name = "idx_blocks_blocked_id", columnList = "blocked_id")})
 @IdClass(BlockId.class)
 public class Block
 {

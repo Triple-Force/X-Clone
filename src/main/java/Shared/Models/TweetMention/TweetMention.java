@@ -13,7 +13,8 @@ import org.hibernate.annotations.OnDeleteAction;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "tweet_mentions")
+@Table(name = "tweet_mentions",
+        indexes = {@Index(name = "idx_tweet_mentions_mentioned_user_id", columnList = "mentioned_user_id")})
 @IdClass(TweetMentionId.class)
 public class TweetMention
 {

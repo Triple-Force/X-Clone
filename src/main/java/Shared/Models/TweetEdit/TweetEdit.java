@@ -13,7 +13,7 @@ import org.hibernate.annotations.OnDeleteAction;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "tweet_edits")
+@Table(name = "tweet_edits", indexes = {@Index(name = "idx_tweet_edits_tweet_id", columnList = "tweet_id")})
 public class TweetEdit extends ImmutableEntity
 {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

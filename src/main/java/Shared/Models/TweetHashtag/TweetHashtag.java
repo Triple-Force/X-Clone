@@ -13,7 +13,7 @@ import org.hibernate.annotations.OnDeleteAction;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "tweet_hashtags")
+@Table(name = "tweet_hashtags", indexes = {@Index(name = "idx_tweet_hashtags_hashtag_id", columnList = "hashtag_id")})
 @IdClass(TweetHashtagId.class)
 public class TweetHashtag
 {
@@ -28,4 +28,8 @@ public class TweetHashtag
     @JoinColumn(name = "hashtag_id", nullable = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     private Hashtag hashtag;
+
+    @Column(name = "usage_count", nullable = false)
+    @Builder.Default
+    private int usageCount = 0;
 }

@@ -15,7 +15,8 @@ import java.time.OffsetDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "follows", check = @CheckConstraint(name = "no_self_follow", constraint = "follower_id <> following_id"))
+@Table(name = "follows", check = @CheckConstraint(name = "no_self_follow", constraint = "follower_id <> following_id"),
+        indexes = {@Index(name = "idx_follows_following_id", columnList = "following_id")})
 @IdClass(FollowId.class)
 public class Follow
 {

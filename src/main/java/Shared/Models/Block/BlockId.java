@@ -1,9 +1,9 @@
 package Shared.Models.Block;
 
-import Shared.Models.User.User;
 import lombok.*;
 
 import java.io.Serializable;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -12,6 +12,6 @@ import java.io.Serializable;
 @AllArgsConstructor
 public class BlockId implements Serializable
 {
-    private User blocker;
-    private User blocked;
+    private UUID blocker;
+    private UUID blocked;
 }

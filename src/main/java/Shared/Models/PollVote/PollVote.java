@@ -17,7 +17,8 @@ import java.time.OffsetDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "poll_votes")
+@Table(name = "poll_votes", indexes = {@Index(name = "idx_poll_votes_poll_id", columnList = "poll_id"), @Index(
+        name = "idx_poll_votes_option_id", columnList = "option_id")})
 @IdClass(PollVoteId.class)
 public class PollVote
 {

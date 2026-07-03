@@ -16,7 +16,7 @@ import java.time.OffsetDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "hashtag_follows")
+@Table(name = "hashtag_follows", indexes = {@Index(name = "idx_hashtag_follows_hashtag_id", columnList = "hashtag_id")})
 @IdClass(HashtagFollowId.class)
 public class HashtagFollow
 {

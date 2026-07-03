@@ -3,11 +3,11 @@ package Shared.Models;
 import jakarta.persistence.MappedSuperclass;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
+import org.hibernate.annotations.Immutable;
 
 @Getter
-@Setter
 @NoArgsConstructor
+@Immutable
 @MappedSuperclass
 public class ImmutableEntity extends BaseEntity
 {

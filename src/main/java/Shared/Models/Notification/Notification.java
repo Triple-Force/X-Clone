@@ -15,7 +15,9 @@ import org.hibernate.annotations.OnDeleteAction;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "notifications")
+@Table(name = "notifications", indexes = {@Index(name = "idx_notifications_recipient_id_is_read",
+        columnList = "recipient_id, is_read"), @Index(name = "idx_notifications_actor_id",
+        columnList = "actor_id"), @Index(name = "idx_notifications_tweet_id", columnList = "tweet_id")})
 public class Notification extends ImmutableEntity
 {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

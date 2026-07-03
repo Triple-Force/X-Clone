@@ -1,9 +1,9 @@
 package Shared.Models.Follow;
 
-import Shared.Models.User.User;
 import lombok.*;
 
 import java.io.Serializable;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -12,6 +12,6 @@ import java.io.Serializable;
 @AllArgsConstructor
 public class FollowId implements Serializable
 {
-    private User follower;
-    private User following;
+    private UUID follower;
+    private UUID following;
 }

@@ -1,10 +1,9 @@
 package Shared.Models.HashtagFollow;
 
-import Shared.Models.Hashtag.Hashtag;
-import Shared.Models.User.User;
 import lombok.*;
 
 import java.io.Serializable;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -13,6 +12,6 @@ import java.io.Serializable;
 @AllArgsConstructor
 public class HashtagFollowId implements Serializable
 {
-    private User user;
-    private Hashtag hashtag;
+    private UUID user;
+    private UUID hashtag;
 }
