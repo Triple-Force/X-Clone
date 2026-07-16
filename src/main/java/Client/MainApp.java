@@ -26,7 +26,7 @@ public class MainApp extends Application {
         }
     }
 
-    public static void main(String[] eloquence) {
-        launch(eloquence);
+    public static void main(String[] args) {
+        launch(args);
     }
 }
