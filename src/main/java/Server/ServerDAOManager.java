@@ -1,6 +1,7 @@
 package Server;
 
 import Shared.Database.DAO.GenericDAO;
+import Shared.Database.Database;
 import Shared.Models.Block.Block;
 import Shared.Models.Conversation.Conversation;
 import Shared.Models.ConversationMember.ConversationMember;
@@ -22,18 +23,28 @@ import Shared.Models.TweetHashtag.TweetHashtag;
 import Shared.Models.TweetMention.TweetMention;
 import Shared.Models.User.User;
 import jakarta.persistence.EntityManagerFactory;
-import lombok.AllArgsConstructor;
+import jakarta.persistence.Persistence;
 import lombok.Getter;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Getter
-@AllArgsConstructor
-public class DAOManager
+public class ServerDAOManager
 {
-    private final EntityManagerFactory emf;
+    private static final ServerDAOManager INSTANCE = new ServerDAOManager();
+
+    private final EntityManagerFactory emf = Persistence.createEntityManagerFactory(Database.PERSISTENCE_UNIT_NAME);
     private final Map<Class<?>, GenericDAO<?>> daoCache = new ConcurrentHashMap<>();
+
+    private ServerDAOManager()
+    {
+    }
+
+    public static ServerDAOManager getInstance()
+    {
+        return INSTANCE;
+    }
 
     @SuppressWarnings("unchecked")
     public <T> GenericDAO<T> getDao(Class<T> entityClass)

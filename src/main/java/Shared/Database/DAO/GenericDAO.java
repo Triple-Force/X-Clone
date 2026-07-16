@@ -1,17 +1,21 @@
 package Shared.Database.DAO;
 
 import Shared.Models.SoftDeletable;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.NoResultException;
-import jakarta.persistence.TypedQuery;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-public record GenericDAO<T>(Class<T> type, EntityManagerFactory emf)
+@Getter
+@AllArgsConstructor
+public class GenericDAO<T>
 {
+    Class<T> type;
+    EntityManagerFactory emf;
+
     private <R> R executeRead(Function<EntityManager, R> action)
     {
         try (EntityManager em = emf.createEntityManager())
@@ -170,9 +174,29 @@ public record GenericDAO<T>(Class<T> type, EntityManagerFactory emf)
         });
     }
 
+    private Object getId(T obj)
+    {
+        return emf.getPersistenceUnitUtil().getIdentifier(obj);
+    }
+
     public T update(T obj)
     {
+        Object id = getId(obj);
+        if (id == null || !existsById(id))
+            throw new EntityNotFoundException(
+                    "Cannot update " + type.getSimpleName() + ": no existing row for id " + id);
+
         return executeWrite(em -> em.merge(obj));
+    }
+
+    public T upsert(T obj)
+    {
+        return executeWrite(em -> em.merge(obj));
+    }
+
+    public void upsertAll(List<T> objects)
+    {
+        executeWriteVoid(em -> objects.forEach(em::merge));
     }
 
     public void delete(T obj)

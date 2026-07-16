@@ -14,9 +14,8 @@ public class Server
         Database database = new Database();
 
         // demonstration! must be removed for final production.
-        DAOManager daoManager = new DAOManager(database.getEmf());
-        var userDao = daoManager.getUserDAO();
-        var tweetDao = daoManager.getTweetDAO();
+        var userDao = ServerDAOManager.getInstance().getUserDAO();
+        var tweetDao = ServerDAOManager.getInstance().getTweetDAO();
 
         User newUser = User.builder().username("Desert").passwordHash("HASHED").bio("bio is bs").email(
                 "Desert@gmail.com").displayName("D3s3rt").avatarUrl("avatar_url").bannerUrl("banner_url").build();
