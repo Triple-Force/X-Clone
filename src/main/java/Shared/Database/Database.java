@@ -1,9 +1,9 @@
 package Shared.Database;
 
+import Server.ServerDAOManager;
 import Shared.Database.DatabaseInitializer.DatabaseCreator;
 import Shared.Database.XMLManager.PersistenceXmlReader;
 import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Persistence;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,7 +13,7 @@ public class Database
 {
     private static final String PERSISTENCE_FOLDER_PATH = "META-INF/";
     private static final String PERSISTENCE_FILE_NAME = "persistence.xml";
-    private static final String PERSISTENCE_UNIT_NAME = "X-Clone-PU";
+    public /* needed for ServerDAOManager access */ static final String PERSISTENCE_UNIT_NAME = "X-Clone-PU";
 
     private final EntityManagerFactory emf;
 
@@ -33,6 +33,6 @@ public class Database
 
         DatabaseCreator.createDatabaseIfNotExists(connectionDAO, databaseName);
 
-        this.emf = Persistence.createEntityManagerFactory(PERSISTENCE_UNIT_NAME);
+        this.emf = ServerDAOManager.getInstance().getEmf();
     }
 }

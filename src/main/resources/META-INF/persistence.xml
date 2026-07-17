@@ -62,4 +62,42 @@
             <property name="hibernate.use_sql_comments" value="false"/>
         </properties>
     </persistence-unit>
+
+    <persistence-unit name="X-Clone-Client-Cache-PU" transaction-type="RESOURCE_LOCAL">
+        <class>Shared.Models.Block.Block</class>
+        <class>Shared.Models.Conversation.Conversation</class>
+        <class>Shared.Models.ConversationMember.ConversationMember</class>
+        <class>Shared.Models.DirectMessage.DirectMessage</class>
+        <class>Shared.Models.Follow.Follow</class>
+        <class>Shared.Models.Hashtag.Hashtag</class>
+        <class>Shared.Models.HashtagFollow.HashtagFollow</class>
+        <class>Shared.Models.Like.Like</class>
+        <class>Shared.Models.Media.Media</class>
+        <class>Shared.Models.Mute.Mute</class>
+        <class>Shared.Models.Notification.Notification</class>
+        <class>Shared.Models.Poll.Poll</class>
+        <class>Shared.Models.PollOption.PollOption</class>
+        <class>Shared.Models.PollVote.PollVote</class>
+        <class>Shared.Models.Session.Session</class>
+        <class>Shared.Models.Tweet.Tweet</class>
+        <class>Shared.Models.TweetEdit.TweetEdit</class>
+        <class>Shared.Models.TweetHashtag.TweetHashtag</class>
+        <class>Shared.Models.TweetMention.TweetMention</class>
+        <class>Shared.Models.User.User</class>
+        <exclude-unlisted-classes>true</exclude-unlisted-classes>
+
+        <properties>
+            <!-- JDBC Connection -->
+            <property name="jakarta.persistence.jdbc.driver" value="org.sqlite.JDBC"/>
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:sqlite:client-cache.db"/>
+
+            <!-- Hibernate Core -->
+            <property name="hibernate.dialect" value="org.hibernate.community.dialect.SQLiteDialect"/>
+            <property name="hibernate.hbm2ddl.auto" value="update"/>
+
+            <!-- Rules / Performance -->
+            <property name="hibernate.connection.pool_size" value="1"/>
+            <property name="hibernate.connection.init_sql" value="PRAGMA journal_mode=WAL; PRAGMA foreign_keys=OFF;"/>
+        </properties>
+    </persistence-unit>
 </persistence>
