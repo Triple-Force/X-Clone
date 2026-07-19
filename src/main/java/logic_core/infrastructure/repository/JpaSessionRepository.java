@@ -91,4 +91,16 @@ public class JpaSessionRepository implements SessionRepository
 
         return results.stream().findFirst();
     }
+
+    @Override
+    public void revokeAllByUserId(UUID userId)
+    {
+        sessionDao.revokeAllByUserId(userId);
+    }
+
+
+    public Session replaceUserSession(UUID userId , Session session)
+    {
+        return sessionDao.replaceUserSession(userId, session);
+    }
 }

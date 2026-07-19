@@ -132,4 +132,13 @@ public class SessionDao extends AbstractJpaDao<Session>
                 .getResultList();
     }
 
+    public void revokeAllByUserId(UUID userId)
+    {
+        entityManager.createQuery("""
+                delete from Session s
+                where s.user.id = :userId
+                """)
+                .setParameter("userId", userId)
+                .executeUpdate();
+    }
 }
