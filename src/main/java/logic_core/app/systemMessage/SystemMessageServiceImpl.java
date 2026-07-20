@@ -74,4 +74,19 @@ public class SystemMessageServiceImpl implements SystemMessageService
     {
         dispatcher.dispatch(Objects.requireNonNull(message, "message must not be null"));
     }
+
+    @Override
+    public void sendPasswordResetSuccessMessage(
+            UUID userId,
+            String email,
+            OffsetDateTime occurredAt
+    )
+    {
+        SystemMessageModel message = messageFactory.createPasswordResetSuccessMessage(
+                userId,
+                email,
+                occurredAt
+        );
+        dispatcher.dispatch(message);
+    }
 }

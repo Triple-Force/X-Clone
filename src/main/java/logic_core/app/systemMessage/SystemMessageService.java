@@ -27,4 +27,10 @@ public interface SystemMessageService
     );
 
     void send(SystemMessageModel message);
+
+    void sendPasswordResetSuccessMessage(
+            UUID userId,
+            String email,
+            OffsetDateTime occurredAt
+    );
 }

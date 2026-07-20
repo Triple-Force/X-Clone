@@ -92,4 +92,23 @@ public class DefaultSystemMessageFactory implements SystemMessageFactory
                 )
         );
     }
+
+    @Override
+    public SystemMessageModel createPasswordResetSuccessMessage(
+            UUID userId,
+            String email,
+            OffsetDateTime occurredAt
+    )
+    {
+        return new SystemMessageModel(
+                IdUtil.newUUID(),
+                userId,
+                SystemMessageType.PASSWORD_RESET_SUCCESS,
+                "Password changed successfully",
+                "Your password has been reset successfully.",
+                SystemMessagePriority.HIGH,
+                occurredAt,
+                Map.of("email", email)
+        );
+    }
 }
