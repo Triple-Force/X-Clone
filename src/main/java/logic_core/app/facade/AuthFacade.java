@@ -1,15 +1,8 @@
 package logic_core.app.facade;
 
-import logic_core.app.dto.request.LoginRequest;
-import logic_core.app.dto.request.LogoutRequest;
-import logic_core.app.dto.request.RefreshSessionRequest;
-import logic_core.app.dto.request.RegisterRequest;
-import logic_core.app.dto.response.AuthResponse;
-import logic_core.app.dto.response.LogoutResponse;
-import logic_core.app.usecase.auth.LoginUserUseCase;
-import logic_core.app.usecase.auth.LogoutUserUseCase;
-import logic_core.app.usecase.auth.RefreshSessionUseCase;
-import logic_core.app.usecase.auth.RegisterUserUseCase;
+import logic_core.app.dto.request.*;
+import logic_core.app.dto.response.*;
+import logic_core.app.usecase.auth.*;
 import logic_core.common.result.Result;
 import lombok.RequiredArgsConstructor;
 
@@ -20,6 +13,9 @@ public class AuthFacade
     private final LoginUserUseCase loginUserUseCase;
     private final LogoutUserUseCase logoutUserUseCase;
     private final RefreshSessionUseCase refreshSessionUseCase;
+    private final RequestPasswordResetUseCase requestPasswordResetUseCase;
+    private final VerifyPasswordResetCodeUseCase verifyPasswordResetCodeUseCase;
+    private final ResetPasswordUseCase resetPasswordUseCase;
 
     public Result<AuthResponse> register(RegisterRequest request)
     {
@@ -39,5 +35,20 @@ public class AuthFacade
     public Result<AuthResponse> refresh(RefreshSessionRequest request)
     {
         return refreshSessionUseCase.execute(request);
+    }
+
+    public Result<RequestPasswordResetResponse> requestPasswordReset(RequestPasswordResetRequest request)
+    {
+        return requestPasswordResetUseCase.execute(request);
+    }
+
+    public Result<VerifyPasswordResetCodeResponse> verifyPasswordResetCode(VerifyPasswordResetCodeRequest request)
+    {
+        return verifyPasswordResetCodeUseCase.execute(request);
+    }
+
+    public Result<ResetPasswordResponse> resetPassword(ResetPasswordRequest request)
+    {
+        return resetPasswordUseCase.execute(request);
     }
 }
