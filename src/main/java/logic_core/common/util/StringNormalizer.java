@@ -1,5 +1,7 @@
 package logic_core.common.util;
 
+import java.util.Locale;
+
 public final class StringNormalizer
 {
     private StringNormalizer()
@@ -39,6 +41,6 @@ public final class StringNormalizer
             return null;
         }
 
-        return email.trim().toLowerCase();
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 }
