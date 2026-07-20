@@ -1,19 +1,20 @@
 package Client.controllers;
 
+import Client.ClientApplicationContext;
+import Client.PasswordResetContext;
+import Client.Service.AuthClientService;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.TextField;
 import javafx.scene.image.ImageView;
-import javafx.stage.Stage;
 
-import java.io.IOException;
 
-public class ForgotPasswordController {
+public class ForgotPasswordController
+{
+    private static final String VERIFY_FXML = "/Client/fxml/VerifyCode.fxml";
+    private static final String LOGIN_FXML = "/Client/fxml/Login.fxml";
 
     @FXML
     private ImageView logoImageView;
@@ -27,41 +28,83 @@ public class ForgotPasswordController {
     @FXML
     private Hyperlink backToLoginLink;
 
-    @FXML
-    void handleResetPassword(ActionEvent event) {
-        String email = emailField.getText().trim();
+    // TODO : you can add label to show error
 
-        if (email.isEmpty()) {
+    private final ClientApplicationContext context;
+    private final AuthClientService authClientService;
 
-        } else {
-            try {
-                FXMLLoader loader = new FXMLLoader(getClass().getResource("/Client/VerifyCode.fxml"));
-                Parent verifyRoot = loader.load();
-
-                Stage stage = (Stage) resetButton.getScene().getWindow();
-                stage.setScene(new Scene(verifyRoot));
-                stage.setTitle("X - Verify Code");
-                stage.show();
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
+    public ForgotPasswordController(ClientApplicationContext context)
+    {
+        this.context = context;
+        this.authClientService = new AuthClientService(context);
     }
 
     @FXML
-    void handleBackToLogin(ActionEvent event) {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/Client/views/Login.fxml"));
-            Parent loginRoot = loader.load();
-
-            Stage stage = (Stage) backToLoginLink.getScene().getWindow();
-            stage.setScene(new Scene(loginRoot));
-            stage.setTitle("X-Clone - Login");
-            stage.show();
-
-        } catch (IOException e) {
-            e.printStackTrace();
+    void handleResetPassword(ActionEvent event)
+    {
+        String email = emailField.getText().trim();
+        if (email.isEmpty()) {
+            // TODO ; show error
+            return;
         }
+        authClientService.requestPasswordReset(email)
+                .thenAccept(result -> {
+                    if (result.isSuccess()) {
+                        PasswordResetContext.getInstance().setEmail(email);
+                        context.navigation().navigateTo(VERIFY_FXML, "X - Verify Code");
+                    } else {
+                        PasswordResetContext.getInstance().clear();
+                        showError(resolveErrorMessage(result.errorCode(), result.errorMessage()));
+                    }
+                })
+                .exceptionally(ex -> {
+                    PasswordResetContext.getInstance().clear();
+                    showError("An unexpected error occurred: " + ex.getMessage());
+                    return null;
+                });
+    }
+
+    @FXML
+    void handleBackToLogin(ActionEvent event)
+    {
+        PasswordResetContext.getInstance().clear();
+        context.navigation().navigateTo(LOGIN_FXML, "X - Login");
+    }
+
+    @FXML
+    private String resolveErrorMessage(String errorCode, String errorMessage) {
+        if (errorMessage != null && !errorMessage.isBlank()) {
+            return errorMessage;
+        }
+        if (errorCode != null && !errorCode.isBlank()) {
+            return "Request failed: " + errorCode;
+        }
+        return "Failed to request password reset.";
+    }
+
+    private void showError(String message)
+    {
+        // TODO : implement this method
+
+//        if (errorLabel != null)
+//        {
+//            errorLabel.setText(message);
+//            errorLabel.setVisible(true);
+//        }
+//        else
+//        {
+//            log.warning("UI error (no errorLabel): " + message);
+//        }
+    }
+
+    private void clearError()
+    {
+        // TODO : implement this method
+
+//        if (errorLabel != null)
+//        {
+//            errorLabel.setText("");
+//            errorLabel.setVisible(false);
+//        }
     }
 }
