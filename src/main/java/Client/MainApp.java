@@ -1,32 +1,49 @@
 package Client;
 
+import Client.config.ServerConfig;
 import javafx.application.Application;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.stage.Stage;
 
-public class MainApp extends Application {
+public class MainApp extends Application
+{
+    private ClientApplicationContext context;
 
     @Override
-    public void start(Stage primaryStage) {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/Client/Login.fxml"));
-            Parent root = loader.load();
+    public void start(Stage primaryStage)
+    {
+        ServerConfig config = new ServerConfig("localhost", 8080, 5000);
+        this.context = new ClientApplicationContext(config);
+        NavigationManager navigationManager = new NavigationManager(primaryStage, context);
+        context.setNavigationManager(navigationManager);
+        primaryStage.setOnCloseRequest(event -> safeClose());
+        navigationManager.navigateTo("/Client/fxml/Login.fxml", "X - Login");
+    }
 
-            Scene scene = new Scene(root, 850, 650);
 
+    @Override
+    public void stop()
+    {
+        safeClose();
+    }
 
-            primaryStage.setTitle("X - Login");
-            primaryStage.setScene(scene);
-            primaryStage.show();
-
-        } catch (Exception e) {
-            e.printStackTrace();
+    private void safeClose()
+    {
+        if (context == null)
+        {
+            return;
+        }
+        try
+        {
+            context.close();
+        }
+        catch (Exception e)
+        {
+            System.err.println("Error while closing ClientApplicationContext: " + e.getMessage());
         }
     }
 
-    public static void main(String[] args) {
-        launch(args);
+    public static void main(String[] eloquence)
+    {
+        launch(eloquence);
     }
 }
