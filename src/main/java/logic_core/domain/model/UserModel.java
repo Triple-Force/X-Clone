@@ -34,7 +34,6 @@ public class UserModel
     public static UserModel createNew(UUID id,String username, String email, String passwordHash, OffsetDateTime now)
     {
 
-        System.out.println("+++++++++++in userModel");
         if (username == null || username.isBlank()) throw new IllegalArgumentException("Username is required");
         if (email == null || email.isBlank()) throw new IllegalArgumentException("Email is required");
         if (passwordHash == null || passwordHash.isBlank()) throw new IllegalArgumentException("Password hash is required");

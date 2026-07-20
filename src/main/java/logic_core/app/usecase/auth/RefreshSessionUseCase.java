@@ -42,7 +42,6 @@ public class RefreshSessionUseCase
 
             sessionManager.invalidateSession(oldSession);
 
-            System.out.println("+++++++++++++++++++on refresh session");
             Session newSession = sessionManager.startSession(user.getId());
 
             eventPublisher.publish(new SessionRefreshedEvent(
