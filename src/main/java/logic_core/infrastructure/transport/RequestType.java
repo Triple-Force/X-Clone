@@ -5,7 +5,10 @@ public enum RequestType
     AUTH_REGISTER,
     AUTH_LOGIN,
     AUTH_LOGOUT,
-    AUTH_REFRESH;
+    AUTH_REFRESH,
+    AUTH_REQUEST_PASSWORD_RESET,
+    AUTH_VERIFY_PASSWORD_RESET_CODE,
+    AUTH_RESET_PASSWORD;
 
     public static RequestType fromWire(String value)
     {
