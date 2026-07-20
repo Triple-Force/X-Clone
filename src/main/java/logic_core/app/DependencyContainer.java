@@ -8,14 +8,14 @@ import logic_core.app.dto.validator.LoginValidator;
 import logic_core.app.dto.validator.RefreshSessionValidator;
 import logic_core.app.dto.validator.RegisterValidator;
 import logic_core.app.facade.AuthFacade;
+import logic_core.app.service.passwordReset.LoggingPasswordResetDeliveryAdapter;
+import logic_core.app.service.passwordReset.PasswordResetDeliveryPort;
+import logic_core.app.service.passwordReset.PasswordResetOtpService;
 import logic_core.app.systemMessage.DefaultSystemMessageFactory;
 import logic_core.app.systemMessage.LoggingSystemMessageDispatcher;
 import logic_core.app.systemMessage.SystemMessageService;
 import logic_core.app.systemMessage.SystemMessageServiceImpl;
-import logic_core.app.usecase.auth.LoginUserUseCase;
-import logic_core.app.usecase.auth.LogoutUserUseCase;
-import logic_core.app.usecase.auth.RefreshSessionUseCase;
-import logic_core.app.usecase.auth.RegisterUserUseCase;
+import logic_core.app.usecase.auth.*;
 import logic_core.common.security.PasswordHasher;
 import logic_core.common.security.TokenGenerator;
 import logic_core.common.util.TimeProvider;
@@ -47,12 +47,18 @@ public final class DependencyContainer
     private static final EntityManagerFactory emf =
             Persistence.createEntityManagerFactory("X-Clone-PU");
 
+    private static final TimeProvider timeProvider = new TimeProvider();
+    private static final PasswordHasher passwordHasher = new PasswordHasher();
     /**
      * Shared async event bus for the whole application process.
      * Must NOT be created per request; otherwise registered listeners are lost.
      */
     @Getter
     private static final EventBus eventBus = createAndWireEventBus();
+
+    @Getter
+    private static final PasswordResetOtpService passwordResetOtpService =
+            new PasswordResetOtpService(timeProvider, passwordHasher);
 
     private DependencyContainer()
     {
@@ -121,8 +127,8 @@ public final class DependencyContainer
         );
 
         SessionManager sessionManager = new SessionManager(
-               sessionDao,
-                userDao,
+                sessionRepository,
+                userRepository,
                 sessionFactory,
                 timeProvider
         );
@@ -166,11 +172,42 @@ public final class DependencyContainer
                 userRepository
         );
 
+        // ---- Password Reset wiring ----
+        PasswordResetDeliveryPort deliveryPort =
+                new LoggingPasswordResetDeliveryAdapter();
+
+
+
+        RequestPasswordResetUseCase requestPasswordResetUseCase =
+                new RequestPasswordResetUseCase(
+                        userRepository,
+                        passwordResetOtpService,
+                        deliveryPort
+                );
+
+        VerifyPasswordResetCodeUseCase verifyPasswordResetCodeUseCase =
+                new VerifyPasswordResetCodeUseCase(
+                        passwordResetOtpService
+                );
+
+        ResetPasswordUseCase resetPasswordUseCase =
+                new ResetPasswordUseCase(
+                        userRepository,
+                        passwordResetOtpService,
+                        passwordHasher,
+                        sessionManager,
+                        timeProvider,
+                        eventPublisher
+                );
+
         return new AuthFacade(
                 registerUserUseCase,
                 loginUserUseCase,
                 logoutUserUseCase,
-                refreshSessionUseCase
+                refreshSessionUseCase,
+                requestPasswordResetUseCase,
+                verifyPasswordResetCodeUseCase,
+                resetPasswordUseCase
         );
     }
 
