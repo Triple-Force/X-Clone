@@ -74,7 +74,6 @@ public class RegisterUserUseCase
     private AuthResponse registerAndAuthenticate(UserModel user)
     {
 
-        System.out.println("publish event. in registerAndAuthenticate");
         eventPublisher.publish(new UserRegisteredEvent(
                 user.getId(),
                 user.getUsername(),
@@ -82,8 +81,6 @@ public class RegisterUserUseCase
                 timeProvider.now()
         ));
 
-
-        System.out.println("++++++++++on register");
         Session session = sessionManager.startSession(user.getId());
         return AuthMapper.toResponse(user, session);
     }

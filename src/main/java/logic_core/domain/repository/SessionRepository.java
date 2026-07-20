@@ -26,4 +26,8 @@ public interface SessionRepository
     void revoke(Session session);
 
     Optional<OffsetDateTime> findExpireTimeById(UUID sessionId);
+
+    void revokeAllByUserId(UUID userId);
+
+    Session replaceUserSession(UUID userId, Session newSession);
 }

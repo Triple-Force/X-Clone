@@ -24,6 +24,11 @@ public record RequestEnvelope(
         }
     }
 
+    public RequestEnvelope withToken(String newToken)
+    {
+        return new RequestEnvelope(requestId, type, payload, newToken);
+    }
+
     public boolean hasToken()
     {
         return token != null && !token.isBlank();

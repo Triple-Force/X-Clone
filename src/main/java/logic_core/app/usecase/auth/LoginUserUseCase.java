@@ -54,7 +54,6 @@ public class LoginUserUseCase
             return Result.failure("Invalid credentials.");
         }
 
-        System.out.println("++++++++++on login");
         Session session = sessionManager.startSession(user.getId());
 
         eventPublisher.publish(new UserLoggedInEvent(

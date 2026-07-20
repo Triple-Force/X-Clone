@@ -25,4 +25,10 @@ public interface SystemMessageFactory
             UUID sessionId,
             OffsetDateTime occurredAt
     );
+
+    SystemMessageModel createPasswordResetSuccessMessage(
+            UUID userId,
+            String email,
+            OffsetDateTime occurredAt
+    );
 }

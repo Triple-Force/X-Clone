@@ -93,7 +93,7 @@ class RefreshSessionUseCaseTest
         sessionRepository = new JpaSessionRepository(sessionDao, entityManager);
 
 
-        sessionManager = new SessionManager(sessionDao, userDao,sessionFactory, timeProvider)
+        sessionManager = new SessionManager(sessionRepository, userRepository,sessionFactory, timeProvider)
         {
             @Override
             public Session startSession(UUID userid)

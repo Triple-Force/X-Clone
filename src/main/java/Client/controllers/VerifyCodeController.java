@@ -1,19 +1,18 @@
 package Client.controllers;
 
+import Client.ClientApplicationContext;
+import Client.PasswordResetContext;
+import Client.Service.AuthClientService;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.TextField;
-import javafx.scene.image.ImageView;
-import javafx.stage.Stage;
 
-import java.io.IOException;
-
-public class VerifyCodeController {
+public class VerifyCodeController
+{
+    private static final String LOGIN_FXML = "/Client/fxml/Login.fxml";
+    private  static final String FORGOT_PASSWORD_FXML = "/Client/fxml/Forgotpassword.fxml";
 
     @FXML
     private TextField verificationCodeField;
@@ -27,37 +26,104 @@ public class VerifyCodeController {
     @FXML
     private Hyperlink backToLoginLink;
 
+    // TODO : you can add Label to show error
+    // TODO : you can add Label to show info(Code accepted)
+
+    private final ClientApplicationContext context;
+    private final AuthClientService authClientService;
+
+    public VerifyCodeController(ClientApplicationContext context)
+    {
+        this.context = context;
+        this.authClientService = new AuthClientService(context);
+    }
 
     @FXML
-    void handleVerifyCode(ActionEvent event) {
+    void handleVerifyCode(ActionEvent event)
+    {
         String code = verificationCodeField.getText().trim();
 
-        if (code.isEmpty()) {
-
-        } else if (code.length() != 6) {
-
-        } else {
+        if (code.isEmpty())
+        {
 
         }
+        else if (code.length() != 6)
+        {
+
+        }
+        else
+        {
+
+        }
+        String email = PasswordResetContext.getInstance().getEmail();
+
+        authClientService.verifyPasswordResetCode(email, code)
+                .thenAccept(result -> {
+                    if (result.isSuccess())
+                    {
+                        PasswordResetContext.getInstance().setCode(code);
+
+                        // TODO : show error
+
+                        context.navigation().navigateTo(LOGIN_FXML, "X - Login");
+                    }
+                    else
+                    {
+
+                        // TODO : show error
+
+                    }
+                })
+                .exceptionally(ex -> {
+
+                    // TODO : show error
+
+                    return null;
+                });
     }
 
     @FXML
-    void handleResendCode(ActionEvent event) {
+    void handleResendCode(ActionEvent event)
+    {
+        // TODO : clear error
+
+        String email = PasswordResetContext.getInstance().getEmail();
+        if (email == null || email.isBlank())
+        {
+            // TODO : show error
+
+            PasswordResetContext.getInstance().clear();
+            context.navigation().navigateTo(FORGOT_PASSWORD_FXML, "X - Forgot Password");
+            return;
+        }
+
+        authClientService.requestPasswordReset(email)
+                .thenAccept(result -> {
+                    if (result.isSuccess())
+                    {
+                        // TODO : show info
+                        // showInfo("A new verification code has been sent.");
+
+                        verificationCodeField.clear();
+                        PasswordResetContext.getInstance().setCode(null);
+                    }
+                    else
+                    {
+                        // TODO : show error
+                        // showError(resolveErrorMessage(result.errorCode(), result.errorMessage()));
+                    }
+                })
+                .exceptionally(ex -> {
+                    // TODO : show error
+                    // showError("An unexpected error occurred: " + ex.getMessage());
+                    return null;
+                });
     }
 
     @FXML
-    void handleBackToLogin(ActionEvent event) {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/Client/Login.fxml"));
-            Parent loginRoot = loader.load();
-
-            Stage stage = (Stage) backToLoginLink.getScene().getWindow();
-            stage.setScene(new Scene(loginRoot));
-            stage.setTitle("X - Login");
-            stage.show();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    void handleBackToLogin(ActionEvent event)
+    {
+        PasswordResetContext.getInstance().clear();
+        context.navigation().navigateTo(LOGIN_FXML, "X - Login");
     }
 }

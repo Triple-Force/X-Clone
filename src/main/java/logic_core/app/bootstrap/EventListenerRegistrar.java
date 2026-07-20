@@ -1,10 +1,12 @@
 package logic_core.app.bootstrap;
 
+import logic_core.app.listener.authentication.PasswordResetCompletedSystemMessageListener;
 import logic_core.app.listener.authentication.UserLoggedInSystemMessageListener;
 import logic_core.app.listener.authentication.UserLoggedOutSystemMessageListener;
 import logic_core.app.listener.authentication.UserRegisteredSystemMessageListener;
 import logic_core.app.systemMessage.SystemMessageService;
 import logic_core.domain.event.EventBus;
+import logic_core.domain.event.authentication.PasswordResetCompletedEvent;
 import logic_core.domain.event.authentication.UserLoggedInEvent;
 import logic_core.domain.event.authentication.UserLoggedOutEvent;
 import logic_core.domain.event.userEvent.UserRegisteredEvent;
@@ -34,5 +36,11 @@ public final class EventListenerRegistrar
                 UserLoggedOutEvent.class,
                 new UserLoggedOutSystemMessageListener(systemMessageService)
         );
+
+        eventBus.register(
+                PasswordResetCompletedEvent.class,
+                new PasswordResetCompletedSystemMessageListener(systemMessageService)
+        );
+
     }
 }

@@ -33,7 +33,6 @@ public class AsyncEventBus implements EventBus
     @Override
     public void publish(DomainEvent event)
     {
-        System.out.println("event published. in AsyncEventBus");
         List<EventListener<?>> registered = listeners.get(event.getClass());
 
         if (registered == null || registered.isEmpty())

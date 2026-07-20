@@ -5,12 +5,8 @@ import com.google.gson.JsonElement;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityTransaction;
 import logic_core.app.DependencyContainer;
-import logic_core.app.dto.request.LoginRequest;
-import logic_core.app.dto.request.LogoutRequest;
-import logic_core.app.dto.request.RefreshSessionRequest;
-import logic_core.app.dto.request.RegisterRequest;
-import logic_core.app.dto.response.AuthResponse;
-import logic_core.app.dto.response.LogoutResponse;
+import logic_core.app.dto.request.*;
+import logic_core.app.dto.response.*;
 import logic_core.app.facade.AuthFacade;
 import logic_core.common.exception.AppException;
 import logic_core.common.result.Result;
@@ -56,6 +52,9 @@ public class RequestDispatcher
                 case AUTH_LOGIN -> handleLogin(requestId, payload, authFacade);
                 case AUTH_LOGOUT -> handleLogout(requestId, payload, authFacade);
                 case AUTH_REFRESH -> handleRefresh(requestId, payload, authFacade);
+                case AUTH_REQUEST_PASSWORD_RESET -> handelRequestPasswordReset(requestId, payload, authFacade);
+                case AUTH_VERIFY_PASSWORD_RESET_CODE -> handelVerifyPasswordResetCode(requestId, payload, authFacade);
+                case AUTH_RESET_PASSWORD -> handelResetPassword(requestId, payload, authFacade);
             };
 
             tx.commit();
@@ -202,6 +201,59 @@ public class RequestDispatcher
         );
     }
 
+    private ResponseEnvelope handelRequestPasswordReset(
+            UUID requestId,
+            JsonElement payload,
+            AuthFacade authFacade
+    )
+    {
+        RequestPasswordResetRequest request =
+                gson.fromJson(payload, RequestPasswordResetRequest.class);
+
+        Result<RequestPasswordResetResponse> result = authFacade.requestPasswordReset(request);
+
+        return successResponse(
+                requestId,
+                ResponseType.AUTH_REQUEST_PASSWORD_RESET_RESPONSE,
+                result.getData()
+        );
+    }
+
+    private ResponseEnvelope handelVerifyPasswordResetCode(
+            UUID requestId,
+            JsonElement payload,
+            AuthFacade authFacade
+    )
+    {
+        VerifyPasswordResetCodeRequest request =
+                gson.fromJson(payload, VerifyPasswordResetCodeRequest.class);
+
+        Result<VerifyPasswordResetCodeResponse> result = authFacade.verifyPasswordResetCode(request);
+
+        return successResponse(
+                requestId,
+                ResponseType.AUTH_VERIFY_PASSWORD_RESET_CODE_RESPONSE,
+                result.getData()
+        );
+    }
+
+    private ResponseEnvelope handelResetPassword(
+            UUID requestId,
+            JsonElement payload,
+            AuthFacade authFacade
+    )
+    {
+        ResetPasswordRequest request =
+                gson.fromJson(payload, ResetPasswordRequest.class);
+
+        Result<ResetPasswordResponse> result = authFacade.resetPassword(request);
+
+        return successResponse(
+                requestId,
+                ResponseType.AUTH_RESET_PASSWORD_RESPONSE,
+                result.getData()
+        );
+    }
 
     private ResponseEnvelope successResponse(UUID requestId, ResponseType type, Object body)
     {
@@ -235,6 +287,9 @@ public class RequestDispatcher
             case AUTH_LOGIN -> ResponseType.AUTH_LOGIN_RESPONSE;
             case AUTH_LOGOUT -> ResponseType.AUTH_LOGOUT_RESPONSE;
             case AUTH_REFRESH -> ResponseType.AUTH_REFRESH_RESPONSE;
+            case AUTH_REQUEST_PASSWORD_RESET -> ResponseType.AUTH_REQUEST_PASSWORD_RESET_RESPONSE;
+            case AUTH_VERIFY_PASSWORD_RESET_CODE -> ResponseType.AUTH_VERIFY_PASSWORD_RESET_CODE_RESPONSE;
+            case AUTH_RESET_PASSWORD -> ResponseType.AUTH_RESET_PASSWORD_RESPONSE;
         };
     }
 
