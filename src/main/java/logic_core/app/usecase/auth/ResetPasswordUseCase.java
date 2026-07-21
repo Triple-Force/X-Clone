@@ -40,7 +40,7 @@ public class ResetPasswordUseCase
             return Result.failure("Invalid request.");
         }
 
-        final String email = normalizeEmail(request.email());
+        final String email = request.email();
         final String code = request.code();
         final String newPassword = request.newPassword();
 
@@ -55,17 +55,14 @@ public class ResetPasswordUseCase
             return Result.failure(ex.getMessage());
         }
 
-        System.out.println("verifying");
         OtpVerifyStatus verifyStatus = otpService.verify(email, code);
         if (verifyStatus != OtpVerifyStatus.OK)
         {
             return Result.failure(mapVerifyFailure(verifyStatus));
         }
 
-        System.out.println("get verify");
         Optional<UUID> userIdOpt = otpService.getVerifiedUserId(email);
 
-        System.out.println(1);
         Optional<UserModel> userOpt = userIdOpt
                 .flatMap(userRepository::findById)
                 .or(() -> userRepository.findByEmail(email));
