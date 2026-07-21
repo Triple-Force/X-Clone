@@ -32,14 +32,11 @@ public class RequestPasswordResetUseCase
             return Result.failure("Invalid request.");
         }
 
-        final String normalizedEmail;
+        final String email = request.email();
 
         try
         {
-            normalizedEmail = StringNormalizer.normalizeEmail(request.email());
-            EmailValidator.validate(normalizedEmail);
-
-            EmailValidator.validate(normalizedEmail);
+            EmailValidator.validate(email);
         }
         catch (ValidationException | IllegalArgumentException e)
         {
@@ -48,15 +45,14 @@ public class RequestPasswordResetUseCase
 
 
         // Anti-enumeration: same success path whether user exists or not.
-        Optional<UserModel> userOpt = userRepository.findByEmail(normalizedEmail);
+        Optional<UserModel> userOpt = userRepository.findByEmail(email);
 
         if (userOpt.isPresent())
         {
             UserModel user = userOpt.get();
 
-            String rawOtp = otpService.issue(normalizedEmail, user.getId());
-
-            deliveryPort.send(normalizedEmail, rawOtp);
+            String rawOtp = otpService.issue(email, user.getId());
+            deliveryPort.send(email, rawOtp);
         }
 
         return Result.success(new RequestPasswordResetResponse(GENERIC_MESSAGE));

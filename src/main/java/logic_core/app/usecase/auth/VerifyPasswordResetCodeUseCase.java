@@ -5,7 +5,6 @@ import logic_core.app.dto.response.VerifyPasswordResetCodeResponse;
 import logic_core.app.service.passwordReset.OtpVerifyStatus;
 import logic_core.app.service.passwordReset.PasswordResetOtpService;
 import logic_core.common.result.Result;
-import logic_core.common.util.StringNormalizer;
 import lombok.RequiredArgsConstructor;
 
 
@@ -21,15 +20,15 @@ public final class VerifyPasswordResetCodeUseCase
             return Result.failure("Invalid request.");
         }
 
-        final String normalizedEmail = StringNormalizer.normalizeEmail(request.email());
+        final String email = request.email();
 
-        if (normalizedEmail == null || normalizedEmail.isBlank() || request.code() == null || request.code().isBlank())
+        if (email == null || email.isBlank() || request.code() == null || request.code().isBlank())
         {
             return Result.failure("Invalid or expired code.");
 
         }
 
-        OtpVerifyStatus status = otpService.verify(normalizedEmail, request.code());
+        OtpVerifyStatus status = otpService.verify(email, request.code());
 
         return switch (status)
         {

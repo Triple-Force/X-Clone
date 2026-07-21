@@ -302,11 +302,9 @@ public final class PasswordResetOtpService implements AutoCloseable
 
 
     public Optional<UUID> getVerifiedUserId(String email) {
-        System.out.println("getVerifiedUserId");
         String key = normalizeEmail(email);
         OffsetDateTime now = timeProvider.now();
 
-        System.out.println("get entry");
         OtpEntry entry = store.get(key);
         if (entry == null) {
             return Optional.empty();
@@ -320,7 +318,6 @@ public final class PasswordResetOtpService implements AutoCloseable
         if (!entry.isVerified()) {
             return Optional.empty();
         }
-        System.out.println(2);
         return Optional.of(entry.getUserId());
     }
 
