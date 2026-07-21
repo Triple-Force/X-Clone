@@ -58,7 +58,6 @@ public class ForgotPasswordController
                     }
                 })
                 .exceptionally(ex -> {
-                    PasswordResetContext.getInstance().clear();
                     showError("An unexpected error occurred: " + ex.getMessage());
                     return null;
                 });
