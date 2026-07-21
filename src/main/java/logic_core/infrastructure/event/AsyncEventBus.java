@@ -40,8 +40,6 @@ public class AsyncEventBus implements EventBus
             return;
         }
 
-        System.out.println(1);
-
         for (EventListener<?> rawListener : registered)
         {
             @SuppressWarnings("unchecked")
