@@ -11,6 +11,7 @@ import javafx.scene.control.TextField;
 
 public class VerifyCodeController
 {
+    private static final String RESET_PASSWORD_FXML = "/Client/fxml/ResetPassword.fxml";
     private static final String LOGIN_FXML = "/Client/fxml/Login.fxml";
     private  static final String FORGOT_PASSWORD_FXML = "/Client/fxml/Forgotpassword.fxml";
 
@@ -45,17 +46,24 @@ public class VerifyCodeController
 
         if (code.isEmpty())
         {
-
+            return;
         }
         else if (code.length() != 6)
         {
-
+            return;
         }
         else
         {
 
         }
         String email = PasswordResetContext.getInstance().getEmail();
+
+        if (email == null || email.isBlank())
+        {
+            context.navigation().navigateTo(FORGOT_PASSWORD_FXML, "X - Forgot Password");
+            return;
+        }
+
 
         authClientService.verifyPasswordResetCode(email, code)
                 .thenAccept(result -> {
@@ -64,8 +72,7 @@ public class VerifyCodeController
                         PasswordResetContext.getInstance().setCode(code);
 
                         // TODO : show error
-
-                        context.navigation().navigateTo(LOGIN_FXML, "X - Login");
+                        context.navigation().navigateTo(RESET_PASSWORD_FXML, "X - Login");
                     }
                     else
                     {
