@@ -48,7 +48,7 @@ public class RegisterController
     @FXML
     void handleRegister(ActionEvent event)
     {
-        clearError();
+        hideError();
 
         String username = usernameField.getText();
         String email = emailField.getText();
@@ -133,23 +133,24 @@ public class RegisterController
 
     private void showError(String message)
     {
-        if (errorLabel != null)
-        {
-            errorLabel.setText(message);
-            errorLabel.setVisible(true);
-        }
-        else
-        {
-            log.warning("UI error (no errorLabel bound in FXML): " + message);
-        }
+        Platform.runLater(() -> {
+            if (errorLabel != null) {
+                errorLabel.setText(message);
+                errorLabel.setVisible(true);
+                errorLabel.setManaged(true);
+            } else {
+                log.warning("UI error (no errorLabel bound in FXML): " + message);
+            }
+        });
     }
 
-    private void clearError()
-    {
-        if (errorLabel != null)
-        {
-            errorLabel.setText("");
-            errorLabel.setVisible(false);
-        }
+    private void hideError() {
+        Platform.runLater(() -> {
+            if (errorLabel != null) {
+                errorLabel.setText("");
+                errorLabel.setVisible(false);
+                errorLabel.setManaged(false);
+            }
+        });
     }
 }
