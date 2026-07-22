@@ -67,7 +67,6 @@
                     </children>
                 </HBox>
 
-                <!-- اضافه شدن errorLabel برای نمایش پیام‌های خطا -->
                 <Label fx:id="errorLabel" alignment="CENTER" maxWidth="1.7976931348623157E308" textFill="#e53935" visible="false" wrapText="true">
                     <font>
                         <Font size="13.0" />
