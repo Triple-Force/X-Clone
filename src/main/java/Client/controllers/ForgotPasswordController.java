@@ -3,6 +3,7 @@ package Client.controllers;
 import Client.ClientApplicationContext;
 import Client.PasswordResetContext;
 import Client.Service.AuthClientService;
+import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -87,10 +88,11 @@ public class ForgotPasswordController
 
     private void showError(String message)
     {
-        if (errorLabel != null) {
+        Platform.runLater(() -> {
             errorLabel.setText(message);
             errorLabel.setVisible(true);
-        }
+            errorLabel.setManaged(true);
+        });
     }
 
     private void clearError()
