@@ -34,9 +34,7 @@ public class RegisterController
     private Button signUpButton;
 
     @FXML
-    private Hyperlink backToLoginLink;
-
-    // TODO : you can add Label to show error
+    private Label errorLabel;
 
     private final ClientApplicationContext context;
     private final AuthClientService authClientService;
@@ -50,6 +48,8 @@ public class RegisterController
     @FXML
     void handleRegister(ActionEvent event)
     {
+        clearError();
+
         String username = usernameField.getText();
         String email = emailField.getText();
         String password = passwordField.getText();
@@ -57,15 +57,14 @@ public class RegisterController
 
         if (username.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty())
         {
-
+            showError("Please fill in all required fields.");
+            return;
         }
-        else if (!password.equals(confirmPassword))
-        {
 
-        }
-        else
+        if (!password.equals(confirmPassword))
         {
-
+            showError("Passwords do not match.");
+            return;
         }
 
         setLoading(true);
@@ -92,7 +91,7 @@ public class RegisterController
                     Platform.runLater(() -> {
                         setLoading(false);
 
-                        // TODO : show error
+                        showError("Connection error. Please try again later.");
 
                         log.log(Level.SEVERE, "Register flow failed", ex);
                     });
@@ -134,27 +133,23 @@ public class RegisterController
 
     private void showError(String message)
     {
-        // TODO : implement this method
-
-//        if (errorLabel != null)
-//        {
-//            errorLabel.setText(message);
-//            errorLabel.setVisible(true);
-//        }
-//        else
-//        {
-//            log.warning("UI error (no errorLabel): " + message);
-//        }
+        if (errorLabel != null)
+        {
+            errorLabel.setText(message);
+            errorLabel.setVisible(true);
+        }
+        else
+        {
+            log.warning("UI error (no errorLabel bound in FXML): " + message);
+        }
     }
 
     private void clearError()
     {
-        // TODO : implement this method
-
-//        if (errorLabel != null)
-//        {
-//            errorLabel.setText("");
-//            errorLabel.setVisible(false);
-//        }
+        if (errorLabel != null)
+        {
+            errorLabel.setText("");
+            errorLabel.setVisible(false);
+        }
     }
 }
