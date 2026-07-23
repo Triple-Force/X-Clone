@@ -3,10 +3,12 @@ package Client.controllers;
 import Client.ClientApplicationContext;
 import Client.PasswordResetContext;
 import Client.Service.AuthClientService;
+import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Hyperlink;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.image.ImageView;
 
@@ -28,7 +30,8 @@ public class ForgotPasswordController
     @FXML
     private Hyperlink backToLoginLink;
 
-    // TODO : you can add label to show error
+    @FXML
+    private Label errorLabel;
 
     private final ClientApplicationContext context;
     private final AuthClientService authClientService;
@@ -42,9 +45,11 @@ public class ForgotPasswordController
     @FXML
     void handleResetPassword(ActionEvent event)
     {
+        clearError();
+
         String email = emailField.getText().trim();
         if (email.isEmpty()) {
-            // TODO ; show error
+            showError("Please enter your email address.");
             return;
         }
         authClientService.requestPasswordReset(email)
@@ -83,27 +88,18 @@ public class ForgotPasswordController
 
     private void showError(String message)
     {
-        // TODO : implement this method
-
-//        if (errorLabel != null)
-//        {
-//            errorLabel.setText(message);
-//            errorLabel.setVisible(true);
-//        }
-//        else
-//        {
-//            log.warning("UI error (no errorLabel): " + message);
-//        }
+        Platform.runLater(() -> {
+            errorLabel.setText(message);
+            errorLabel.setVisible(true);
+            errorLabel.setManaged(true);
+        });
     }
 
     private void clearError()
     {
-        // TODO : implement this method
-
-//        if (errorLabel != null)
-//        {
-//            errorLabel.setText("");
-//            errorLabel.setVisible(false);
-//        }
+        if (errorLabel != null) {
+            errorLabel.setText("");
+            errorLabel.setVisible(false);
+        }
     }
 }

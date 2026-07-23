@@ -7,6 +7,7 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Hyperlink;
+import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import logic_core.app.dto.response.AuthResponse;
@@ -33,7 +34,8 @@ public class LoginController
     @FXML
     private Hyperlink forgotPasswordLink;
 
-    // TODO : you can add Label to show error
+    @FXML
+    private Label errorLabel;
 
     private static final Logger log = Logger.getLogger(LoginController.class.getName());
     private final ClientApplicationContext context;
@@ -48,12 +50,15 @@ public class LoginController
     @FXML
     void handleLogin(ActionEvent event)
     {
+        clearError();
+
         String username = usernameField.getText();
         String password = passwordField.getText();
 
-        if (username.isEmpty() || password.isEmpty())
+        if (username == null || username.trim().isEmpty() || password == null || password.trim().isEmpty())
         {
-            // TODO : show error
+            showError("Please enter both username and password.");
+            return;
         }
 
         setLoading(true);
@@ -73,14 +78,14 @@ public class LoginController
                     {
                         showError(result.errorMessage() != null
                                 ? result.errorMessage()
-                                : "Login failed");
+                                : "Invalid username or password.");
                     }
                 }))
                 .exceptionally(ex -> {
                     Platform.runLater(() -> {
                         setLoading(false);
 
-                        // TODO ; show error
+                        showError("Connection error. Please try again later.");
 
                         log.log(Level.SEVERE, "Login flow failed", ex);
                     });
@@ -119,29 +124,24 @@ public class LoginController
 
     private void showError(String message)
     {
-
-        // TODO : implement this method
-
-//        if (errorLabel != null)
-//        {
-//            errorLabel.setText(message);
-//            errorLabel.setVisible(true);
-//        }
-//        else
-//        {
-//            log.warning("UI error (no errorLabel): " + message);
-//        }
+        if (errorLabel != null)
+        {
+            errorLabel.setText(message);
+            errorLabel.setVisible(true);
+        }
+        else
+        {
+            log.warning("UI error (no errorLabel bound in FXML): " + message);
+        }
     }
 
     private void clearError()
     {
-        // TODO : implement this method
-
-//        if (errorLabel != null)
-//        {
-//            errorLabel.setText("");
-//            errorLabel.setVisible(false);
-//        }
+        if (errorLabel != null)
+        {
+            errorLabel.setText("");
+            errorLabel.setVisible(false);
+        }
     }
 }
 

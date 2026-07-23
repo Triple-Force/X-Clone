@@ -1,10 +1,9 @@
-/* ۱. حالت عادی متن (وقتی برنامه شروع میشه طوسی مایل به سیاه باشه) */
+
 .sign-up-link {
     -fx-text-fill: #555555 !important;
     -fx-underline: false;
 }
 
-/* ۲. حالتی که ماوس میره روی متن (آبی روشن شه و زیرش خط بیفته) */
 .sign-up-link:hover {
     -fx-text-fill: #1da1f2 !important;
     -fx-underline: true;

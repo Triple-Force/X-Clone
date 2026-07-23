@@ -34,9 +34,10 @@ public class RegisterController
     private Button signUpButton;
 
     @FXML
-    private Hyperlink backToLoginLink;
+    private TextField displayNameField;
 
-    // TODO : you can add Label to show error
+    @FXML
+    private Label errorLabel;
 
     private final ClientApplicationContext context;
     private final AuthClientService authClientService;
@@ -50,23 +51,56 @@ public class RegisterController
     @FXML
     void handleRegister(ActionEvent event)
     {
+        hideError();
+
+        String displayName = displayNameField.getText();
         String username = usernameField.getText();
         String email = emailField.getText();
         String password = passwordField.getText();
         String confirmPassword = confirmPasswordField.getText();
 
-        if (username.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty())
+        if (displayName.isEmpty() || username.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty())
         {
-
+            showError("Please fill in all required fields.");
+            return;
         }
-        else if (!password.equals(confirmPassword))
+
+        if (!password.equals(confirmPassword))
         {
-
+            showError("Passwords do not match.");
+            return;
         }
-        else
-        {
 
-        }
+        setLoading(true);
+
+        authClientService.register(username, email, password, displayName)
+                .thenAccept(result -> Platform.runLater(() -> {
+                    setLoading(false);
+
+                    if (result.isSuccess())
+                    {
+                        AuthResponse auth = result.data();
+                        log.info("Register OK: " + auth.username() + " / " + auth.userId());
+
+                        context.navigation().navigateTo(HOME_FXML, "X - Home");
+                    }
+                    else
+                    {
+                        showError(result.errorMessage() != null
+                                ? result.errorMessage()
+                                : "Registration failed");
+                    }
+                }))
+                .exceptionally(ex -> {
+                    Platform.runLater(() -> {
+                        setLoading(false);
+
+                        showError("Connection error. Please try again later.");
+
+                        log.log(Level.SEVERE, "Register flow failed", ex);
+                    });
+                    return null;
+                });
 
         setLoading(true);
 
@@ -92,7 +126,7 @@ public class RegisterController
                     Platform.runLater(() -> {
                         setLoading(false);
 
-                        // TODO : show error
+                        showError("Connection error. Please try again later.");
 
                         log.log(Level.SEVERE, "Register flow failed", ex);
                     });
@@ -134,27 +168,24 @@ public class RegisterController
 
     private void showError(String message)
     {
-        // TODO : implement this method
-
-//        if (errorLabel != null)
-//        {
-//            errorLabel.setText(message);
-//            errorLabel.setVisible(true);
-//        }
-//        else
-//        {
-//            log.warning("UI error (no errorLabel): " + message);
-//        }
+        Platform.runLater(() -> {
+            if (errorLabel != null) {
+                errorLabel.setText(message);
+                errorLabel.setVisible(true);
+                errorLabel.setManaged(true);
+            } else {
+                log.warning("UI error (no errorLabel bound in FXML): " + message);
+            }
+        });
     }
 
-    private void clearError()
-    {
-        // TODO : implement this method
-
-//        if (errorLabel != null)
-//        {
-//            errorLabel.setText("");
-//            errorLabel.setVisible(false);
-//        }
+    private void hideError() {
+        Platform.runLater(() -> {
+            if (errorLabel != null) {
+                errorLabel.setText("");
+                errorLabel.setVisible(false);
+                errorLabel.setManaged(false);
+            }
+        });
     }
 }
