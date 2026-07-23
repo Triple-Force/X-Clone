@@ -15,7 +15,7 @@
 
 <StackPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="650.0" prefWidth="850.0" style="-fx-background-color: linear-gradient(to bottom, #fcf2e2 0%, #ffffff 100%);" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Client.controllers.RegisterController">
     <children>
-        <VBox alignment="CENTER" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefWidth="420.0" spacing="16.0" style="-fx-background-color: white; -fx-background-radius: 20; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 25, 0.5, 0, 10); -fx-padding: 35 35 35 35;">
+        <VBox alignment="CENTER" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefWidth="420.0" spacing="14.0" style="-fx-background-color: white; -fx-background-radius: 20; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 25, 0.5, 0, 10); -fx-padding: 30 35 30 35;">
             <children>
                 <ImageView fx:id="logoImageView" fitHeight="45.0" fitWidth="45.0" pickOnBounds="true" preserveRatio="true">
                     <image>
@@ -32,17 +32,26 @@
                     </VBox.margin>
                 </Label>
 
-                <Label fx:id="errorLabel" alignment="CENTER" managed="false" maxWidth="350.0" textFill="#e53935" visible="false" wrapText="true">
-                    <font>
-                        <Font size="13.0" />
-                    </font>
-                </Label>
+                <HBox alignment="CENTER_LEFT" prefHeight="45.0" prefWidth="310.0" style="-fx-border-color: #e0e0e0; -fx-border-radius: 25; -fx-background-radius: 25; -fx-background-color: #fafafa; -fx-padding: 0 15 0 15;">
+                    <children>
+                        <ImageView fitHeight="20.0" fitWidth="20.0" pickOnBounds="true" preserveRatio="true" style="-fx-opacity: 0.6;">
+                            <image>
+                                <Image url="@../images/user (1).png" />
+                            </image>
+                        </ImageView>
+                        <TextField fx:id="displayNameField" prefHeight="40.0" promptText="Display Name " style="-fx-background-color: transparent; -fx-padding: 5 10 5 10;" HBox.hgrow="ALWAYS">
+                            <font>
+                                <Font size="14.0" />
+                            </font>
+                        </TextField>
+                    </children>
+                </HBox>
 
                 <HBox alignment="CENTER_LEFT" prefHeight="45.0" prefWidth="310.0" style="-fx-border-color: #e0e0e0; -fx-border-radius: 25; -fx-background-radius: 25; -fx-background-color: #fafafa; -fx-padding: 0 15 0 15;">
                     <children>
                         <ImageView fitHeight="20.0" fitWidth="20.0" pickOnBounds="true" preserveRatio="true" style="-fx-opacity: 0.6;">
                             <image>
-                                <Image url="@../images/user%20(1).png" />
+                                <Image url="@../images/user (1).png" />
                             </image>
                         </ImageView>
                         <TextField fx:id="usernameField" prefHeight="40.0" promptText="Username" style="-fx-background-color: transparent; -fx-padding: 5 10 5 10;" HBox.hgrow="ALWAYS">
