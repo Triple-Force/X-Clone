@@ -34,6 +34,9 @@ public class RegisterController
     private Button signUpButton;
 
     @FXML
+    private TextField displayNameField;
+
+    @FXML
     private Label errorLabel;
 
     private final ClientApplicationContext context;
@@ -50,12 +53,13 @@ public class RegisterController
     {
         hideError();
 
+        String displayName = displayNameField.getText();
         String username = usernameField.getText();
         String email = emailField.getText();
         String password = passwordField.getText();
         String confirmPassword = confirmPasswordField.getText();
 
-        if (username.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty())
+        if (displayName.isEmpty() || username.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty())
         {
             showError("Please fill in all required fields.");
             return;
@@ -66,6 +70,37 @@ public class RegisterController
             showError("Passwords do not match.");
             return;
         }
+
+        setLoading(true);
+
+        authClientService.register(username, email, password, displayName)
+                .thenAccept(result -> Platform.runLater(() -> {
+                    setLoading(false);
+
+                    if (result.isSuccess())
+                    {
+                        AuthResponse auth = result.data();
+                        log.info("Register OK: " + auth.username() + " / " + auth.userId());
+
+                        context.navigation().navigateTo(HOME_FXML, "X - Home");
+                    }
+                    else
+                    {
+                        showError(result.errorMessage() != null
+                                ? result.errorMessage()
+                                : "Registration failed");
+                    }
+                }))
+                .exceptionally(ex -> {
+                    Platform.runLater(() -> {
+                        setLoading(false);
+
+                        showError("Connection error. Please try again later.");
+
+                        log.log(Level.SEVERE, "Register flow failed", ex);
+                    });
+                    return null;
+                });
 
         setLoading(true);
 
