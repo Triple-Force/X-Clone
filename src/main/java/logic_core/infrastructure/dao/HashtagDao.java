@@ -1,43 +1,35 @@
 package logic_core.infrastructure.dao;
 
+import Shared.Database.DAO.GenericDAO;
 import Shared.Models.Hashtag.Hashtag;
-import jakarta.persistence.EntityManager;
 
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.Optional;
 
-public class HashtagDao extends AbstractJpaDao<Hashtag>
+public class HashtagDao extends GenericDAO<Hashtag>
 {
-    public HashtagDao(EntityManager entityManager)
+    public HashtagDao()
     {
-        super(entityManager, Hashtag.class);
+        super(Hashtag.class);
     }
 
     public Optional<Hashtag> findByName(String tag)
     {
-        Objects.requireNonNull(tag, "tag must not be null");
-
-        List<Hashtag> hashtags = entityManager.createQuery(
+        return Optional.ofNullable(
+                findOneByJpql(
                         "SELECT h FROM Hashtag h WHERE h.tag = :tag",
-                        Hashtag.class
+                        query -> query.setParameter("tag", tag.toLowerCase(Locale.ROOT))
                 )
-                .setParameter("tag", tag.toLowerCase(Locale.ROOT))
-                .setMaxResults(1)
-                .getResultList();
-
-        return hashtags.stream().findFirst();
+        );
     }
-
 
     public List<Hashtag> findTrendingHashtags(int limit)
     {
-        return entityManager.createQuery(
-                        "SELECT h FROM Hashtag h ORDER BY h.usageCount DESC",
-                        Hashtag.class
-                )
-                .setMaxResults(limit)
-                .getResultList();
+        List<Hashtag> hashtags = findByJpql(
+                "SELECT h FROM Hashtag h ORDER BY h.usageCount DESC"
+        );
+
+        return hashtags.stream().limit(limit).toList();
     }
 }

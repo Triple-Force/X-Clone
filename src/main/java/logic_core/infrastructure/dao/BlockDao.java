@@ -1,5 +1,6 @@
 package logic_core.infrastructure.dao;
 
+import Shared.Database.DAO.GenericDAO;
 import Shared.Models.Block.Block;
 import jakarta.persistence.EntityManager;
 
@@ -8,70 +9,53 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
-public class BlockDao extends AbstractJpaDao<Block>
+public class BlockDao extends GenericDAO<Block>
 {
-    public BlockDao(EntityManager entityManager)
+    public BlockDao()
     {
-        super(entityManager, Block.class);
+        super(Block.class);
     }
 
     public void insert(Block block)
     {
-        Objects.requireNonNull(block, "block must not be null");
-        persist(block);
+        super.insert(block);
     }
 
     public void delete(Block block)
     {
-        Objects.requireNonNull(block, "block must not be null");
-        remove(block);
+        super.hardDelete(block);
     }
 
     public Optional<Block> findRelation(UUID blockerId, UUID blockedId)
     {
-        Objects.requireNonNull(blockerId, "blockerId must not be null");
-        Objects.requireNonNull(blockedId, "blockedId must not be null");
-
-        List<Block> blocks = entityManager.createQuery(
-                        "SELECT b FROM Block b " +
-                                "WHERE b.blocker.id = :blockerId " +
-                                "AND b.blocked.id = :blockedId",
-                        Block.class
-                )
-                .setParameter("blockerId", blockerId)
-                .setParameter("blockedId", blockedId)
-                .setMaxResults(1)
-                .getResultList();
-
-        return blocks.stream().findFirst();
+        return Optional.ofNullable(findOneByJpql(
+                "SELECT b FROM Block b " +
+                        "WHERE b.blocker.id = :blockerId " +
+                        "AND b.blocked.id = :blockedId",
+                query -> query
+                        .setParameter("blockerId", blockerId)
+                        .setParameter("blockedId", blockedId)
+        ));
     }
 
     public List<Block> findByBlockerId(UUID blockerId)
     {
-        Objects.requireNonNull(blockerId, "blockerId must not be null");
-
-        return entityManager.createQuery(
-                        "SELECT b FROM Block b WHERE b.blocker.id = :blockerId",
-                        Block.class
-                )
-                .setParameter("blockerId", blockerId)
-                .getResultList();
+        return findByJpql(
+                "SELECT b FROM Block b WHERE b.blocker.id = :blockerId",
+                query -> query.setParameter("blockerId", blockerId)
+        );
     }
 
     public boolean existsBlockRelation(UUID userA, UUID userB)
     {
-        Objects.requireNonNull(userA, "userA must not be null");
-        Objects.requireNonNull(userB, "userB must not be null");
-
-        Long count = entityManager.createQuery(
-                        "SELECT COUNT(b) FROM Block b " +
-                                "WHERE (b.blocker.id = :userA AND b.blocked.id = :userB) " +
-                                "OR (b.blocker.id = :userB AND b.blocked.id = :userA)",
-                        Long.class
-                )
-                .setParameter("userA", userA)
-                .setParameter("userB", userB)
-                .getSingleResult();
+        long count = countByJpql(
+                "SELECT COUNT(b) FROM Block b " +
+                        "WHERE (b.blocker.id = :userA AND b.blocked.id = :userB) " +
+                        "OR (b.blocker.id = :userB AND b.blocked.id = :userA)",
+                query -> query
+                        .setParameter("userA", userA)
+                        .setParameter("userB", userB)
+        );
 
         return count > 0;
     }

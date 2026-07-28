@@ -1,45 +1,190 @@
 package logic_core.infrastructure.dao;
 
+import Shared.Database.DAO.GenericDAO;
 import Shared.Models.DirectMessage.DirectMessage;
-import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 
 import java.util.List;
-import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
-public class DirectMessageDao extends AbstractJpaDao<DirectMessage>
+public class DirectMessageDao extends GenericDAO<DirectMessage>
 {
-    public DirectMessageDao(EntityManager entityManager)
+    public DirectMessageDao()
     {
-        super(entityManager, DirectMessage.class);
+        super(DirectMessage.class);
+    }
+
+    public DirectMessage save(DirectMessage entity)
+    {
+        insert(entity);
+        return entity;
+    }
+
+    public void updateMessage(DirectMessage entity)
+    {
+        update(entity);
+    }
+
+    public Optional<DirectMessage> findById(UUID id)
+    {
+        if (id == null)
+        {
+            return Optional.empty();
+        }
+
+        return Optional.ofNullable(
+                findOneByJpql(
+                        """
+                        SELECT dm
+                        FROM DirectMessage dm
+                        WHERE dm.id = :id
+                          AND dm.isDeleted = false
+                          AND dm.conversation.isDeleted = false
+                          AND dm.sender.isDeleted = false
+                        """,
+                        q -> q.setParameter("id", id)
+                )
+        );
+    }
+
+    public Optional<DirectMessage> findByIdForUpdate(UUID id)
+    {
+        if (id == null)
+        {
+            return Optional.empty();
+        }
+
+        return Optional.ofNullable(
+                findOneByJpql(
+                        """
+                        SELECT dm
+                        FROM DirectMessage dm
+                        WHERE dm.id = :id
+                          AND dm.isDeleted = false
+                          AND dm.conversation.isDeleted = false
+                          AND dm.sender.isDeleted = false
+                        """,
+                        q -> q.setParameter("id", id)
+                                .setLockMode(LockModeType.PESSIMISTIC_WRITE)
+                )
+        );
     }
 
     public List<DirectMessage> findByConversationId(UUID conversationId)
     {
-        Objects.requireNonNull(conversationId, "conversationId must not be null");
+        if (conversationId == null)
+        {
+            return List.of();
+        }
 
-        return entityManager.createQuery(
-                        "SELECT dm FROM DirectMessage dm " +
-                                "WHERE dm.conversation.id = :conversationId " +
-                                "ORDER BY dm.createdAt ASC",
-                        DirectMessage.class
-                )
-                .setParameter("conversationId", conversationId)
-                .getResultList();
+        return findByJpql(
+                """
+                SELECT dm
+                FROM DirectMessage dm
+                WHERE dm.conversation.id = :conversationId
+                  AND dm.isDeleted = false
+                  AND dm.conversation.isDeleted = false
+                  AND dm.sender.isDeleted = false
+                ORDER BY dm.createdAt ASC
+                """,
+                q -> q.setParameter("conversationId", conversationId)
+        );
+    }
+
+    public List<DirectMessage> findByConversationId(
+            UUID conversationId,
+            int limit,
+            int offset)
+    {
+        if (conversationId == null)
+        {
+            return List.of();
+        }
+
+        return findByJpql(
+                """
+                SELECT dm
+                FROM DirectMessage dm
+                WHERE dm.conversation.id = :conversationId
+                  AND dm.isDeleted = false
+                  AND dm.conversation.isDeleted = false
+                  AND dm.sender.isDeleted = false
+                ORDER BY dm.createdAt ASC
+                """,
+                q ->
+                {
+                    q.setParameter("conversationId", conversationId);
+                    q.setFirstResult(Math.max(0, offset));
+                    q.setMaxResults(Math.max(1, limit));
+                }
+        );
+    }
+
+    public List<DirectMessage> findByConversationIdForUpdate(UUID conversationId)
+    {
+        if (conversationId == null)
+        {
+            return List.of();
+        }
+
+        return findByJpql(
+                """
+                SELECT dm
+                FROM DirectMessage dm
+                WHERE dm.conversation.id = :conversationId
+                  AND dm.isDeleted = false
+                  AND dm.conversation.isDeleted = false
+                  AND dm.sender.isDeleted = false
+                ORDER BY dm.createdAt ASC
+                """,
+                q -> q.setParameter("conversationId", conversationId)
+                        .setLockMode(LockModeType.PESSIMISTIC_WRITE)
+        );
     }
 
     public List<DirectMessage> findLatestMessage(UUID conversationId, int limit)
     {
-        Objects.requireNonNull(conversationId, "conversationId must not be null");
+        if (conversationId == null)
+        {
+            return List.of();
+        }
 
-        return entityManager.createQuery(
-                        "SELECT dm FROM DirectMessage dm " +
-                                "WHERE dm.conversation.id = :conversationId " +
-                                "ORDER BY dm.createdAt DESC",
-                        DirectMessage.class
-                )
-                .setParameter("conversationId", conversationId)
-                .setMaxResults(limit)
-                .getResultList();
+        return findByJpql(
+                """
+                SELECT dm
+                FROM DirectMessage dm
+                WHERE dm.conversation.id = :conversationId
+                  AND dm.isDeleted = false
+                  AND dm.conversation.isDeleted = false
+                  AND dm.sender.isDeleted = false
+                ORDER BY dm.createdAt DESC
+                """,
+                q -> q.setParameter("conversationId", conversationId)
+                        .setMaxResults(limit)
+        );
+    }
+
+    public long countUnreadMessages(UUID conversationId, UUID receiverUserId)
+    {
+        if (conversationId == null || receiverUserId == null)
+        {
+            return 0;
+        }
+
+        return countByJpql(
+                """
+                SELECT COUNT(dm)
+                FROM DirectMessage dm
+                WHERE dm.conversation.id = :conversationId
+                  AND dm.sender.id <> :receiverUserId
+                  AND dm.isRead = false
+                  AND dm.isDeleted = false
+                  AND dm.conversation.isDeleted = false
+                  AND dm.sender.isDeleted = false
+                """,
+                q -> q.setParameter("conversationId", conversationId)
+                        .setParameter("receiverUserId", receiverUserId)
+        );
     }
 }

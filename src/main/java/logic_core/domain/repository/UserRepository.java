@@ -16,7 +16,7 @@ public interface UserRepository
 
     Optional<UserModel> findById(UUID userId);
 
-    Optional<User> findByIdForUpdate(UUID userId);
+    Optional<UserModel> findByIdForUpdate(UUID userId);
 
     Optional<UserModel> findByUsername(String username);
 
@@ -31,4 +31,10 @@ public interface UserRepository
     Optional<UserModel> findUserBySessionId(UUID sessionId);
 
     boolean isActive(UserModel user);
+
+    Optional<UserModel> findAuthorByTweetId(UUID tweetId);
+
+//    Optional<UserModel> findAuthorByMediaId(UUID mediaId);
+
+Optional<UserModel> findByUsernameForUpdate(String username);
 }

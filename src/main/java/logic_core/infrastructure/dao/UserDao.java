@@ -1,152 +1,171 @@
 package logic_core.infrastructure.dao;
 
+import Shared.Database.DAO.GenericDAO;
 import Shared.Models.User.User;
-import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
-import logic_core.domain.model.UserModel;
-import logic_core.infrastructure.mapper.UserPersistenceMapper;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public class UserDao extends AbstractJpaDao<User>
+public class UserDao extends GenericDAO<User>
 {
-    public UserDao(EntityManager entityManager)
+    public UserDao()
     {
-        super(entityManager, User.class);
+        super(User.class);
     }
 
-    public UserModel save(UserModel model)
+    public User save(User model)
     {
-        try
-        {
-            User entity = UserPersistenceMapper.toPersistence(model);
-            entityManager.persist(entity);
-            entityManager.flush();
-            return UserPersistenceMapper.toModel(entity);
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-            throw e;
-        }
+        insert(model);
+        return model;
     }
-
-
 
     public Optional<User> findUserBySessionId(UUID sessionId)
     {
-        List<User> users = entityManager.createQuery(
-                        "SELECT s.user FROM Session s WHERE s.id = :sessionId",
-                        User.class
+        return Optional.ofNullable(
+                findOneByJpql(
+                        """
+                        SELECT s.user
+                        FROM Session s
+                        WHERE s.id = :sessionId
+                        AND s.user.isDeleted = false
+                        """,
+                        q -> q.setParameter("sessionId", sessionId)
                 )
-                .setParameter("sessionId", sessionId)
-                .setMaxResults(1)
-                .getResultList();
-
-        return users.stream().findFirst();
+        );
     }
 
     public void deleteUser(User user)
     {
-        remove(user);
+        delete(user);
     }
 
     public void updateUser(User updated)
     {
-        merge(updated);
+        update(updated);
     }
 
     public Optional<User> findById(UUID id)
     {
-        return entityManager.createQuery("""
-            select u from User u
-            where u.id = :userId
-            """, User.class)
-                .setParameter("userId", id)
-                .setLockMode(LockModeType.PESSIMISTIC_WRITE)
-                .getResultStream()
-                .findFirst();
+        return Optional.ofNullable(
+                findOneByJpql(
+                        """
+                        SELECT u
+                        FROM User u
+                        WHERE u.id = :id
+                        AND u.isDeleted = false
+                        """,
+                        q -> q.setParameter("id", id)
+                )
+        );
     }
 
     public Optional<User> findByIdForUpdate(UUID userId)
     {
-        return entityManager.createQuery("""
-            select u from User u
-            where u.id = :userId
-            """, User.class)
-                .setParameter("userId", userId)
-                .setLockMode(LockModeType.PESSIMISTIC_WRITE)
-                .getResultStream()
-                .findFirst();
+        return Optional.ofNullable(
+                findOneByJpql(
+                        "SELECT u FROM User u WHERE u.id = :userId AND u.isDeleted = false",
+                        q -> q.setParameter("userId", userId)
+                                .setLockMode(LockModeType.PESSIMISTIC_WRITE)
+                )
+        );
     }
-
 
     public Optional<User> findByUsername(String username)
     {
-        List<User> users = entityManager.createQuery(
-                        "SELECT u FROM User u WHERE u.username = :username",
-                        User.class
+        return Optional.ofNullable(
+                findOneByJpql(
+                        """
+                        SELECT u
+                        FROM User u
+                        WHERE u.username = :username
+                        AND u.isDeleted = false
+                        """,
+                        q -> q.setParameter("username", username)
                 )
-                .setParameter("username", username)
-                .setMaxResults(1)
-                .getResultList();
-
-        return users.stream().findFirst();
+        );
     }
+
+    public Optional<User> findByUsernameForUpdate(String username)
+    {
+        return Optional.ofNullable(
+                findOneByJpql(
+                        "SELECT u FROM User u WHERE u.username = :username AND u.isDeleted = false",
+                        q -> q.setParameter("username", username)
+                                .setLockMode(LockModeType.PESSIMISTIC_WRITE)
+                )
+        );
+    }
+
 
     public Optional<User> findByEmail(String email)
     {
-        List<User> users = entityManager.createQuery(
-                        "SELECT u FROM User u WHERE u.email = :email",
-                        User.class
+        return Optional.ofNullable(
+                findOneByJpql(
+                        """
+                        SELECT u
+                        FROM User u
+                        WHERE u.email = :email
+                        AND u.isDeleted = false
+                        """,
+                        q -> q.setParameter("email", email)
                 )
-                .setParameter("email", email)
-                .setMaxResults(1)
-                .getResultList();
-
-        return users.stream().findFirst();
+        );
     }
 
     public boolean existsByUsername(String username)
     {
-
-        Long count = entityManager.createQuery(
-                        "SELECT COUNT(u) FROM User u WHERE u.username = :username",
-                        Long.class
-                )
-                .setParameter("username", username)
-                .getSingleResult();
-
-        return count > 0;
+        return countByJpql(
+                """
+                SELECT COUNT(u)
+                FROM User u
+                WHERE u.username = :username
+                AND u.isDeleted = false
+                """,
+                q -> q.setParameter("username", username)
+        ) > 0;
     }
 
     public boolean existsByEmail(String email)
     {
-        Long count = entityManager.createQuery(
-                        "SELECT COUNT(u) FROM User u WHERE u.email = :email",
-                        Long.class
-                )
-                .setParameter("email", email)
-                .getSingleResult();
-
-        System.out.println(count);
-
-        return count > 0;
+        return countByJpql(
+                """
+                SELECT COUNT(u)
+                FROM User u
+                WHERE u.email = :email
+                AND u.isDeleted = false
+                """,
+                q -> q.setParameter("email", email)
+        ) > 0;
     }
 
-    public boolean isActive(UserModel user)
+    public boolean isActive(UUID userId)
     {
-        List<Boolean> results = entityManager.createQuery(
-                        "SELECT (u.isDeleted = true OR u.isActive = false) " +
-                                "FROM User u WHERE u.id = :userId",
-                        Boolean.class
-                )
-                .setParameter("userId", user.getId())
-                .setMaxResults(1)
-                .getResultList();
+        return countByJpql(
+                """
+                SELECT COUNT(u)
+                FROM User u
+                WHERE u.id = :userId
+                AND u.isDeleted = false
+                AND u.isActive = true
+                """,
+                q -> q.setParameter("userId", userId)
+        ) > 0;
+    }
 
-        return !results.stream().findFirst().orElse(false);
+    public Optional<User> findAuthorByTweetId(UUID tweetId)
+    {
+        return Optional.ofNullable(
+                findOneByJpql(
+                        """
+                        SELECT t.author
+                        FROM Tweet t
+                        WHERE t.id = :tweetId
+                        AND t.isDeleted = false
+                        AND t.author.isDeleted = false
+                        """,
+                        q -> q.setParameter("tweetId", tweetId)
+                )
+        );
     }
 }

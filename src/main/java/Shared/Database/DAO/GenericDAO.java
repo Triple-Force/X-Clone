@@ -1,5 +1,6 @@
 package Shared.Database.DAO;
 
+import Shared.Database.EntityManagerContext;
 import Shared.Models.SoftDeletable;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -14,54 +15,28 @@ import java.util.function.Function;
 public class GenericDAO<T>
 {
     Class<T> type;
-    EntityManagerFactory emf;
+
+    private EntityManager getEntityManager()
+    {
+        return EntityManagerContext.get();
+    }
 
     private <R> R executeRead(Function<EntityManager, R> action)
     {
-        try (EntityManager em = emf.createEntityManager())
-        {
-            return action.apply(em);
-        }
-    }
+        return action.apply(getEntityManager());
 
-    private <R> R executeWrite(Function<EntityManager, R> action)
-    {
-        EntityManager em = emf.createEntityManager();
-        try
-        {
-            em.getTransaction().begin();
-            R result = action.apply(em);
-            em.getTransaction().commit();
-            return result;
-        }
-        catch (RuntimeException e)
-        {
-            if (em.getTransaction().isActive())
-                em.getTransaction().rollback();
-
-            throw e;
-        }
-        finally
-        {
-            em.close();
-        }
     }
 
     private void executeWriteVoid(Consumer<EntityManager> action)
     {
-        executeWrite(em ->
-        {
-            action.accept(em);
-            return null;
-        });
+        action.accept(getEntityManager());
     }
 
     public void insert(T obj)
     {
-        executeWrite(em ->
+        executeWriteVoid(em ->
         {
             em.persist(obj);
-            return obj;
         });
     }
 
@@ -176,22 +151,32 @@ public class GenericDAO<T>
 
     private Object getId(T obj)
     {
-        return emf.getPersistenceUnitUtil().getIdentifier(obj);
+        return getEntityManager().getEntityManagerFactory().getPersistenceUnitUtil().getIdentifier(obj);
     }
 
     public T update(T obj)
     {
         Object id = getId(obj);
-        if (id == null || !existsById(id))
+        if (id == null)
             throw new EntityNotFoundException(
                     "Cannot update " + type.getSimpleName() + ": no existing row for id " + id);
 
-        return executeWrite(em -> em.merge(obj));
+        return executeRead(em ->
+        {
+            T existing = em.find(type, id);
+            if (existing == null)
+            {
+                throw new EntityNotFoundException(
+                        "Cannot update " + type.getSimpleName() + ": no existing row for id " + id
+                );
+            }
+            return em.merge(obj);
+        });
     }
 
     public T upsert(T obj)
     {
-        return executeWrite(em -> em.merge(obj));
+        return executeRead(em -> em.merge(obj));
     }
 
     public void upsertAll(List<T> objects)
@@ -219,9 +204,24 @@ public class GenericDAO<T>
 
     public void deleteById(Object id)
     {
-        T entity = findById(id);
-        if (entity != null)
-            delete(entity);
+        executeWriteVoid(em ->
+        {
+            T entity = em.find(type, id);
+            if (entity != null)
+            {
+                if (entity instanceof SoftDeletable softDeletable)
+                {
+                    softDeletable.setDeleted(true);
+                    softDeletable.redact();
+                    softDeletable.onSoftDelete(em);
+                    em.merge(entity);
+                }
+                else
+                {
+                    em.remove(entity);
+                }
+            }
+        });
     }
 
     public void hardDelete(T obj)
@@ -235,8 +235,56 @@ public class GenericDAO<T>
 
     public void hardDeleteById(Object id)
     {
-        T entity = findById(id);
-        if (entity != null)
-            hardDelete(entity);
+        executeWriteVoid(em ->
+        {
+            T entity = em.find(type, id);
+            if (entity != null)
+            {
+                em.remove(entity);
+            }
+        });
+    }
+
+    public <R> List<R> findProjectionByJpql(
+            String jpql,
+            Class<R> resultType,
+            Consumer<TypedQuery<R>> queryConsumer)
+    {
+        return executeRead(em ->
+        {
+            TypedQuery<R> query =
+                    em.createQuery(jpql, resultType);
+
+            if (queryConsumer != null)
+            {
+                queryConsumer.accept(query);
+            }
+
+            return query.getResultList();
+        });
+    }
+
+    public <R> List<R> findProjectionByJpql(
+            String jpql,
+            Class<R> resultType,
+            Consumer<TypedQuery<R>> queryConsumer,
+            int limit,
+            int offset)
+    {
+        return executeRead(em ->
+        {
+            TypedQuery<R> query =
+                    em.createQuery(jpql, resultType);
+
+            if (queryConsumer != null)
+            {
+                queryConsumer.accept(query);
+            }
+
+            query.setFirstResult(offset);
+            query.setMaxResults(limit);
+
+            return query.getResultList();
+        });
     }
 }

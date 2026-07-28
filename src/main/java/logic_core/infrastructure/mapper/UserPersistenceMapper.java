@@ -1,7 +1,10 @@
 package logic_core.infrastructure.mapper;
 
 import Shared.Models.User.User;
+import jakarta.persistence.EntityManager;
 import logic_core.domain.model.UserModel;
+
+import javax.swing.text.html.parser.Entity;
 
 public final class UserPersistenceMapper
 {
