@@ -1,12 +1,13 @@
 package logic_core.app.dto.response;
 
+
 import lombok.Builder;
 
 import java.util.UUID;
 
 @Builder
 public record UserSummaryResponse(
-        UUID id,
+        UUID userId,
         String username,
         String displayName,
         String avatarUrl,

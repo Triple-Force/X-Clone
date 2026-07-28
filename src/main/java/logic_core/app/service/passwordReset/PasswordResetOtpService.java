@@ -118,15 +118,14 @@ public final class PasswordResetOtpService implements AutoCloseable
     public OtpVerifyStatus verify(String email, String rawCode)
     {
         ensureOpen();
-        String key = normalizeEmail(email);
-        if (key.isEmpty() || rawCode == null || rawCode.isBlank())
+        if (email.isEmpty() || rawCode == null || rawCode.isBlank())
         {
             return OtpVerifyStatus.INVALID_CODE;
         }
 
         final OtpVerifyStatus[] status = {OtpVerifyStatus.NOT_FOUND};
 
-        store.computeIfPresent(key, (k, current) ->
+        store.computeIfPresent(email, (k, current) ->
         {
             OffsetDateTime now = timeProvider.now();
 

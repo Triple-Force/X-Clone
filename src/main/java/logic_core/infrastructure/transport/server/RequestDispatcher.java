@@ -1,5 +1,6 @@
 package logic_core.infrastructure.transport.server;
 
+import Shared.Database.EntityManagerContext;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import jakarta.persistence.EntityManager;
@@ -7,7 +8,7 @@ import jakarta.persistence.EntityTransaction;
 import logic_core.app.DependencyContainer;
 import logic_core.app.dto.request.*;
 import logic_core.app.dto.response.*;
-import logic_core.app.facade.AuthFacade;
+import logic_core.app.facade.*;
 import logic_core.common.exception.AppException;
 import logic_core.common.result.Result;
 import logic_core.infrastructure.transport.RequestEnvelope;
@@ -17,6 +18,8 @@ import logic_core.infrastructure.transport.ResponseType;
 
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 public class RequestDispatcher
 {
@@ -27,9 +30,83 @@ public class RequestDispatcher
         this.gson = Objects.requireNonNull(gson, "gson must not be null");
     }
 
-    public ResponseEnvelope dispatch(RequestEnvelope requestEnvelope)
+    public ResponseEnvelope dispatch(RequestEnvelope request)
+    {
+        Objects.requireNonNull(request, "request must not be null");
+
+        return switch (request.type())
+        {
+            // ---------------- AUTH ----------------
+
+            case AUTH_REGISTER,
+                 AUTH_LOGIN,
+                 AUTH_LOGOUT,
+                 AUTH_REFRESH,
+                 AUTH_REQUEST_PASSWORD_RESET,
+                 AUTH_VERIFY_PASSWORD_RESET_CODE,
+                 AUTH_RESET_PASSWORD ->
+
+                    dispatchAuth(request);
+
+            // ---------------- TWEET ----------------
+
+            case TWEET_CREATE,
+                 TWEET_EDIT,
+                 TWEET_DELETE,
+                 TWEET_REPLY,
+                 TWEET_RETWEET,
+                 TWEET_LIKE,
+                 TWEET_UNLIKE ->
+
+                    dispatchTweet(request);
+
+            // ---------------- TIMELINE ----------------
+
+            case TIMELINE_GET ->
+
+                    dispatchTimeline(request);
+
+            // ---------------- RELATION ----------------
+
+            case  RELATION_FOLLOW,
+                  RELATION_UNFOLLOW,
+                  RELATION_BLOCK,
+                  RELATION_UNBLOCK,
+                  RELATION_MUTE,
+                  RELATION_UNMUTE ->
+
+                    dispatchRelation(request);
+
+            // ---------------- CONVERSATION ----------------
+
+            case CONVERSATION_CREATE,
+                 MEMBER_ADD,
+                 MEMBER_DELETE,
+                 CONVERSATION_DELETE ->
+
+                    dispatchConversation(request);
+
+            // ---------------- MESSAGE ----------------
+
+            case MESSAGE_SEND,
+                 MESSAGE_EDIT,
+                 MESSAGE_DELETE,
+                 MESSAGE_GET,
+                 MESSAGE_GET_CONVERSATION ->
+
+                    dispatchMessage(request);
+        };
+    }
+
+
+    private <F> ResponseEnvelope execute(
+            RequestEnvelope requestEnvelope,
+            Function<EntityManager, F> facadeFactory,
+            BiFunction<F, JsonElement, ResponseEnvelope> handler)
     {
         Objects.requireNonNull(requestEnvelope, "requestEnvelope must not be null");
+        Objects.requireNonNull(facadeFactory, "facadeFactory must not be null");
+        Objects.requireNonNull(handler, "handler must not be null");
 
         UUID requestId = requestEnvelope.requestId();
         RequestType requestType = requestEnvelope.type();
@@ -41,21 +118,13 @@ public class RequestDispatcher
         try
         {
             em = DependencyContainer.createEntityManager();
+            EntityManagerContext.set(em);
             tx = em.getTransaction();
             tx.begin();
 
-            AuthFacade authFacade = DependencyContainer.createAuthFacade(em);
+            F facade = facadeFactory.apply(em);
 
-            ResponseEnvelope response = switch (requestType)
-            {
-                case AUTH_REGISTER -> handleRegister(requestId, payload, authFacade);
-                case AUTH_LOGIN -> handleLogin(requestId, payload, authFacade);
-                case AUTH_LOGOUT -> handleLogout(requestId, payload, authFacade);
-                case AUTH_REFRESH -> handleRefresh(requestId, payload, authFacade);
-                case AUTH_REQUEST_PASSWORD_RESET -> handelRequestPasswordReset(requestId, payload, authFacade);
-                case AUTH_VERIFY_PASSWORD_RESET_CODE -> handelVerifyPasswordResetCode(requestId, payload, authFacade);
-                case AUTH_RESET_PASSWORD -> handelResetPassword(requestId, payload, authFacade);
-            };
+            ResponseEnvelope response = handler.apply(facade, payload);
 
             tx.commit();
             return response;
@@ -64,31 +133,200 @@ public class RequestDispatcher
         catch (AppException e)
         {
             rollbackQuietly(tx);
+
             return failureResponse(
                     requestId,
                     responseTypeFor(requestType),
                     "APP_ERROR",
                     e.getMessage()
             );
-
         }
         catch (Exception e)
         {
             rollbackQuietly(tx);
+
             return failureResponse(
                     requestId,
                     ResponseType.BAD_REQUEST,
                     "UNEXPECTED_ERROR",
-                    e.getMessage() != null ? e.getMessage() : "Unexpected server error"
+                    e.getMessage() != null
+                            ? e.getMessage()
+                            : "Unexpected server error"
             );
-
-
-        } finally
+        }
+        finally
         {
+            EntityManagerContext.clear();
+
             closeQuietly(em);
         }
     }
 
+
+
+    public ResponseEnvelope dispatchAuth(RequestEnvelope request)
+    {
+        return execute(
+                request,
+                DependencyContainer::createAuthFacade,
+                (facade, payload) ->
+                {
+                    UUID requestId = request.requestId();
+
+                    return switch (request.type())
+                    {
+                        case AUTH_REGISTER -> handleRegister(requestId, payload, facade);
+
+                        case AUTH_LOGIN -> handleLogin(requestId, payload, facade);
+
+                        case AUTH_LOGOUT -> handleLogout(requestId, payload, facade);
+
+                        case AUTH_REFRESH -> handleRefresh(requestId, payload, facade);
+
+                        case AUTH_REQUEST_PASSWORD_RESET -> handelRequestPasswordReset(requestId, payload, facade);
+
+                        case AUTH_VERIFY_PASSWORD_RESET_CODE -> handelVerifyPasswordResetCode(requestId, payload, facade);
+
+                        case AUTH_RESET_PASSWORD -> handelResetPassword(requestId, payload, facade);
+
+                        default -> throw new IllegalArgumentException("Unsupported tweet request: " + request.type());
+                    };
+                });
+    }
+
+
+    public ResponseEnvelope dispatchConversation(RequestEnvelope request)
+    {
+        return execute(
+                request,
+                DependencyContainer::createConversationFacade,
+                (facade, payload) ->
+                {
+                    UUID requestId = request.requestId();
+
+                    return switch (request.type())
+                    {
+                        case CONVERSATION_CREATE -> handleCreateConversation(requestId, payload, facade);
+
+                        case MEMBER_ADD -> handleAddMember(requestId, payload, facade);
+
+                        case MEMBER_DELETE -> handleDeleteMember(requestId, payload, facade);
+
+                        case CONVERSATION_DELETE -> handleDeleteConversation(requestId, payload, facade);
+
+                        default -> throw new IllegalArgumentException(
+                                        "Unsupported tweet request: " + request.type());
+                    };
+                });
+    }
+
+    public ResponseEnvelope dispatchMessage(RequestEnvelope request)
+    {
+        return execute(
+                request,
+                DependencyContainer::createMessageFacade,
+                (facade, payload) ->
+                {
+                    UUID requestId = request.requestId();
+
+                    return switch (request.type())
+                    {
+                        case MESSAGE_SEND -> handleSendMessage(requestId, payload, facade);
+
+                        case MESSAGE_EDIT -> handleEditMessage(requestId, payload, facade);
+
+                        case MESSAGE_DELETE -> handleDeleteMessage(requestId, payload, facade);
+
+                        case MESSAGE_GET -> handleGetMessage(requestId, payload, facade);
+
+                        case MESSAGE_GET_CONVERSATION -> handleGetConversationMessages(requestId, payload, facade);
+
+                        default -> throw new IllegalArgumentException("Unsupported tweet request: " + request.type());
+                    };
+                });
+    }
+
+
+    public ResponseEnvelope dispatchRelation(RequestEnvelope request)
+    {
+        return execute(
+                request,
+                DependencyContainer::createRelationFacade,
+                (facade, payload) ->
+                {
+                    UUID requestId = request.requestId();
+
+                    return switch (request.type())
+                    {
+                        case RELATION_FOLLOW -> handleFollow(requestId, payload, facade);
+
+                        case RELATION_UNFOLLOW -> handleUnfollow(requestId, payload, facade);
+
+                        case RELATION_BLOCK -> handleBlock(requestId, payload, facade);
+
+                        case RELATION_UNBLOCK -> handleUnblock(requestId, payload, facade);
+
+                        case RELATION_MUTE -> handleMute(requestId, payload, facade);
+
+                        case RELATION_UNMUTE -> handleUnmute(requestId, payload, facade);
+
+                        default -> throw new IllegalArgumentException("Unsupported tweet request: " + request.type());
+                    };
+                });
+    }
+
+
+    public ResponseEnvelope dispatchTimeline(RequestEnvelope request)
+    {
+        return execute(
+                request,
+                DependencyContainer::createTimelineFacade,
+                (facade, payload) ->
+                {
+                    UUID requestId = request.requestId();
+
+                    return switch (request.type())
+                    {
+                        case TIMELINE_GET -> handleGetTimeline(requestId, payload, facade);
+
+                        default -> throw new IllegalArgumentException("Unsupported tweet request: " + request.type());
+                    };
+                });
+    }
+
+
+    public ResponseEnvelope dispatchTweet(RequestEnvelope request)
+    {
+        return execute(
+                request,
+                DependencyContainer::createTweetFacade,
+                (facade, payload) ->
+                {
+                    UUID requestId = request.requestId();
+
+                    return switch (request.type())
+                    {
+                        case TWEET_CREATE -> handleCreateTweet(requestId, payload, facade);
+
+                        case TWEET_DELETE -> handleDeleteTweet(requestId, payload, facade);
+
+                        case TWEET_EDIT -> handleEditTweet(requestId, payload, facade);
+
+                        case TWEET_LIKE -> handleLikeTweet(requestId, payload, facade);
+
+                        case TWEET_UNLIKE -> handleUnlikeTweet(requestId, payload, facade);
+
+                        case TWEET_REPLY -> handleReplyTweet(requestId, payload, facade);
+
+                        case TWEET_RETWEET -> handleRetweet(requestId, payload, facade);
+
+                        default -> throw new IllegalArgumentException("Unsupported tweet request: " + request.type());
+                    };
+                });
+    }
+    //===============================================================
+    //                     DISPATCH AUTH
+    //===============================================================
     private ResponseEnvelope handleRegister(
             UUID requestId,
             JsonElement payload,
@@ -255,6 +493,639 @@ public class RequestDispatcher
         );
     }
 
+    //===============================================================
+    //                     DISPATCH CONVERSATION
+    //===============================================================
+    private ResponseEnvelope handleCreateConversation(
+            UUID requestId,
+            JsonElement payload,
+            ConversationFacade facade
+    )
+    {
+        CreateConversationRequest request = gson.fromJson(payload, CreateConversationRequest.class);
+
+        Result<CreateConversationResponse> result = facade.createConversation(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.CONVERSATION_CREATE_RESPONSE,
+                    "CREATE_CONVERSATION_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.CONVERSATION_CREATE_RESPONSE,
+                result.getData()
+        );
+    }
+
+
+    private ResponseEnvelope handleAddMember(
+            UUID requestId,
+            JsonElement payload,
+            ConversationFacade facade)
+    {
+        AddConversationMemberRequest request = gson.fromJson(payload, AddConversationMemberRequest.class);
+
+        Result<ConversationInfoResponse> result = facade.addMember(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.CONVERSATION_ADD_MEMBER_RESPONSE,
+                    "ADD_CONVERSATION_MEMBER_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.CONVERSATION_ADD_MEMBER_RESPONSE,
+                result.getData()
+        );
+    }
+
+
+    private ResponseEnvelope handleDeleteMember(
+            UUID requestId,
+            JsonElement payload,
+            ConversationFacade facade)
+    {
+        RemoveConversationMemberRequest request = gson.fromJson(payload, RemoveConversationMemberRequest.class);
+
+        Result<ConversationInfoResponse> result = facade.deleteMember(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.CONVERSATION_REMOVE_MEMBER_RESPONSE,
+                    "REMOVE_CONVERSATION_MEMBER_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.CONVERSATION_REMOVE_MEMBER_RESPONSE,
+                result.getData()
+        );
+    }
+
+
+    private ResponseEnvelope handleDeleteConversation(
+            UUID requestId,
+            JsonElement payload,
+            ConversationFacade facade)
+    {
+        DeleteConversationRequest request = gson.fromJson(payload, DeleteConversationRequest.class);
+
+        Result<DeleteConversationResponse> result = facade.deleteConversation(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.CONVERSATION_DELETE_RESPONSE,
+                    "DELETE_CONVERSATION_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.CONVERSATION_DELETE_RESPONSE,
+                result.getData()
+        );
+    }
+
+    //===============================================================
+    //                     DISPATCH MESSAGE
+    //===============================================================
+    private ResponseEnvelope handleSendMessage(
+            UUID requestId,
+            JsonElement payload,
+            MessageFacade facade)
+    {
+        SendMessageRequest request = gson.fromJson(payload, SendMessageRequest.class);
+
+        Result<ConversationStateResponse> result = facade.sendMessage(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.MESSAGE_SEND_RESPONSE,
+                    "MESSAGE_SEND_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.MESSAGE_SEND_RESPONSE,
+                result.getData()
+        );
+    }
+
+
+    private ResponseEnvelope handleEditMessage(
+            UUID requestId,
+            JsonElement payload,
+            MessageFacade facade)
+    {
+        EditMessageRequest request = gson.fromJson(payload, EditMessageRequest.class);
+
+        Result<ConversationStateResponse> result = facade.editMessage(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.MESSAGE_EDIT_RESPONSE,
+                    "MESSAGE_EDIT_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.MESSAGE_EDIT_RESPONSE,
+                result.getData()
+        );
+    }
+
+
+    private ResponseEnvelope handleDeleteMessage(
+            UUID requestId,
+            JsonElement payload,
+            MessageFacade facade)
+    {
+        DeleteMessageRequest request = gson.fromJson(payload, DeleteMessageRequest.class);
+
+        Result<ConversationStateResponse> result = facade.deleteMessage(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.MESSAGE_DELETE_RESPONSE,
+                    "MESSAGE_DELETE_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.MESSAGE_DELETE_RESPONSE,
+                result.getData()
+        );
+    }
+
+
+    private ResponseEnvelope handleGetMessage(
+            UUID requestId,
+            JsonElement payload,
+            MessageFacade facade)
+    {
+        GetMessageRequest request = gson.fromJson(payload, GetMessageRequest.class);
+
+        Result<MessageInfoResponse> result = facade.getMessage(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.MESSAGE_GET_RESPONSE,
+                    "MESSAGE_GET_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.MESSAGE_GET_RESPONSE,
+                result.getData()
+        );
+    }
+
+    private ResponseEnvelope handleGetConversationMessages(
+            UUID requestId,
+            JsonElement payload,
+            MessageFacade facade)
+    {
+        GetConversationMessagesRequest request = gson.fromJson(payload, GetConversationMessagesRequest.class);
+
+        Result<ConversationMessagesResponse> result = facade.getConversationMessages(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.MESSAGE_GET_CONVERSATION_RESPONSE,
+                    "MESSAGE_GET_CONVERSATION_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.MESSAGE_GET_CONVERSATION_RESPONSE,
+                result.getData()
+        );
+    }
+
+
+    //===============================================================
+    //                     DISPATCH RELATION
+    //===============================================================
+    private ResponseEnvelope handleFollow(
+            UUID requestId,
+            JsonElement payload,
+            RelationFacade facade)
+    {
+        FollowUserRequest request = gson.fromJson(payload, FollowUserRequest.class);
+
+        Result<FollowResponse> result = facade.follow(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.RELATION_FOLLOW_RESPONSE,
+                    "FOLLOW_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.RELATION_FOLLOW_RESPONSE,
+                result.getData()
+        );
+    }
+
+
+    private ResponseEnvelope handleUnfollow(
+            UUID requestId,
+            JsonElement payload,
+            RelationFacade facade)
+    {
+        UnfollowUserRequest request = gson.fromJson(payload, UnfollowUserRequest.class);
+
+        Result<FollowResponse> result = facade.unfollow(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.RELATION_UNFOLLOW_RESPONSE,
+                    "UNFOLLOW_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.RELATION_UNFOLLOW_RESPONSE,
+                result.getData()
+        );
+    }
+
+    private ResponseEnvelope handleBlock(
+            UUID requestId,
+            JsonElement payload,
+            RelationFacade facade)
+    {
+        BlockUserRequest request = gson.fromJson(payload, BlockUserRequest.class);
+
+        Result<BlockActionResponse> result = facade.block(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.RELATION_BLOCK_RESPONSE,
+                    "BLOCK_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.RELATION_BLOCK_RESPONSE,
+                result.getData()
+        );
+    }
+
+
+    private ResponseEnvelope handleUnblock(
+            UUID requestId,
+            JsonElement payload,
+            RelationFacade facade)
+    {
+        UnblockUserRequest request = gson.fromJson(payload, UnblockUserRequest.class);
+
+        Result<BlockActionResponse> result = facade.unblock(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.RELATION_UNBLOCK_RESPONSE,
+                    "UNBLOCK_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.RELATION_UNBLOCK_RESPONSE,
+                result.getData()
+        );
+    }
+
+
+    private ResponseEnvelope handleMute(
+            UUID requestId,
+            JsonElement payload,
+            RelationFacade facade)
+    {
+        MuteUserRequest request = gson.fromJson(payload, MuteUserRequest.class);
+
+        Result<MuteResponse> result = facade.mute(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.RELATION_MUTE_RESPONSE,
+                    "MUTE_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.RELATION_MUTE_RESPONSE,
+                result.getData()
+        );
+    }
+
+    private ResponseEnvelope handleUnmute(
+            UUID requestId,
+            JsonElement payload,
+            RelationFacade facade)
+    {
+        UnmuteUserRequest request = gson.fromJson(payload, UnmuteUserRequest.class);
+
+        Result<MuteResponse> result = facade.unmute(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.RELATION_UNMUTE_RESPONSE,
+                    "UNMUTE_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.RELATION_UNMUTE_RESPONSE,
+                result.getData()
+        );
+    }
+
+    //===============================================================
+    //                     DISPATCH TIMELINE
+    //===============================================================
+    private ResponseEnvelope handleGetTimeline(
+            UUID requestId,
+            JsonElement payload,
+            TimelineFacade facade)
+    {
+        GetTimelineRequest request = gson.fromJson(payload, GetTimelineRequest.class);
+
+        Result<GetTimelineResponse> result = facade.getTimeline(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.TIMELINE_GET_RESPONSE,
+                    "TIMELINE_GET_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.TIMELINE_GET_RESPONSE,
+                result.getData()
+        );
+    }
+
+
+    //===============================================================
+    //                     DISPATCH TWEET
+    //===============================================================
+    private ResponseEnvelope handleCreateTweet(
+            UUID requestId,
+            JsonElement payload,
+            TweetFacade facade)
+    {
+        CreateTweetRequest request = gson.fromJson(payload, CreateTweetRequest.class);
+
+        Result<TweetResponse> result =facade.createTweet(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.TWEET_CREATE_RESPONSE,
+                    "TWEET_CREATE_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.TWEET_CREATE_RESPONSE,
+                result.getData()
+        );
+    }
+
+
+
+    private ResponseEnvelope handleDeleteTweet(
+            UUID requestId,
+            JsonElement payload,
+            TweetFacade facade)
+    {
+        DeleteTweetRequest request = gson.fromJson(payload, DeleteTweetRequest.class);
+
+        Result<TweetResponse> result = facade.deleteTweet(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.TWEET_DELETE_RESPONSE,
+                    "TWEET_DELETE_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.TWEET_DELETE_RESPONSE,
+                result.getData()
+        );
+    }
+
+
+    private ResponseEnvelope handleEditTweet(
+            UUID requestId,
+            JsonElement payload,
+            TweetFacade facade)
+    {
+        EditTweetRequest request = gson.fromJson(payload, EditTweetRequest.class);
+
+        Result<TweetResponse> result = facade.editTweet(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.TWEET_EDIT_RESPONSE,
+                    "TWEET_EDIT_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.TWEET_EDIT_RESPONSE,
+                result.getData()
+        );
+    }
+
+
+    private ResponseEnvelope handleLikeTweet(
+            UUID requestId,
+            JsonElement payload,
+            TweetFacade facade)
+    {
+        LikeTweetRequest request = gson.fromJson(payload, LikeTweetRequest.class);
+
+        Result<LikeResponse> result = facade.likeTweet(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.TWEET_LIKE_RESPONSE,
+                    "TWEET_LIKE_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.TWEET_LIKE_RESPONSE,
+                result.getData()
+        );
+    }
+
+
+    private ResponseEnvelope handleUnlikeTweet(
+            UUID requestId,
+            JsonElement payload,
+            TweetFacade facade)
+    {
+        UnlikeTweetRequest request = gson.fromJson(payload, UnlikeTweetRequest.class);
+
+        Result<LikeResponse> result = facade.unlikeTweet(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.TWEET_UNLIKE_RESPONSE,
+                    "TWEET_UNLIKE_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.TWEET_UNLIKE_RESPONSE,
+                result.getData()
+        );
+    }
+
+
+    private ResponseEnvelope handleReplyTweet(
+            UUID requestId,
+            JsonElement payload,
+            TweetFacade facade)
+    {
+        ReplyTweetRequest request = gson.fromJson(payload, ReplyTweetRequest.class);
+
+        Result<TweetResponse> result = facade.replyTweet(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.TWEET_REPLY_RESPONSE,
+                    "TWEET_REPLY_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.TWEET_REPLY_RESPONSE,
+                result.getData()
+        );
+    }
+
+
+    private ResponseEnvelope handleRetweet(
+            UUID requestId,
+            JsonElement payload,
+            TweetFacade facade)
+    {
+        RetweetRequest request = gson.fromJson(payload, RetweetRequest.class);
+
+        Result<TweetResponse> result = facade.retweet(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.TWEET_RETWEET_RESPONSE,
+                    "TWEET_RETWEET_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.TWEET_RETWEET_RESPONSE,
+                result.getData()
+        );
+    }
+
+
     private ResponseEnvelope successResponse(UUID requestId, ResponseType type, Object body)
     {
         return ResponseEnvelope.success(
@@ -290,6 +1161,29 @@ public class RequestDispatcher
             case AUTH_REQUEST_PASSWORD_RESET -> ResponseType.AUTH_REQUEST_PASSWORD_RESET_RESPONSE;
             case AUTH_VERIFY_PASSWORD_RESET_CODE -> ResponseType.AUTH_VERIFY_PASSWORD_RESET_CODE_RESPONSE;
             case AUTH_RESET_PASSWORD -> ResponseType.AUTH_RESET_PASSWORD_RESPONSE;
+            case CONVERSATION_CREATE ->ResponseType.CONVERSATION_CREATE_RESPONSE;
+            case MEMBER_ADD -> ResponseType.CONVERSATION_ADD_MEMBER_RESPONSE;
+            case MEMBER_DELETE -> ResponseType.CONVERSATION_REMOVE_MEMBER_RESPONSE;
+            case CONVERSATION_DELETE -> ResponseType.CONVERSATION_DELETE_RESPONSE;
+            case MESSAGE_SEND -> ResponseType.MESSAGE_SEND_RESPONSE;
+            case MESSAGE_EDIT -> ResponseType.MESSAGE_EDIT_RESPONSE;
+            case MESSAGE_DELETE -> ResponseType.MESSAGE_DELETE_RESPONSE;
+            case MESSAGE_GET -> ResponseType.MESSAGE_GET_RESPONSE;
+            case MESSAGE_GET_CONVERSATION -> ResponseType.MESSAGE_GET_CONVERSATION_RESPONSE;
+            case RELATION_FOLLOW -> ResponseType.RELATION_FOLLOW_RESPONSE;
+            case RELATION_UNFOLLOW -> ResponseType.RELATION_UNFOLLOW_RESPONSE;
+            case RELATION_BLOCK -> ResponseType.RELATION_BLOCK_RESPONSE;
+            case RELATION_UNBLOCK -> ResponseType.RELATION_UNBLOCK_RESPONSE;
+            case RELATION_MUTE -> ResponseType.RELATION_MUTE_RESPONSE;
+            case RELATION_UNMUTE -> ResponseType.RELATION_UNMUTE_RESPONSE;
+            case TIMELINE_GET -> ResponseType.TIMELINE_GET_RESPONSE;
+            case TWEET_CREATE -> ResponseType.TWEET_CREATE_RESPONSE;
+            case TWEET_DELETE -> ResponseType.TWEET_DELETE_RESPONSE;
+            case TWEET_EDIT -> ResponseType.TWEET_EDIT_RESPONSE;
+            case TWEET_LIKE -> ResponseType.TWEET_LIKE_RESPONSE;
+            case TWEET_UNLIKE -> ResponseType.TWEET_UNLIKE_RESPONSE;
+            case TWEET_REPLY -> ResponseType.TWEET_REPLY_RESPONSE;
+            case TWEET_RETWEET -> ResponseType.TWEET_RETWEET_RESPONSE;
         };
     }
 

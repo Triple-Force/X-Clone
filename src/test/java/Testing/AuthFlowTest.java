@@ -34,7 +34,7 @@ class AuthFlowTest extends XCloneTest
             String username = uniqueUsername("reg");
             String email = username + "@example.com";
 
-            AuthResult<AuthResponse> result =
+            AuthResult<AuthResponse> result = 
                     register(username, email, STRONG_PASSWORD, "Display Name");
 
             assertTrue(result.isSuccess(), result.errorMessage());

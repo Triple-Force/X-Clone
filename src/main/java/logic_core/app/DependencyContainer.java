@@ -4,10 +4,10 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
 import logic_core.app.bootstrap.EventListenerRegistrar;
-import logic_core.app.dto.validator.LoginValidator;
-import logic_core.app.dto.validator.RefreshSessionValidator;
-import logic_core.app.dto.validator.RegisterValidator;
-import logic_core.app.facade.AuthFacade;
+import logic_core.app.dto.validator.*;
+import logic_core.app.facade.*;
+import logic_core.app.security.AuthLockOrchestrator;
+import logic_core.app.security.CurrentAuthContext;
 import logic_core.app.service.passwordReset.LoggingPasswordResetDeliveryAdapter;
 import logic_core.app.service.passwordReset.PasswordResetDeliveryPort;
 import logic_core.app.service.passwordReset.PasswordResetOtpService;
@@ -16,32 +16,29 @@ import logic_core.app.systemMessage.LoggingSystemMessageDispatcher;
 import logic_core.app.systemMessage.SystemMessageService;
 import logic_core.app.systemMessage.SystemMessageServiceImpl;
 import logic_core.app.usecase.auth.*;
+import logic_core.app.usecase.conversation.AddMemberToConversationUseCase;
+import logic_core.app.usecase.conversation.CreateConversationUseCase;
+import logic_core.app.usecase.conversation.DeleteConversationUseCase;
+import logic_core.app.usecase.conversation.DeleteMemberFromConversationUseCase;
+import logic_core.app.usecase.message.*;
+import logic_core.app.usecase.relation.*;
+import logic_core.app.usecase.timeline.GetTimelineUseCase;
+import logic_core.app.usecase.tweet.*;
 import logic_core.common.security.PasswordHasher;
 import logic_core.common.security.TokenGenerator;
 import logic_core.common.util.TimeProvider;
 import logic_core.domain.event.EventBus;
 import logic_core.domain.event.EventPublisher;
-import logic_core.domain.policy.RegistrationPolicy;
-import logic_core.domain.policy.SessionPolicy;
-import logic_core.domain.repository.SessionRepository;
-import logic_core.domain.repository.UserRepository;
-import logic_core.infrastructure.dao.SessionDao;
-import logic_core.infrastructure.dao.UserDao;
+import logic_core.domain.policy.*;
+import logic_core.domain.repository.*;
+import logic_core.infrastructure.dao.*;
 import logic_core.infrastructure.event.AsyncEventBus;
-import logic_core.infrastructure.repository.JpaSessionRepository;
-import logic_core.infrastructure.repository.JpaUserRepository;
+import logic_core.infrastructure.repository.*;
 import logic_core.session.SessionFactory;
 import logic_core.session.SessionManager;
 import lombok.Getter;
 
-/**
- * Composition root.
 
- * Lifecycle rules:
- * - EntityManagerFactory: app-scoped
- * - EventBus + system message listeners: app-scoped (singleton)
- * - EntityManager / DAOs / repositories / use cases / facade: request-scoped
- */
 public final class DependencyContainer
 {
     private static final EntityManagerFactory emf =
@@ -49,10 +46,7 @@ public final class DependencyContainer
 
     private static final TimeProvider timeProvider = new TimeProvider();
     private static final PasswordHasher passwordHasher = new PasswordHasher();
-    /**
-     * Shared async event bus for the whole application process.
-     * Must NOT be created per request; otherwise registered listeners are lost.
-     */
+
     @Getter
     private static final EventBus eventBus = createAndWireEventBus();
 
@@ -95,15 +89,17 @@ public final class DependencyContainer
     // Request-scoped factories
     // -------------------------------------------------------------------------
 
+    public static EntityManagerFactory entityManagerFactory()
+    {
+        return emf;
+    }
+
     public static EntityManager createEntityManager()
     {
         return emf.createEntityManager();
     }
 
-    /**
-     * Builds a request-scoped AuthFacade.
-     * Reuses the shared EventBus instance so published events hit registered listeners.
-     */
+
     public static AuthFacade createAuthFacade(EntityManager em)
     {
         TimeProvider timeProvider = new TimeProvider();
@@ -112,10 +108,10 @@ public final class DependencyContainer
 
         EventPublisher eventPublisher = eventBus;
 
-        UserDao userDao = new UserDao(em);
-        SessionDao sessionDao = new SessionDao(em, timeProvider);
+        UserDao userDao = new UserDao();
+        SessionDao sessionDao = new SessionDao(timeProvider);
 
-        UserRepository userRepository = new JpaUserRepository(userDao);
+        UserRepository userRepository = new JpaUserRepository(userDao, em);
         SessionRepository sessionRepository = new JpaSessionRepository(sessionDao,em);
 
         RegistrationPolicy registrationPolicy = new RegistrationPolicy(userRepository);
@@ -130,7 +126,7 @@ public final class DependencyContainer
                 sessionRepository,
                 userRepository,
                 sessionFactory,
-                timeProvider
+                em
         );
 
         RegisterValidator registerValidator = new RegisterValidator();
@@ -146,22 +142,25 @@ public final class DependencyContainer
                 timeProvider,
                 sessionManager
         );
+        AuthLockOrchestrator lockOrchestrator = new AuthLockOrchestrator(userRepository, sessionManager);
 
         LoginUserUseCase loginUserUseCase = new LoginUserUseCase(
-                userRepository,
                 loginValidator,
                 passwordHasher,
                 sessionManager,
                 eventPublisher,
-                timeProvider
+                timeProvider,
+                lockOrchestrator
         );
 
         LogoutUserUseCase logoutUserUseCase = new LogoutUserUseCase(
                 sessionManager,
                 eventPublisher,
                 timeProvider,
-                userRepository
+                lockOrchestrator
         );
+
+
 
         RefreshSessionUseCase refreshSessionUseCase = new RefreshSessionUseCase(
                 refreshSessionValidator,
@@ -169,7 +168,7 @@ public final class DependencyContainer
                 sessionManager,
                 eventPublisher,
                 timeProvider,
-                userRepository
+                lockOrchestrator
         );
 
         // ---- Password Reset wiring ----
@@ -208,6 +207,542 @@ public final class DependencyContainer
                 requestPasswordResetUseCase,
                 verifyPasswordResetCodeUseCase,
                 resetPasswordUseCase
+        );
+    }
+
+
+    public static RelationFacade createRelationFacade(EntityManager em)
+    {
+        TimeProvider timeProvider = new TimeProvider();
+        TokenGenerator tokenGenerator = new TokenGenerator();
+
+        EventPublisher eventPublisher = eventBus;
+
+        FollowDao followDao = new FollowDao();
+        BlockDao blockDao = new BlockDao();
+        MuteDao muteDao = new MuteDao();
+        LikeDao likeDao = new LikeDao();
+
+        UserDao userDao = new UserDao();
+
+        SessionDao sessionDao = new SessionDao(timeProvider);
+
+        RelationshipRepository relationshipRepository = new JpaRelationshipRepository(
+                followDao,
+                blockDao,
+                muteDao,
+                likeDao,
+                em
+        );
+
+        BlockValidator blockValidator = new BlockValidator();
+        FollowValidator followValidator = new FollowValidator();
+        MuteValidator muteValidator = new MuteValidator();
+
+        UserRepository userRepository = new JpaUserRepository(userDao, em);
+
+        BlockPolicy blockPolicy = new BlockPolicy(
+                userRepository,
+                relationshipRepository
+        );
+
+        FollowPolicy followPolicy = new FollowPolicy(
+                userRepository,
+                relationshipRepository
+        );
+
+        MutePolicy mutePolicy = new MutePolicy(
+                userRepository,
+                relationshipRepository
+        );
+
+
+        SessionRepository sessionRepository = new JpaSessionRepository(
+                sessionDao,
+                em
+        );
+
+        SessionFactory sessionFactory = new SessionFactory(tokenGenerator, timeProvider);
+
+        SessionManager sessionManager = new SessionManager(
+                sessionRepository,
+                userRepository,
+                sessionFactory,
+                em
+        );
+
+        AuthLockOrchestrator lockOrchestrator = new AuthLockOrchestrator(
+                userRepository,
+                sessionManager
+        );
+
+        BlockUserUseCase blockUserUseCase = new BlockUserUseCase(
+                blockValidator,
+                blockPolicy,
+                relationshipRepository,
+                eventPublisher,
+                timeProvider,
+                lockOrchestrator
+        );
+
+        FollowUserUseCase followUserUseCase = new FollowUserUseCase(
+                followValidator,
+                followPolicy,
+                relationshipRepository,
+                eventPublisher,
+                timeProvider,
+                lockOrchestrator
+        );
+
+        MuteUserUseCase muteUserUseCase = new MuteUserUseCase(
+                muteValidator,
+                mutePolicy,
+                relationshipRepository,
+                eventPublisher,
+                timeProvider,
+                lockOrchestrator
+        );
+
+        UnblockUserUseCase unblockUserUseCase = new UnblockUserUseCase(
+                blockValidator,
+                blockPolicy,
+                relationshipRepository,
+                eventPublisher,
+                timeProvider,
+                lockOrchestrator
+        );
+
+        UnfollowUserUseCase unfollowUserUseCase = new UnfollowUserUseCase(
+                followValidator,
+                followPolicy,
+                relationshipRepository,
+                eventPublisher,
+                timeProvider,
+                lockOrchestrator
+        );
+
+        UnmuteUserUseCase unmuteUserUseCase = new UnmuteUserUseCase(
+                muteValidator,
+                mutePolicy,
+                relationshipRepository,
+                eventPublisher,
+                timeProvider,
+                lockOrchestrator
+        );
+
+        return new RelationFacade(
+                blockUserUseCase,
+                followUserUseCase,
+                muteUserUseCase,
+                unblockUserUseCase,
+                unfollowUserUseCase,
+                unmuteUserUseCase
+        );
+    }
+
+
+    public static ConversationFacade createConversationFacade(EntityManager em)
+    {
+        TimeProvider timeProvider = new TimeProvider();
+        TokenGenerator tokenGenerator = new TokenGenerator();
+
+        EventPublisher eventPublisher = eventBus;
+
+
+        ConversationValidator conversationValidator = new ConversationValidator();
+
+
+        FollowDao followDao = new FollowDao();
+        BlockDao blockDao = new BlockDao();
+        MuteDao muteDao = new MuteDao();
+        LikeDao likeDao = new LikeDao();
+
+        UserDao userDao = new UserDao();
+        SessionDao sessionDao = new SessionDao(timeProvider);
+
+        ConversationDao conversationDao = new ConversationDao();
+        ConversationMemberDao conversationMemberDao = new ConversationMemberDao();
+
+        RelationshipRepository relationshipRepository = new JpaRelationshipRepository(
+                followDao,
+                blockDao,
+                muteDao,
+                likeDao,
+                em
+        );
+
+        UserRepository userRepository = new JpaUserRepository(userDao, em);
+
+        ConversationRepository conversationRepository = new JpaConversationRepository(
+                conversationDao,
+                conversationMemberDao,
+                em
+        );
+
+        ConversationPolicy conversationPolicy = new ConversationPolicy(
+                userRepository,
+                relationshipRepository,
+                conversationRepository
+        );
+
+
+
+
+        SessionRepository sessionRepository = new JpaSessionRepository(
+                sessionDao,
+                em
+        );
+
+        SessionFactory sessionFactory = new SessionFactory(tokenGenerator, timeProvider);
+
+        SessionManager sessionManager = new SessionManager(
+                sessionRepository,
+                userRepository,
+                sessionFactory,
+                em
+        );
+
+        AuthLockOrchestrator lockOrchestrator = new AuthLockOrchestrator(
+                userRepository,
+                sessionManager
+        );
+
+        AddMemberToConversationUseCase addMemberToConversationUseCase = new AddMemberToConversationUseCase(
+                conversationValidator,
+                conversationPolicy,
+                conversationRepository,
+                timeProvider,
+                eventPublisher,
+                lockOrchestrator
+        );
+
+        CreateConversationUseCase createConversationUseCase = new CreateConversationUseCase(
+                conversationValidator,
+                conversationPolicy,
+                conversationRepository,
+                timeProvider,
+                eventPublisher,
+                lockOrchestrator
+        );
+
+        DeleteConversationUseCase deleteConversationUseCase = new DeleteConversationUseCase(
+                conversationValidator,
+                conversationPolicy,
+                conversationRepository,
+                eventPublisher,
+                timeProvider,
+                lockOrchestrator
+
+        );
+
+        DeleteMemberFromConversationUseCase deleteMemberFromConversationUseCase = new DeleteMemberFromConversationUseCase(
+                conversationValidator,
+                conversationPolicy,
+                conversationRepository,
+                eventPublisher,
+                timeProvider,
+                lockOrchestrator
+        );
+
+        return new ConversationFacade(
+                addMemberToConversationUseCase,
+                createConversationUseCase,
+                deleteConversationUseCase,
+                deleteMemberFromConversationUseCase
+        );
+    }
+
+    public static MessageFacade createMessageFacade(EntityManager em)
+    {
+        TimeProvider timeProvider = new TimeProvider();
+        TokenGenerator tokenGenerator = new TokenGenerator();
+
+        EventPublisher eventPublisher = eventBus;
+
+        MessageValidator messageValidator = new MessageValidator();
+
+        DirectMessageDao directMessageDao = new DirectMessageDao();
+        ConversationDao conversationDao = new ConversationDao();
+        ConversationMemberDao conversationMemberDao = new ConversationMemberDao();
+        SessionDao sessionDao = new SessionDao(timeProvider);
+
+        UserDao userDao = new UserDao();
+
+        FollowDao followDao = new FollowDao();
+        BlockDao blockDao = new BlockDao();
+        MuteDao muteDao = new MuteDao();
+        LikeDao likeDao = new LikeDao();
+
+        DirectMessageRepository directMessageRepository = new JpaDirectMessageRepository(
+                directMessageDao,
+                em
+        );
+
+        ConversationRepository conversationRepository = new JpaConversationRepository(
+                conversationDao,
+                conversationMemberDao,
+                em
+        );
+
+
+        RelationshipRepository relationshipRepository = new JpaRelationshipRepository(
+                followDao,
+                blockDao,
+                muteDao,
+                likeDao,
+                em
+        );
+
+        UserRepository userRepository = new JpaUserRepository(userDao, em);
+
+        DirectMessagePolicy directMessagePolicy = new DirectMessagePolicy(
+                userRepository,
+                relationshipRepository,
+                conversationRepository,
+                directMessageRepository
+        );
+
+
+
+
+        SessionRepository sessionRepository = new JpaSessionRepository(
+                sessionDao,
+                em
+        );
+
+        SessionFactory sessionFactory = new SessionFactory(tokenGenerator, timeProvider);
+
+        SessionManager sessionManager = new SessionManager(
+                sessionRepository,
+                userRepository,
+                sessionFactory,
+                em
+        );
+
+        AuthLockOrchestrator lockOrchestrator = new AuthLockOrchestrator(
+                userRepository,
+                sessionManager
+        );
+
+        DeleteMessageUseCase deleteMessageUseCase = new DeleteMessageUseCase(
+                directMessageRepository,
+                messageValidator,
+                conversationRepository,
+                eventPublisher,
+                timeProvider,
+                lockOrchestrator
+        );
+
+        EditMessageUseCase editMessageUseCase = new EditMessageUseCase(
+                messageValidator,
+                directMessagePolicy,
+                directMessageRepository,
+                conversationRepository,
+                lockOrchestrator,
+                eventPublisher,
+                timeProvider
+        );
+
+        GetConversationMessagesUseCase getConversationMessagesUseCase = new GetConversationMessagesUseCase(
+                messageValidator,
+                directMessagePolicy,
+                directMessageRepository,
+                lockOrchestrator
+        );
+
+        GetMessageUseCase getMessageUseCase = new GetMessageUseCase(
+                messageValidator,
+                directMessagePolicy,
+                directMessageRepository,
+                lockOrchestrator
+        );
+
+        SendMessageUseCase sendMessageUseCase = new SendMessageUseCase(
+                directMessageRepository,
+                conversationRepository,
+                lockOrchestrator,
+                eventPublisher,
+                timeProvider
+        );
+
+        return new MessageFacade(
+                deleteMessageUseCase,
+                editMessageUseCase,
+                getConversationMessagesUseCase,
+                getMessageUseCase,
+                sendMessageUseCase
+        );
+    }
+
+
+    public static TimelineFacade createTimelineFacade(EntityManager em)
+    {
+        TimeProvider timeProvider = new TimeProvider();
+
+        EventPublisher eventPublisher = eventBus;
+
+        TimelineValidator timelineValidator = new TimelineValidator();
+
+        TweetDao tweetDao = new TweetDao();
+        TweetEditDao tweetEditDao = new TweetEditDao();
+
+        UserDao userDao = new UserDao();
+
+        TweetRepository tweetRepository = new JpaTweetRepository(
+                tweetDao,
+                tweetEditDao,
+                em
+        );
+
+        UserRepository userRepository = new JpaUserRepository(userDao, em);
+
+        TimelinePolicy timelinePolicy = new TimelinePolicy(userRepository);
+
+
+        GetTimelineUseCase getTimelineUseCase = new GetTimelineUseCase(
+                tweetRepository,
+                timelineValidator,
+                timelinePolicy,
+                eventPublisher,
+                timeProvider
+        );
+
+        return new TimelineFacade(getTimelineUseCase);
+    }
+
+    public static TweetFacade createTweetFacade(EntityManager em)
+    {
+        TimeProvider timeProvider = new TimeProvider();
+        TokenGenerator tokenGenerator = new TokenGenerator();
+
+        EventPublisher eventPublisher = eventBus;
+
+        TweetValidator tweetValidator = new TweetValidator();
+        TweetDao tweetDao = new TweetDao();
+        TweetEditDao tweetEditDao = new TweetEditDao();
+
+        UserDao userDao = new UserDao();
+
+        FollowDao followDao = new FollowDao();
+        BlockDao blockDao = new BlockDao();
+        MuteDao muteDao = new MuteDao();
+        LikeDao likeDao = new LikeDao();
+        SessionDao sessionDao = new SessionDao(timeProvider);
+
+        TweetRepository tweetRepository = new JpaTweetRepository(
+                tweetDao,
+                tweetEditDao,
+                em
+        );
+
+        UserRepository userRepository = new JpaUserRepository(userDao, em);
+
+        RelationshipRepository relationshipRepository = new JpaRelationshipRepository(
+                followDao,
+                blockDao,
+                muteDao,
+                likeDao,
+                em
+        );
+
+        InteractionPolicy interactionPolicy = new InteractionPolicy(
+                userRepository,
+                relationshipRepository,
+                tweetRepository
+        );
+
+        SessionRepository sessionRepository = new JpaSessionRepository(
+                sessionDao,
+                em
+        );
+
+        SessionFactory sessionFactory = new SessionFactory(tokenGenerator, timeProvider);
+
+        SessionManager sessionManager = new SessionManager(
+                sessionRepository,
+                userRepository,
+                sessionFactory,
+                em
+        );
+
+        AuthLockOrchestrator lockOrchestrator = new AuthLockOrchestrator(
+                userRepository,
+                sessionManager
+        );
+
+        CreateTweetUseCase createTweetUseCase = new CreateTweetUseCase(
+                tweetValidator,
+                interactionPolicy,
+                tweetRepository,
+                userRepository,
+                eventPublisher,
+                timeProvider,
+                lockOrchestrator
+        );
+
+        DeleteTweetUseCase deleteTweetUseCase = new DeleteTweetUseCase(
+                tweetRepository,
+                userRepository,
+                eventPublisher,
+                timeProvider,
+                lockOrchestrator
+        );
+
+        EditTweetUseCase editTweetUseCase = new EditTweetUseCase(
+                tweetValidator,
+                interactionPolicy,
+                tweetRepository,
+                userRepository,
+                eventPublisher,
+                timeProvider,
+                lockOrchestrator
+        );
+
+        LikeTweetUseCase likeTweetUseCase = new LikeTweetUseCase(
+                interactionPolicy,
+                tweetRepository,
+                relationshipRepository,
+                eventPublisher,
+                timeProvider,
+                lockOrchestrator
+        );
+
+        ReplyTweetUseCase replyTweetUseCase = new ReplyTweetUseCase(
+                interactionPolicy,
+                tweetRepository,
+                userRepository,
+                tweetValidator,
+                eventPublisher,
+                timeProvider,
+                lockOrchestrator
+        );
+
+        RetweetUseCase retweetUseCase = new RetweetUseCase(
+                interactionPolicy,
+                tweetRepository,
+                userRepository,
+                eventPublisher,
+                timeProvider,
+                lockOrchestrator
+        );
+
+        UnlikeTweetUseCase unlikeTweetUseCase = new UnlikeTweetUseCase(
+                interactionPolicy,
+                tweetRepository,
+                relationshipRepository,
+                eventPublisher,
+                timeProvider,
+                lockOrchestrator
+        );
+
+        return new TweetFacade(
+                createTweetUseCase,
+                deleteTweetUseCase,
+                editTweetUseCase,
+                likeTweetUseCase,
+                replyTweetUseCase,
+                retweetUseCase,
+                unlikeTweetUseCase
         );
     }
 
