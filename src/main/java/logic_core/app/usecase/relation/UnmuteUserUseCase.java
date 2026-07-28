@@ -1,17 +1,18 @@
 package logic_core.app.usecase.relation;
 
+import jakarta.transaction.Transactional;
 import logic_core.app.dto.request.UnmuteUserRequest;
 import logic_core.app.dto.response.MuteResponse;
 import logic_core.app.dto.validator.MuteValidator;
 import logic_core.app.mapper.MuteActionMapper;
-import logic_core.app.security.CurrentUserProvider;
-import logic_core.common.exception.ConflictException;
-import logic_core.common.exception.OperationNotAllowedException;
+import logic_core.app.security.AuthLockOrchestrator;
+import logic_core.app.security.CurrentAuthContext;
+import logic_core.app.security.SessionUserContext;
+import logic_core.common.exception.AppException;
 import logic_core.common.result.Result;
 import logic_core.common.util.TimeProvider;
 import logic_core.domain.event.EventPublisher;
 import logic_core.domain.event.Relationship.UserUnmutedEvent;
-import logic_core.domain.model.MuteRelation;
 import logic_core.domain.policy.MutePolicy;
 import logic_core.domain.repository.RelationshipRepository;
 import lombok.NonNull;
@@ -26,43 +27,47 @@ public class UnmuteUserUseCase
     @NonNull private final MutePolicy policy;
     @NonNull private final RelationshipRepository relationshipRepository;
     @NonNull private final EventPublisher eventPublisher;
-    @NonNull private final CurrentUserProvider currentUserProvider;
     @NonNull private final TimeProvider timeProvider;
+    @NonNull private final AuthLockOrchestrator lockOrchestrator;
 
+    @Transactional
     public Result<MuteResponse> execute(UnmuteUserRequest request)
     {
-        UUID unMuterId = currentUserProvider.requireCurrentUserId();
-        UUID unmutedId = request.unmutedId();
+        if (request == null || request.unmutedId() == null) {
+            return Result.failure("Unmuted ID is required.");
+        }
 
         try
         {
+            SessionUserContext context =
+                    lockOrchestrator.lockAndGetContextByToken(
+                            request.sessionToken()
+                    );
+
+            UUID unMuterId = context.lockedUser().getId();
+            UUID unmutedId = request.unmutedId();
+
             validator.validate(unMuterId, unmutedId);
             policy.validateUnmute(unMuterId, unmutedId);
+
+            relationshipRepository.findMuteRelation(unMuterId, unmutedId)
+                    .ifPresent(relationshipRepository::deleteMute);
+
+            eventPublisher.publish(new UserUnmutedEvent(
+                    unMuterId,
+                    unmutedId,
+                    timeProvider.now()
+            ));
+
+            return Result.success(MuteActionMapper.toResponse(false));
         }
-        catch (IllegalArgumentException | ConflictException | OperationNotAllowedException e)
+        catch (AppException e)
         {
             return Result.failure(e.getMessage());
         }
-
-        MuteRelation muteRelation = createMuteRelation(unMuterId, unmutedId);
-        relationshipRepository.deleteMute(muteRelation);
-
-        eventPublisher.publish(new UserUnmutedEvent(
-                unMuterId,
-                unmutedId,
-                timeProvider.now()
-        ));
-
-        MuteResponse response = MuteActionMapper.toResponse(false);
-        return Result.success(response);
-    }
-
-    private MuteRelation createMuteRelation(UUID unMuterId, UUID mutedId)
-    {
-        return MuteRelation.create(
-                unMuterId,
-                mutedId,
-                timeProvider.now()
-        );
+        catch (Exception e)
+        {
+            return Result.failure("Failed to unmute user due to a system error.");
+        }
     }
 }

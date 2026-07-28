@@ -2,8 +2,8 @@ package logic_core.app.dto.request;
 
 import java.util.UUID;
 
-public record SendMessageRequest(
+public record RemoveConversationMemberRequest(
+        UUID memberId,
         UUID conversationId,
-        String text,
         String sessionToken
 ) {}

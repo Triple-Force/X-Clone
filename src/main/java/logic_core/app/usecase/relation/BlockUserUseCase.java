@@ -1,12 +1,13 @@
 package logic_core.app.usecase.relation;
 
+import jakarta.transaction.Transactional;
 import logic_core.app.dto.request.BlockUserRequest;
 import logic_core.app.dto.response.BlockActionResponse;
 import logic_core.app.dto.validator.BlockValidator;
 import logic_core.app.mapper.BlockMapper;
-import logic_core.app.security.CurrentUserProvider;
-import logic_core.common.exception.ConflictException;
-import logic_core.common.exception.OperationNotAllowedException;
+import logic_core.app.security.AuthLockOrchestrator;
+import logic_core.app.security.SessionUserContext;
+import logic_core.common.exception.*;
 import logic_core.common.result.Result;
 import logic_core.common.util.TimeProvider;
 import logic_core.domain.event.EventPublisher;
@@ -27,42 +28,55 @@ public class BlockUserUseCase
     @NonNull private final RelationshipRepository relationshipRepository;
     @NonNull private final EventPublisher eventPublisher;
     @NonNull private final TimeProvider timeProvider;
-    @NonNull private final CurrentUserProvider currentUserProvider;
+    @NonNull private final AuthLockOrchestrator lockOrchestrator;
 
+    @Transactional
     public Result<BlockActionResponse> execute(BlockUserRequest request)
     {
-        UUID blockerId = currentUserProvider.requireCurrentUserId();
-        UUID blockedId = request.blockedId();
+        if (request == null || request.blockedId() == null) {
+            return Result.failure("Blocked user ID is required.");
+        }
 
         try
         {
+            SessionUserContext context =
+                    lockOrchestrator.lockAndGetContextByToken(
+                            request.sessionToken()
+                    );
+
+            UUID blockerId = context.lockedUser().getId();
+            UUID blockedId = request.blockedId();
+
             validator.validate(blockerId, blockedId);
             policy.validateBlock(blockerId, blockedId);
+
+            BlockRelation blockRelation = BlockRelation.create(blockerId, blockedId, timeProvider.now());
+            relationshipRepository.saveBlock(blockRelation);
+
+            removeFollowRelationIfExists(blockerId, blockedId);
+            removeFollowRelationIfExists(blockedId, blockerId);
+
+            eventPublisher.publish(new UserBlockedEvent(
+                    blockerId,
+                    blockedId,
+                    timeProvider.now()
+            ));
+
+            return Result.success(BlockMapper.toBlockedResponse(blockRelation));
         }
-        catch (IllegalArgumentException | ConflictException | OperationNotAllowedException e)
+        catch (AppException e)
         {
             return Result.failure(e.getMessage());
         }
-
-        BlockRelation blockRelation = createBlockRelation(blockerId, blockedId);
-        relationshipRepository.saveBlock(blockRelation);
-
-        eventPublisher.publish(new UserBlockedEvent(
-                blockerId,
-                blockedId,
-                timeProvider.now()
-        ));
-
-        BlockActionResponse response = BlockMapper.toBlockedResponse(blockRelation);
-        return Result.success(response);
+        catch (Exception e)
+        {
+            return Result.failure("Failed to process block relationship.");
+        }
     }
 
-    private BlockRelation createBlockRelation(UUID blockerId, UUID blockedId)
+    private void removeFollowRelationIfExists(UUID followerId, UUID followingId)
     {
-        return BlockRelation.create(
-                blockerId,
-                blockedId,
-                timeProvider.now()
-        );
+        relationshipRepository.findFollowRelation(followerId, followingId)
+                .ifPresent(relationshipRepository::deleteFollow);
     }
 }
