@@ -96,8 +96,7 @@ public class ClientHandler implements Runnable
     {
         try
         {
-            getAuthenticatedUser().ifPresent(AuthContext::setCurrentUser);
-
+            getAuthenticatedUser().ifPresent(AuthContext::set);
             ResponseEnvelope response = dispatcher.dispatch(request);
 
             if (response.success())
@@ -124,7 +123,8 @@ public class ClientHandler implements Runnable
             this.authenticatedUser = new AuthPrincipal(
                     authResponse.userId(),
                     authResponse.username(),
-                    authResponse.sessionId()
+                    authResponse.sessionId(),
+                    authResponse.token()
             );
 
         }

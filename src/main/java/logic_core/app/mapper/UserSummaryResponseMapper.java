@@ -11,7 +11,7 @@ public class UserSummaryResponseMapper
             return null;
 
         return UserSummaryResponse.builder()
-                .id(model.getId())
+                .userId(model.getId())
                 .username(model.getUsername())
                 .displayName(model.getDisplayName())
                 .avatarUrl(model.getAvatarUrl())

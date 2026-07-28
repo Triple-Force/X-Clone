@@ -35,7 +35,7 @@ public class ClientDAOManager
     @SuppressWarnings("unchecked")
     public <T> GenericDAO<T> getDao(Class<T> entityClass)
     {
-        return (GenericDAO<T>) daoCache.computeIfAbsent(entityClass, c -> new GenericDAO<>(entityClass, emf));
+        return (GenericDAO<T>) daoCache.computeIfAbsent(entityClass, c -> new GenericDAO<>(entityClass));
     }
 
     public GenericDAO<Conversation> getConversationDAO()
