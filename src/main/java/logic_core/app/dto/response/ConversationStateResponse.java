@@ -3,10 +3,10 @@ package logic_core.app.dto.response;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-public record ConversationResponse(
+public record ConversationStateResponse(
         UUID conversationId,
-        UserResponse otherUser,
         String lastMessagePreview,
         OffsetDateTime lastMessageAt,
-        int unreadCount
+        int unreadCount,
+        ConversationInfoResponse infoResponse
 ) {}

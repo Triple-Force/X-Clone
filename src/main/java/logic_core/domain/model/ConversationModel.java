@@ -15,11 +15,7 @@ public class ConversationModel
     private UUID conversationId;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
-
-
     private List<UUID> participantIds;
-
-    private List<UUID> messageIds;
 
     public void addParticipant(UUID userId)
     {
@@ -34,5 +30,10 @@ public class ConversationModel
     {
         participantIds.remove(userId);
         this.updatedAt = OffsetDateTime.now();
+    }
+
+    public boolean hasParticipant(UUID userId)
+    {
+        return participantIds.contains(userId);
     }
 }
