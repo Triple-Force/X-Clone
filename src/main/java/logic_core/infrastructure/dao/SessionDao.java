@@ -1,144 +1,112 @@
 package logic_core.infrastructure.dao;
 
+import Shared.Database.DAO.GenericDAO;
 import Shared.Models.Session.Session;
-import jakarta.persistence.EntityManager;
 import logic_core.common.util.TimeProvider;
 
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
-public class SessionDao extends AbstractJpaDao<Session>
+public class SessionDao extends GenericDAO<Session>
 {
     private final TimeProvider timeProvider;
 
-    public SessionDao(EntityManager entityManager, TimeProvider timeProvider)
+    public SessionDao(TimeProvider timeProvider)
     {
-        super(entityManager, Session.class);
+        super(Session.class);
         this.timeProvider = timeProvider;
     }
 
     public Optional<Session> findValidSession(String token, OffsetDateTime now)
     {
-        String jpql = """
-            select s
-            from Session s
-            where s.token = :token
-              and s.expiresAt > :now
-            """;
-
-        return entityManager.createQuery(jpql, Session.class)
-                .setParameter("token", token)
-                .setParameter("now", now)
-                .getResultStream()
-                .findFirst();
+        return Optional.ofNullable(
+                findOneByJpql(
+                        "SELECT s FROM Session s WHERE s.token = :token AND s.expiresAt > :now",
+                        q -> q.setParameter("token", token)
+                                .setParameter("now", now)
+                )
+        );
     }
 
 
     public Session replaceUserSession(UUID userId, Session newSession)
     {
-            entityManager.createQuery("""
-                    delete from Session s
-                    where s.user.id = :userId
-                    """)
-                    .setParameter("userId", userId)
-                    .executeUpdate();
-
-            entityManager.persist(newSession);
-
-            return newSession;
+        revokeAllByUserId(userId);
+        insert(newSession);
+        return newSession;
     }
 
     public void insert(Session session)
     {
-        Objects.requireNonNull(session, "session must not be null");
-        persist(session);
+        super.insert(session);
     }
 
     public void save(Session session)
     {
-        Objects.requireNonNull(session, "session must not be null");
-
         if (session.getId() == null)
         {
-            persist(session);
+            insert(session);
         }
         else
         {
-            merge(session);
+            upsert(session);
         }
     }
 
     public void updateSession(Session updated)
     {
-        Objects.requireNonNull(updated, "updated Session must not be null.");
-        merge(updated);
+        update(updated);
     }
 
     public void delete(Session session)
     {
-        Objects.requireNonNull(session, "session must not be null");
-        remove(session);
+       super.delete(session);
     }
 
     public Optional<Session> findById(UUID sessionId)
     {
-        Objects.requireNonNull(sessionId, "sessionId must not be null.");
-        return super.findById(sessionId);
+        return Optional.ofNullable(super.findById(sessionId));
     }
 
     public Optional<Session> findByToken(String token)
     {
-        Objects.requireNonNull(token, "token must not be null");
-
-        List<Session> results = entityManager.createQuery(
+        return Optional.ofNullable(
+                findOneByJpql(
                         "SELECT s FROM Session s WHERE s.token = :token",
-                        Session.class
+                        q -> q.setParameter("token", token)
                 )
-                .setParameter("token", token)
-                .setMaxResults(1)
-                .getResultList();
-
-        return results.stream().findFirst();
+        );
     }
 
     public List<Session> findActiveSessionsByUserId(UUID userId)
     {
-        return entityManager.createQuery(
-                        "SELECT s FROM Session s WHERE s.user.id = :userId AND s.expiresAt > :now",
-                        Session.class
-                )
-                .setParameter("userId", userId)
-                .setParameter("now", timeProvider.now())
-                .getResultList();
+        return findByJpql(
+                "SELECT s FROM Session s WHERE s.user.id = :userId AND s.expiresAt > :now",
+                q -> q.setParameter("userId", userId)
+                        .setParameter("now", timeProvider.now())
+        );
     }
 
     public void invalidateByToken(String token)
-    {;
-            entityManager.createQuery("""
-                delete from Session s
-                where s.token = :token
-                """)
-                    .setParameter("token", token)
-                    .executeUpdate();
+    {
+        findByJpql(
+                "SELECT s FROM Session s WHERE s.token = :token",
+                q -> q.setParameter("token", token)
+        ).forEach(this::hardDelete);
     }
-
 
     public List<Session> findAll()
     {
-        return entityManager.createQuery("SELECT s FROM Session s", Session.class)
-                .getResultList();
+        return super.findAll();
     }
 
     public void revokeAllByUserId(UUID userId)
     {
-        entityManager.createQuery("""
-                delete from Session s
-                where s.user.id = :userId
-                """)
-                .setParameter("userId", userId)
-                .executeUpdate();
+        findByJpql(
+                "SELECT s FROM Session s WHERE s.user.id = :userId",
+                q -> q.setParameter("userId", userId)
+        ).forEach(this::hardDelete);
     }
 }

@@ -5,10 +5,7 @@ import Shared.Models.Follow.Follow;
 import Shared.Models.Like.Like;
 import Shared.Models.Mute.Mute;
 import jakarta.persistence.EntityManager;
-import logic_core.domain.model.BlockRelation;
-import logic_core.domain.model.FollowRelation;
-import logic_core.domain.model.LikeRelation;
-import logic_core.domain.model.MuteRelation;
+import logic_core.domain.model.*;
 import logic_core.domain.repository.RelationshipRepository;
 import logic_core.infrastructure.dao.BlockDao;
 import logic_core.infrastructure.dao.FollowDao;
@@ -111,6 +108,13 @@ public class JpaRelationshipRepository implements RelationshipRepository
     }
 
     @Override
+    public List<UserModel> getFollowers(UUID userId, int limit, int offset)
+    {
+        //TODO
+        return List.of();
+    }
+
+    @Override
     public void saveBlock(BlockRelation block)
     {
         Block entity = BlockPersistenceMapper.toPersistence(block, entityManager);
@@ -186,6 +190,11 @@ public class JpaRelationshipRepository implements RelationshipRepository
     public boolean isMutedBy(UUID muterId, UUID mutedId)
     {
         return muteDao.findRelation(muterId, mutedId).isPresent();
+    }
+
+    public boolean existsMuteRelation(UUID userA, UUID userB)
+    {
+        return isMutedBy(userA, userB) || isMutedBy(userB, userA);
     }
 
     public Boolean existsLikeRelation(UUID userID, UUID tweetId)

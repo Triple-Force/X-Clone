@@ -1,65 +1,71 @@
 package logic_core.infrastructure.dao;
 
+import Shared.Database.DAO.GenericDAO;
 import Shared.Models.Like.Like;
 import Shared.Models.Like.LikeId;
-import jakarta.persistence.EntityManager;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
-public class LikeDao extends AbstractJpaDao<Like>
+public class LikeDao extends GenericDAO<Like>
 {
-    public LikeDao(EntityManager entityManager)
+    public LikeDao()
     {
-        super(entityManager, Like.class);
+        super(Like.class);
     }
 
     public void insert(Like like)
     {
-        Objects.requireNonNull(like, "like entity must not be null");
-        persist(like);
+       super.insert(like);
     }
 
     public void delete(Like like)
     {
-        Objects.requireNonNull(like, "like entity must not be null");
-        remove(like);
+        hardDelete(like);
     }
 
     public boolean findRelation(UUID userId, UUID tweetId)
     {
-        Objects.requireNonNull(userId, "userId must not be null");
-        Objects.requireNonNull(tweetId, "tweetId must not be null");
-
-        LikeId id = new LikeId(userId, tweetId);
-        // استفاده از متد findById موجود در AbstractJpaDao
-        return findById(id).isPresent();
+        return countByJpql(
+                """
+                SELECT COUNT(l)
+                FROM Like l
+                WHERE l.user.id = :userId
+                  AND l.tweet.id = :tweetId
+                  AND l.user.isDeleted = false
+                  AND l.tweet.isDeleted = false
+                """,
+                query -> query
+                        .setParameter("userId", userId)
+                        .setParameter("tweetId", tweetId)
+        ) > 0;
     }
 
     public List<Like> findByTweetId(UUID tweetId)
     {
-        Objects.requireNonNull(tweetId, "tweetId must not be null");
-
-        return entityManager.createQuery(
-                        "SELECT l FROM Like l WHERE l.tweet.id = :tweetId",
-                        Like.class
-                )
-                .setParameter("tweetId", tweetId)
-                .getResultList();
+        return findByJpql(
+                """
+                SELECT l
+                FROM Like l
+                WHERE l.tweet.id = :tweetId
+                  AND l.tweet.isDeleted = false
+                  AND l.user.isDeleted = false
+                """,
+                query -> query.setParameter("tweetId", tweetId)
+        );
     }
 
     public long countLikesByTweetId(UUID tweetId)
     {
-        Objects.requireNonNull(tweetId, "tweetId must not be null");
-
-        Long count = entityManager.createQuery(
-                        "SELECT COUNT(l) FROM Like l WHERE l.tweet.id = :tweetId",
-                        Long.class
-                )
-                .setParameter("tweetId", tweetId)
-                .getSingleResult();
-
-        return count != null ? count : 0L;
+        return countByJpql(
+                """
+                SELECT COUNT(l)
+                FROM Like l
+                WHERE l.tweet.id = :tweetId
+                  AND l.tweet.isDeleted = false
+                  AND l.user.isDeleted = false
+                """,
+                query -> query.setParameter("tweetId", tweetId)
+        );
     }
 }

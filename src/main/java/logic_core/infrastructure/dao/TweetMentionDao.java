@@ -1,65 +1,81 @@
 package logic_core.infrastructure.dao;
 
+import Shared.Database.DAO.GenericDAO;
 import Shared.Models.TweetMention.TweetMention;
-import jakarta.persistence.EntityManager;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public class TweetMentionDao extends AbstractJpaDao<TweetMention>
+public class TweetMentionDao extends GenericDAO<TweetMention>
 {
-    public TweetMentionDao(EntityManager entityManager)
+    public TweetMentionDao()
     {
-        super(entityManager, TweetMention.class);
+        super(TweetMention.class);
     }
 
     public void insert(TweetMention tweetMention)
     {
-        persist(tweetMention);
+        super.insert(tweetMention);
     }
 
-    public void update(TweetMention tweetMention)
+    public void updateTweetMention(TweetMention tweetMention)
     {
-        merge(tweetMention);
+        super.update(tweetMention);
     }
 
     public void delete(TweetMention tweetMention)
     {
-        remove(tweetMention);
+        super.delete(tweetMention);
     }
 
     public Optional<TweetMention> findRelation(UUID tweetId, UUID mentionedUserId)
     {
-        List<TweetMention> results = entityManager.createQuery(
-                        "SELECT tm FROM TweetMention tm WHERE tm.tweet.id = :tweetId AND tm.mentionedUser.id = :mentionedUserId",
-                        TweetMention.class
+        return Optional.ofNullable(
+                findOneByJpql(
+                        """
+                        SELECT tm
+                        FROM TweetMention tm
+                        WHERE
+                            tm.tweet.id = :tweetId
+                            AND tm.mentionedUser.id = :mentionedUserId
+                            AND tm.tweet.isDeleted = false
+                            AND tm.mentionedUser.isDeleted = false
+                        """,
+                        q -> q.setParameter("tweetId", tweetId)
+                                .setParameter("mentionedUserId", mentionedUserId)
                 )
-                .setParameter("tweetId", tweetId)
-                .setParameter("mentionedUserId", mentionedUserId)
-                .setMaxResults(1)
-                .getResultList();
-
-        return results.stream().findFirst();
+        );
     }
 
     public List<TweetMention> findByTweetId(UUID tweetId)
     {
-        return entityManager.createQuery(
-                        "SELECT tm FROM TweetMention tm WHERE tm.tweet.id = :tweetId",
-                        TweetMention.class
-                )
-                .setParameter("tweetId", tweetId)
-                .getResultList();
+        return findByJpql(
+                """
+                SELECT tm
+                FROM TweetMention tm
+                WHERE
+                    tm.tweet.id = :tweetId
+                    AND tm.tweet.isDeleted = false
+                    AND tm.mentionedUser.isDeleted = false
+                """,
+                q -> q.setParameter("tweetId", tweetId)
+        );
     }
 
     public List<TweetMention> findByMentionedUserId(UUID mentionedUserId)
     {
-        return entityManager.createQuery(
-                        "SELECT tm FROM TweetMention tm WHERE tm.mentionedUser.id = :mentionedUserId ORDER BY tm.tweet.createdAt DESC",
-                        TweetMention.class
-                )
-                .setParameter("mentionedUserId", mentionedUserId)
-                .getResultList();
+        return findByJpql(
+                """
+                SELECT tm
+                FROM TweetMention tm
+                WHERE
+                    tm.mentionedUser.id = :mentionedUserId
+                    AND tm.mentionedUser.isDeleted = false
+                    AND tm.tweet.isDeleted = false
+                ORDER BY tm.tweet.createdAt DESC
+                """,
+                q -> q.setParameter("mentionedUserId", mentionedUserId)
+        );
     }
 }

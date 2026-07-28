@@ -1,9 +1,6 @@
 package logic_core.domain.repository;
 
-import logic_core.domain.model.BlockRelation;
-import logic_core.domain.model.FollowRelation;
-import logic_core.domain.model.LikeRelation;
-import logic_core.domain.model.MuteRelation;
+import logic_core.domain.model.*;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,6 +18,7 @@ public interface RelationshipRepository
     boolean existsFollowRelation(UUID userId1, UUID userId2);
     long countFollowers(UUID userId);
     long countFollowing(UUID userId);
+    List<UserModel> getFollowers(UUID userId, int limit, int offset);
 
     // Block
     void saveBlock(BlockRelation block);
@@ -36,6 +34,7 @@ public interface RelationshipRepository
     Optional<MuteRelation> findMuteRelation(UUID muterId, UUID mutedId);
     List<MuteRelation> findByMuterId(UUID muterId);
     boolean isMutedBy(UUID muterId, UUID mutedId);
+    boolean existsMuteRelation(UUID userA, UUID userB);
 
     // Like
     Boolean existsLikeRelation(UUID userID, UUID tweetId);

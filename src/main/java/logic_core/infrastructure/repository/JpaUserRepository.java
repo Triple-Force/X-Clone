@@ -1,6 +1,7 @@
 package logic_core.infrastructure.repository;
 
 import Shared.Models.User.User;
+import jakarta.persistence.EntityManager;
 import logic_core.domain.model.UserModel;
 import logic_core.domain.repository.UserRepository;
 import logic_core.infrastructure.dao.UserDao;
@@ -13,16 +14,19 @@ import java.util.UUID;
 public class JpaUserRepository implements UserRepository
 {
     private final UserDao userDao;
+    private final EntityManager em;
 
-    public JpaUserRepository(UserDao userDao)
+    public JpaUserRepository(UserDao userDao, EntityManager em)
     {
         this.userDao = Objects.requireNonNull(userDao, "userDao must not be null");
+        this.em = em;
     }
 
     @Override
     public Optional<UserModel> save(UserModel model)
     {
-        return Optional.ofNullable(userDao.save(model));
+        User user = UserPersistenceMapper.toPersistence(model);
+        return Optional.ofNullable(UserPersistenceMapper.toModel(userDao.save(user)));
     }
 
     @Override
@@ -93,12 +97,26 @@ public class JpaUserRepository implements UserRepository
 
     public boolean isActive(UserModel model)
     {
-        return userDao.isActive(model);
+        return userDao.isActive(model.getId());
     }
 
     @Override
-    public Optional<User> findByIdForUpdate(UUID userId)
+    public Optional<UserModel> findByIdForUpdate(UUID userId)
     {
-        return userDao.findByIdForUpdate(userId);
+        return userDao.findByIdForUpdate(userId)
+                .map(UserPersistenceMapper::toModel);
+    }
+
+    public Optional<UserModel> findByUsernameForUpdate(String username)
+    {
+        return userDao.findByUsernameForUpdate(username)
+                .map(UserPersistenceMapper::toModel);
+    }
+
+    @Override
+    public Optional<UserModel> findAuthorByTweetId(UUID tweetId)
+    {
+        return userDao.findAuthorByTweetId(tweetId)
+                .map(UserPersistenceMapper::toModel);
     }
 }

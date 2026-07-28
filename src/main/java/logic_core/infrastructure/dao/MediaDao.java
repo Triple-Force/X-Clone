@@ -1,28 +1,23 @@
 package logic_core.infrastructure.dao;
 
+import Shared.Database.DAO.GenericDAO;
 import Shared.Models.Media.Media;
-import jakarta.persistence.EntityManager;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
-public class MediaDao extends AbstractJpaDao<Media>
+public class MediaDao extends GenericDAO<Media>
 {
-    public MediaDao(EntityManager entityManager)
+    public MediaDao()
     {
-        super(entityManager, Media.class);
+        super(Media.class);
     }
 
     public List<Media> findByTweetId(UUID tweetId)
     {
-        Objects.requireNonNull(tweetId, "tweetId must not be null");
-
-        return entityManager.createQuery(
-                        "SELECT m FROM Media m WHERE m.tweet.id = :tweetId",
-                        Media.class
-                )
-                .setParameter("tweetId", tweetId)
-                .getResultList();
+        return findByJpql(
+                "SELECT m FROM Media m WHERE m.tweet.id = :tweetId",
+                query -> query.setParameter("tweetId", tweetId)
+        );
     }
 }

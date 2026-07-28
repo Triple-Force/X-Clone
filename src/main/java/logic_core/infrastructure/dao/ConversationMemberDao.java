@@ -1,49 +1,125 @@
 package logic_core.infrastructure.dao;
 
+import Shared.Database.DAO.GenericDAO;
 import Shared.Models.ConversationMember.ConversationMember;
-import jakarta.persistence.EntityManager;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
-public class ConversationMemberDao extends AbstractJpaDao<ConversationMember>
+public class ConversationMemberDao extends GenericDAO<ConversationMember>
 {
-    public ConversationMemberDao(EntityManager entityManager)
+    public ConversationMemberDao()
     {
-        super(entityManager, ConversationMember.class);
+        super(ConversationMember.class);
+    }
+
+    public ConversationMember save(ConversationMember conversationMember)
+    {
+        insert(conversationMember);
+        return conversationMember;
+    }
+
+    public void updateConversationMember(ConversationMember conversationMember)
+    {
+        update(conversationMember);
     }
 
     public Optional<ConversationMember> findRelation(UUID conversationId, UUID userId)
     {
-        Objects.requireNonNull(conversationId, "conversationId must not be null");
-        Objects.requireNonNull(userId, "userId must not be null");
+        if (conversationId == null || userId == null)
+        {
+            return Optional.empty();
+        }
 
-        List<ConversationMember> members = entityManager.createQuery(
-                        "SELECT cm FROM ConversationMember cm " +
-                                "WHERE cm.conversation.id = :conversationId " +
-                                "AND cm.user.id = :userId",
-                        ConversationMember.class
+        return Optional.ofNullable(
+                findOneByJpql(
+                        """
+                        SELECT cm
+                        FROM ConversationMember cm
+                        WHERE cm.conversation.id = :conversationId
+                          AND cm.user.id = :userId
+                          AND cm.conversation.isDeleted = false
+                          AND cm.user.isDeleted = false
+                        """,
+                        query -> query
+                                .setParameter("conversationId", conversationId)
+                                .setParameter("userId", userId)
                 )
-                .setParameter("conversationId", conversationId)
-                .setParameter("userId", userId)
-                .setMaxResults(1)
-                .getResultList();
-
-        return members.stream().findFirst();
+        );
     }
 
     public List<ConversationMember> findByConversationId(UUID conversationId)
     {
-        Objects.requireNonNull(conversationId, "conversationId must not be null");
+        if (conversationId == null)
+        {
+            return List.of();
+        }
 
-        return entityManager.createQuery(
-                        "SELECT cm FROM ConversationMember cm " +
-                                "WHERE cm.conversation.id = :conversationId",
-                        ConversationMember.class
-                )
-                .setParameter("conversationId", conversationId)
-                .getResultList();
+        return findByJpql(
+                """
+                SELECT cm
+                FROM ConversationMember cm
+                JOIN FETCH cm.user
+                WHERE cm.conversation.id = :conversationId
+                  AND cm.conversation.isDeleted = false
+                  AND cm.user.isDeleted = false
+                ORDER BY cm.joinedAt ASC
+                """,
+                query -> query.setParameter("conversationId", conversationId)
+        );
+    }
+
+    public List<ConversationMember> findByUserId(UUID userId)
+    {
+        if (userId == null)
+        {
+            return List.of();
+        }
+
+        return findByJpql(
+                """
+                SELECT cm
+                FROM ConversationMember cm
+                JOIN FETCH cm.conversation
+                WHERE cm.user.id = :userId
+                  AND cm.user.isDeleted = false
+                  AND cm.conversation.isDeleted = false
+                ORDER BY cm.joinedAt ASC
+                """,
+                query -> query.setParameter("userId", userId)
+        );
+    }
+
+    public boolean exists(UUID conversationId, UUID userId)
+    {
+        return findRelation(conversationId, userId).isPresent();
+    }
+
+    public long countMembers(UUID conversationId)
+    {
+        if (conversationId == null)
+        {
+            return 0;
+        }
+
+        return countByJpql(
+                """
+                SELECT COUNT(cm)
+                FROM ConversationMember cm
+                WHERE cm.conversation.id = :conversationId
+                  AND cm.conversation.isDeleted = false
+                  AND cm.user.isDeleted = false
+                """,
+                query -> query.setParameter("conversationId", conversationId)
+        );
+    }
+
+    public void deleteMember(UUID conversationId, UUID userId)
+    {
+        ConversationMember relation = findRelation(conversationId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("Conversation member relation not found."));
+
+        delete(relation);
     }
 }

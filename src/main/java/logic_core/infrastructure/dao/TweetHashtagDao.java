@@ -1,65 +1,77 @@
 package logic_core.infrastructure.dao;
 
+import Shared.Database.DAO.GenericDAO;
 import Shared.Models.TweetHashtag.TweetHashtag;
-import jakarta.persistence.EntityManager;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public class TweetHashtagDao extends AbstractJpaDao<TweetHashtag>
+public class TweetHashtagDao extends GenericDAO<TweetHashtag>
 {
-    public TweetHashtagDao(EntityManager entityManager)
+    public TweetHashtagDao()
     {
-        super(entityManager, TweetHashtag.class);
+        super(TweetHashtag.class);
     }
 
     public void insert(TweetHashtag tweetHashtag)
     {
-        persist(tweetHashtag);
+        super.insert(tweetHashtag);
     }
 
-    public void update(TweetHashtag tweetHashtag)
+    public void updateTweetHashtag(TweetHashtag tweetHashtag)
     {
-        merge(tweetHashtag);
+        super.update(tweetHashtag);
     }
 
     public void delete(TweetHashtag tweetHashtag)
     {
-        remove(tweetHashtag);
+        super.delete(tweetHashtag);
     }
 
     public Optional<TweetHashtag> findRelation(UUID tweetId, UUID hashtagId)
     {
-        List<TweetHashtag> results = entityManager.createQuery(
-                        "SELECT th FROM TweetHashtag th WHERE th.tweet.id = :tweetId AND th.hashtag.id = :hashtagId",
-                        TweetHashtag.class
+        return Optional.ofNullable(
+                findOneByJpql(
+                        """
+                        SELECT th
+                        FROM TweetHashtag th
+                        WHERE
+                            th.tweet.id = :tweetId
+                            AND th.hashtag.id = :hashtagId
+                            AND th.tweet.isDeleted = false
+                        """,
+                        q -> q.setParameter("tweetId", tweetId)
+                                .setParameter("hashtagId", hashtagId)
                 )
-                .setParameter("tweetId", tweetId)
-                .setParameter("hashtagId", hashtagId)
-                .setMaxResults(1)
-                .getResultList();
-
-        return results.stream().findFirst();
+        );
     }
 
     public List<TweetHashtag> findByTweetId(UUID tweetId)
     {
-        return entityManager.createQuery(
-                        "SELECT th FROM TweetHashtag th WHERE th.tweet.id = :tweetId",
-                        TweetHashtag.class
-                )
-                .setParameter("tweetId", tweetId)
-                .getResultList();
+        return findByJpql(
+                """
+                SELECT th
+                FROM TweetHashtag th
+                WHERE
+                    th.tweet.id = :tweetId
+                    AND th.tweet.isDeleted = false
+                """,
+                q -> q.setParameter("tweetId", tweetId)
+        );
     }
 
     public List<TweetHashtag> findByHashtagId(UUID hashtagId)
     {
-        return entityManager.createQuery(
-                        "SELECT th FROM TweetHashtag th WHERE th.hashtag.id = :hashtagId",
-                        TweetHashtag.class
-                )
-                .setParameter("hashtagId", hashtagId)
-                .getResultList();
+        return findByJpql(
+                """
+                SELECT th
+                FROM TweetHashtag th
+                WHERE
+                    th.hashtag.id = :hashtagId
+                    AND th.tweet.isDeleted = false
+                """,
+                q -> q.setParameter("hashtagId", hashtagId)
+        );
     }
 }
