@@ -1,7 +1,7 @@
 package logic_core.app.mapper;
 
-import logic_core.app.dto.response.ConversationResponse;
-import logic_core.app.dto.response.UserResponse;
+import logic_core.app.dto.response.ConversationInfoResponse;
+import logic_core.app.dto.response.ConversationStateResponse;
 import logic_core.domain.model.ConversationModel;
 
 public final class ConversationMapper
@@ -10,19 +10,28 @@ public final class ConversationMapper
     {
     }
 
-    public static ConversationResponse toResponse(
+    public static ConversationStateResponse toResponse(
             ConversationModel conversation,
-            UserResponse otherUser,
             String lastMessagePreview,
             int unreadCount
     )
     {
-        return new ConversationResponse(
+
+
+        ConversationInfoResponse conversationInfoResponse = new ConversationInfoResponse(
                 conversation.getConversationId(),
-                otherUser,
+          conversation.getCreatedAt(),
+          conversation.getUpdatedAt(),
+          conversation.getParticipantIds()
+        );
+
+
+        return new ConversationStateResponse(
+                conversation.getConversationId(),
                 lastMessagePreview,
                 conversation.getUpdatedAt(),
-                unreadCount
+                unreadCount,
+                conversationInfoResponse
         );
     }
 }
