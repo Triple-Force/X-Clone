@@ -166,7 +166,7 @@
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>${javafx.maven.plugin.version}</version>
                 <configuration>
-                    <mainClass>org.tripleforce.MainApp</mainClass>
+                    <mainClass>Client.MainApp</mainClass>
                 </configuration>
             </plugin>
         </plugins>
