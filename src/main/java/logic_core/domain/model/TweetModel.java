@@ -3,13 +3,12 @@ package logic_core.domain.model;
 import lombok.*;
 
 import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Builder(toBuilder = true)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class TweetModel
 {
     private UUID id;
@@ -33,38 +32,76 @@ public class TweetModel
     private boolean isEdited;
 
     private List<UUID> mentionedUserIds;
+    private List<UUID> mediaIds;
 
-
-    public TweetModel withMentionedUserIds(List<UUID> mentionedUserIds)
+    public void addMentionUserId(UUID userId)
     {
-        return TweetModel.builder()
-                .id(this.id)
-                .authorId(this.authorId)
-                .content(this.content)
-                .repliedToTweetId(this.repliedToTweetId)
-                .retweetedTweetId(this.retweetedTweetId)
-                .quotedTweetId(this.quotedTweetId)
-                .pinned(this.pinned)
-                .deleted(this.deleted)
-                .scheduledAt(this.scheduledAt)
-                .publishedAt(this.publishedAt)
-                .createdAt(this.createdAt)
-                .updatedAt(this.updatedAt)
-                .isEdited(this.isEdited)
-                .mentionedUserIds(mentionedUserIds != null ? List.copyOf(mentionedUserIds) : List.of())
-                .build();
+        validateMentionUserId(userId);
+
+        if (mentionedUserIds == null)
+        {
+            mentionedUserIds = new ArrayList<>();
+        }
+        else if (!(mentionedUserIds instanceof ArrayList))
+        {
+            mentionedUserIds = new ArrayList<>(mentionedUserIds);
+        }
+
+        boolean exists = mentionedUserIds.stream()
+                .filter(Objects::nonNull)
+                .anyMatch(id -> Objects.equals(id, userId));
+
+        if (!exists)
+        {
+            mentionedUserIds.add(userId);
+        }
     }
 
-    public void addMentionUserId(UUID mentionUserId)
+    public void removeMentionUserId(UUID userId)
     {
+        validateMentionUserId(userId);
 
-        if (mentionUserId == null)
-            throw new IllegalArgumentException("mentionedUserId cannot be null");
+        if (mentionedUserIds == null || mentionedUserIds.isEmpty())
+        {
+            return;
+        }
 
-        for (UUID id : mentionedUserIds)
-            if (id == mentionUserId)
-                throw new IllegalArgumentException("this user already mentioned");
+        if (!(mentionedUserIds instanceof ArrayList))
+        {
+            mentionedUserIds = new ArrayList<>(mentionedUserIds);
+        }
 
-        mentionedUserIds.add(mentionUserId);
+        mentionedUserIds.removeIf(id -> Objects.equals(id, userId));
+    }
+
+    public void setMentionedUserIds(List<UUID> userIds)
+    {
+        if (userIds == null || userIds.isEmpty())
+        {
+            this.mentionedUserIds = new ArrayList<>();
+            return;
+        }
+
+        this.mentionedUserIds = userIds.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+    }
+
+    public List<UUID> getMentionedUserIdsSafe()
+    {
+        if (mentionedUserIds == null || mentionedUserIds.isEmpty())
+        {
+            return List.of();
+        }
+        return Collections.unmodifiableList(mentionedUserIds);
+    }
+
+    private static void validateMentionUserId(UUID userId)
+    {
+        if (userId == null)
+        {
+            throw new IllegalArgumentException("Mentioned user ID cannot be null");
+        }
     }
 }
