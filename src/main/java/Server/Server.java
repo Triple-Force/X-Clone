@@ -21,7 +21,6 @@ public class Server
                 "Desert@gmail.com").displayName("D3s3rt").avatarUrl("avatar_url").bannerUrl("banner_url").build();
 
         userDao.insert(newUser);
-        System.out.println("Added user.");
 
         System.out.println("User Id with name 'Desert': " + userDao.findByField("username", "Desert").getId());
 
