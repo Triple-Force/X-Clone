@@ -1,5 +1,6 @@
 package Testing;
 
+import Shared.Database.EntityManagerContext;
 import Shared.Models.Session.Session;
 import Shared.Models.User.User;
 import jakarta.persistence.EntityManager;
@@ -8,6 +9,7 @@ import jakarta.persistence.Persistence;
 import logic_core.app.dto.request.RefreshSessionRequest;
 import logic_core.app.dto.response.AuthResponse;
 import logic_core.app.dto.validator.RefreshSessionValidator;
+import logic_core.app.security.AuthLockOrchestrator;
 import logic_core.app.usecase.auth.RefreshSessionUseCase;
 import logic_core.common.result.Result;
 import logic_core.common.security.TokenGenerator;
@@ -83,17 +85,19 @@ class RefreshSessionUseCaseTest
 
         fixedNow = OffsetDateTime.now();
 
-        sessionDao = new SessionDao(entityManager, timeProvider);
-        userDao = new UserDao(entityManager);
+        sessionDao = new SessionDao(timeProvider);
+
+        EntityManagerContext.set(entityManager);
+        userDao = new UserDao();
 
         tokenGenerator = new TokenGenerator();
         sessionFactory = new SessionFactory(tokenGenerator,timeProvider);
 
-        userRepository = new JpaUserRepository(userDao);
+        userRepository = new JpaUserRepository(userDao, entityManager);
         sessionRepository = new JpaSessionRepository(sessionDao, entityManager);
 
 
-        sessionManager = new SessionManager(sessionRepository, userRepository,sessionFactory, timeProvider)
+        sessionManager = new SessionManager(sessionRepository, userRepository,sessionFactory, entityManager)
         {
             @Override
             public Session startSession(UUID userid)
@@ -124,6 +128,8 @@ class RefreshSessionUseCaseTest
 
         seedData();
         entityManager.flush();
+        AuthLockOrchestrator lockOrchestrator = new AuthLockOrchestrator(userRepository, sessionManager);
+
 
         useCase = new RefreshSessionUseCase(
                 validator,
@@ -131,7 +137,7 @@ class RefreshSessionUseCaseTest
                 sessionManager,
                 eventPublisher,
                 timeProvider,
-                userRepository
+                lockOrchestrator
         );
     }
 
@@ -209,7 +215,7 @@ class RefreshSessionUseCaseTest
         Result<AuthResponse> result = useCase.execute(request);
 
         assertFalse(result.isSuccess());
-        assertEquals("Session not found for provided token.", result.getError());
+        assertEquals("Session not found.", result.getError());
         assertTrue(eventPublisher.publishedEvents.isEmpty());
     }
 
@@ -217,13 +223,14 @@ class RefreshSessionUseCaseTest
     void execute_whenPolicyFailsDueToExpiredSession_shouldReturnFailure_andNotChangeSessionState()
     {
         timeProvider = new FixedTimeProvider(fixedNow.plusDays(5));
+        AuthLockOrchestrator lockOrchestrator = new AuthLockOrchestrator(userRepository, sessionManager);
         useCase = new RefreshSessionUseCase(
                 validator,
                 policy,
                 sessionManager,
                 eventPublisher,
                 timeProvider,
-                userRepository
+                lockOrchestrator
         );
 
         RefreshSessionRequest request = new RefreshSessionRequest(validRefreshToken);
