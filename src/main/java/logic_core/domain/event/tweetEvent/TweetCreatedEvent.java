@@ -11,21 +11,27 @@ import java.util.UUID;
 @Getter
 public class TweetCreatedEvent extends DomainEvent implements TweetEvent
 {
-    UUID authorId;
-    String content;
-    UUID parentTweetId;
-    List<String> mediaUrls;
+    private final UUID tweetId;
+    private final UUID authorId;
+    private final String content;
+    private final UUID repliedToTweetId;
+    private final UUID quotedTweetId;
+    private final List<UUID> mediaIds;
 
-    public TweetCreatedEvent(UUID authorId,
+    public TweetCreatedEvent(UUID tweetId,
+                             UUID authorId,
                              String content,
-                             UUID parentTweetId,
-                             List<String> mediaUrls,
+                             UUID repliedToTweetId,
+                             UUID quotedTweetId,
+                             List<UUID> mediaIds,
                              OffsetDateTime occurredAt)
     {
         super(occurredAt);
+        this.tweetId = Objects.requireNonNull(tweetId);
         this.authorId = Objects.requireNonNull(authorId);
         this.content = Objects.requireNonNull(content);
-        this.parentTweetId = Objects.requireNonNull(parentTweetId);
-        this.mediaUrls = Objects.requireNonNull(mediaUrls);
+        this.repliedToTweetId = repliedToTweetId;
+        this.quotedTweetId = quotedTweetId;
+        this.mediaIds = mediaIds == null ? List.of() : List.copyOf(mediaIds);
     }
 }

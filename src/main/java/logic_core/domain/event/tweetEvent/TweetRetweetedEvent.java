@@ -25,5 +25,3 @@ public class TweetRetweetedEvent extends DomainEvent implements TweetEvent
         this.userId = Objects.requireNonNull(userId);
     }
 }
-
-

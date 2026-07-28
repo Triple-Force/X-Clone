@@ -8,10 +8,10 @@ import java.util.Objects;
 import java.util.UUID;
 
 @Getter
-public class TweetDeletedEvent extends DomainEvent
+public class TweetDeletedEvent extends DomainEvent implements TweetEvent
 {
-    UUID tweetId;
-    UUID authorId;
+    private final UUID tweetId;
+    private final UUID authorId;
 
     public TweetDeletedEvent(UUID tweetId,
                              UUID authorId,
