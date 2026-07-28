@@ -1,5 +1,6 @@
 package logic_core.app.usecase.auth;
 
+import jakarta.transaction.Transactional;
 import logic_core.app.dto.request.RequestPasswordResetRequest;
 import logic_core.app.dto.response.RequestPasswordResetResponse;
 import logic_core.app.dto.validator.EmailValidator;
@@ -25,6 +26,7 @@ public class RequestPasswordResetUseCase
     @NonNull private final PasswordResetOtpService otpService;
     @NonNull private final PasswordResetDeliveryPort deliveryPort;
 
+    @Transactional
     public Result<RequestPasswordResetResponse> execute(RequestPasswordResetRequest request)
     {
         if (request == null)

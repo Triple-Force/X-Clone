@@ -19,21 +19,19 @@ public class SessionResolver
             return Optional.empty();
         }
 
-        Optional<Session> sessionOpt = sessionManager.findValidSession(token);
-        if (sessionOpt.isEmpty())
-        {
-            return Optional.empty();
-        }
+        return sessionManager.findByToken(token)
+                .filter(session -> session.getUser() != null)
+                .map(this::toPrincipal);
+    }
 
-        Session session = sessionOpt.get();
-
-        AuthPrincipal principal = new AuthPrincipal(
+    private AuthPrincipal toPrincipal(Session session)
+    {
+        return new AuthPrincipal(
                 session.getUser().getId(),
                 session.getUser().getUsername(),
-                session.getId()
+                session.getId(),
+                session.getToken()
         );
-
-        return Optional.of(principal);
     }
 
     public void logout(String token)

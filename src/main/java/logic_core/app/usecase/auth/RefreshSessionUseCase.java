@@ -1,10 +1,13 @@
 package logic_core.app.usecase.auth;
 
 import Shared.Models.Session.Session;
+import jakarta.transaction.Transactional;
 import logic_core.app.dto.request.RefreshSessionRequest;
 import logic_core.app.dto.response.AuthResponse;
 import logic_core.app.dto.validator.RefreshSessionValidator;
 import logic_core.app.mapper.AuthMapper;
+import logic_core.app.security.AuthLockOrchestrator;
+import logic_core.app.security.SessionUserContext;
 import logic_core.common.result.Result;
 import logic_core.common.util.TimeProvider;
 import logic_core.domain.event.EventPublisher;
@@ -24,34 +27,32 @@ public class RefreshSessionUseCase
     @NonNull private final SessionManager sessionManager;
     @NonNull private final EventPublisher eventPublisher;
     @NonNull private final TimeProvider timeProvider;
-    @NonNull private final UserRepository userRepository;
+    @NonNull private final AuthLockOrchestrator lockOrchestrator;
 
+    @Transactional
     public Result<AuthResponse> execute(RefreshSessionRequest request)
     {
         try
         {
             validator.validate(request.refreshToken());
 
-            Session oldSession = sessionManager.findByToken(request.refreshToken())
-                    .orElseThrow(() -> new RuntimeException("Session not found for provided token."));
+            SessionUserContext context = lockOrchestrator.lockAndGetContextByToken(request.refreshToken());
+            Session oldSession = context.session();
 
             policy.validateRefresh(oldSession, timeProvider.now());
 
-            UserModel user = userRepository.findUserBySessionId(oldSession.getId())
-                    .orElseThrow(() -> new RuntimeException("User not found."));
-
             sessionManager.invalidateSession(oldSession);
 
-            Session newSession = sessionManager.startSession(user.getId());
+            Session newSession = sessionManager.startSession(context.lockedUser().getId());
 
             eventPublisher.publish(new SessionRefreshedEvent(
-                    user.getId(),
+                    context.lockedUser().getId(),
                     oldSession.getId(),
                     newSession.getId(),
                     timeProvider.now()
             ));
 
-            return Result.success(AuthMapper.toResponse(user, newSession));
+            return Result.success(AuthMapper.toResponse(context.lockedUser(), newSession));
         }
         catch (Exception e)
         {

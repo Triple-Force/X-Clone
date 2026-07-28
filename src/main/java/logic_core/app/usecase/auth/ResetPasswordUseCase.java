@@ -1,6 +1,7 @@
 package logic_core.app.usecase.auth;
 
 import Shared.Models.Session.Session;
+import jakarta.transaction.Transactional;
 import logic_core.app.dto.request.ResetPasswordRequest;
 import logic_core.app.dto.response.ResetPasswordResponse;
 import logic_core.app.dto.validator.EmailValidator;
@@ -33,6 +34,7 @@ public class ResetPasswordUseCase
     @NonNull private final TimeProvider timeProvider;
     @NonNull private final EventPublisher eventPublisher;
 
+    @Transactional
     public Result<ResetPasswordResponse> execute(ResetPasswordRequest request)
     {
         if (request == null)
@@ -63,9 +65,13 @@ public class ResetPasswordUseCase
 
         Optional<UUID> userIdOpt = otpService.getVerifiedUserId(email);
 
-        Optional<UserModel> userOpt = userIdOpt
-                .flatMap(userRepository::findById)
-                .or(() -> userRepository.findByEmail(email));
+        if (userIdOpt.isEmpty())
+        {
+            otpService.invalidate(email);
+            return Result.failure("Invalid or expired code.");
+        }
+
+        Optional<UserModel> userOpt = userRepository.findById(userIdOpt.get());
 
         if (userOpt.isEmpty())
         {
