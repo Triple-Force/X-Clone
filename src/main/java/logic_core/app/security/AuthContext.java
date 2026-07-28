@@ -6,36 +6,31 @@ import java.util.Optional;
 
 public final class AuthContext
 {
-    private static final ThreadLocal<AuthPrincipal> CURRENT_PRINCIPAL =
+    private static final ThreadLocal<AuthPrincipal> CURRENT =
             new ThreadLocal<>();
 
     private AuthContext()
     {
     }
 
-    public static void setCurrentUser(AuthPrincipal principal)
+    public static void set(AuthPrincipal principal)
     {
         if (principal == null)
         {
             throw new IllegalArgumentException("AuthPrincipal cannot be null.");
         }
 
-        CURRENT_PRINCIPAL.set(principal);
+        CURRENT.set(principal);
     }
 
-    public static AuthPrincipal getCurrentUser()
+    public static Optional<AuthPrincipal> get()
     {
-        return CURRENT_PRINCIPAL.get();
+        return Optional.ofNullable(CURRENT.get());
     }
 
-    public static Optional<AuthPrincipal> getCurrentUserOptional()
+    public static AuthPrincipal require()
     {
-        return Optional.ofNullable(CURRENT_PRINCIPAL.get());
-    }
-
-    public static AuthPrincipal requireCurrentUser()
-    {
-        AuthPrincipal principal = CURRENT_PRINCIPAL.get();
+        AuthPrincipal principal = CURRENT.get();
 
         if (principal == null)
         {
@@ -47,11 +42,11 @@ public final class AuthContext
 
     public static boolean isAuthenticated()
     {
-        return CURRENT_PRINCIPAL.get() != null;
+        return CURRENT.get() != null;
     }
 
     public static void clear()
     {
-        CURRENT_PRINCIPAL.remove();
+        CURRENT.remove();
     }
 }

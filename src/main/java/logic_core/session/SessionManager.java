@@ -2,7 +2,9 @@ package logic_core.session;
 
 import Shared.Models.Session.Session;
 import Shared.Models.User.User;
+import jakarta.persistence.EntityManager;
 import logic_core.common.util.TimeProvider;
+import logic_core.domain.model.UserModel;
 import logic_core.domain.repository.SessionRepository;
 import logic_core.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,14 +18,14 @@ public class SessionManager
     private final SessionRepository sessionRepository;
     private final UserRepository userRepository;
     private final SessionFactory sessionFactory;
-    private final TimeProvider timeProvider;
+    private final EntityManager entityManager;
 
     public Session startSession(UUID userId)
     {
-        User managedUser = userRepository.findByIdForUpdate(userId)
+        UserModel managedUser = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new IllegalArgumentException("user not found"));
 
-        Session newSession = sessionFactory.create(managedUser);
+        Session newSession = sessionFactory.create(managedUser, entityManager);
         return sessionRepository.replaceUserSession(userId, newSession);
     }
 

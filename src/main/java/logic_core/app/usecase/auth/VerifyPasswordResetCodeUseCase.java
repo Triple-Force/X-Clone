@@ -1,5 +1,6 @@
 package logic_core.app.usecase.auth;
 
+import jakarta.transaction.Transactional;
 import logic_core.app.dto.request.VerifyPasswordResetCodeRequest;
 import logic_core.app.dto.response.VerifyPasswordResetCodeResponse;
 import logic_core.app.service.passwordReset.OtpVerifyStatus;
@@ -13,6 +14,7 @@ public final class VerifyPasswordResetCodeUseCase
 {
     private final PasswordResetOtpService otpService;
 
+    @Transactional
     public Result<VerifyPasswordResetCodeResponse> execute(VerifyPasswordResetCodeRequest request)
     {
         if (request == null)

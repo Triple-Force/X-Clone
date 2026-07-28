@@ -2,11 +2,11 @@ package logic_core.common.security;
 
 import org.mindrot.jbcrypt.BCrypt;
 
-public class PasswordHasher
+public final class PasswordHasher
 {
     private static final int SALT_ROUNDS = 12;
 
-    public String hash(String rawPassword)
+    public static String hash(String rawPassword)
     {
         if (rawPassword == null || rawPassword.isBlank())
         {
@@ -16,7 +16,7 @@ public class PasswordHasher
         return BCrypt.hashpw(rawPassword, BCrypt.gensalt(SALT_ROUNDS));
     }
 
-    public boolean verify(String rawPassword, String hashedPassword)
+    public static boolean verify(String rawPassword, String hashedPassword)
     {
         if (rawPassword == null || hashedPassword == null)
         {

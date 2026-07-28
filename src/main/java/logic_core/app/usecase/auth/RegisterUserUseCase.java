@@ -1,10 +1,15 @@
 package logic_core.app.usecase.auth;
 
 import Shared.Models.Session.Session;
+import jakarta.transaction.Transactional;
 import logic_core.app.dto.request.RegisterRequest;
 import logic_core.app.dto.response.AuthResponse;
 import logic_core.app.dto.validator.RegisterValidator;
 import logic_core.app.mapper.AuthMapper;
+import logic_core.common.exception.ConflictException;
+import logic_core.common.exception.ForbiddenException;
+import logic_core.common.exception.NotFoundException;
+import logic_core.common.exception.ValidationException;
 import logic_core.common.result.Result;
 import logic_core.common.security.PasswordHasher;
 import logic_core.common.util.TimeProvider;
@@ -30,38 +35,40 @@ public class RegisterUserUseCase
     @NonNull private final TimeProvider timeProvider;
     @NonNull private final SessionManager sessionManager;
 
+    @Transactional
     public Result<AuthResponse> execute(RegisterRequest request)
     {
         try
         {
-            validator.validate(
-                    request.username(),
-                    request.password(),
-                    request.email()
-            );
+            validator.validate(request.username(), request.password(), request.email());
 
-            policy.validate(
-                    request.username(),
-                    request.email()
-            );
+            policy.validate(request.username(), request.email());
+
+            UserModel newUser = createUserModel(request);
+
+            UserModel persistedUser = userRepository.save(newUser)
+                    .orElseThrow(() -> new RuntimeException("Failed to persist user."));
+
+            Session session = sessionManager.startSession(persistedUser.getId());
+
+            eventPublisher.publish(new UserRegisteredEvent(
+                    persistedUser.getId(),
+                    persistedUser.getUsername(),
+                    persistedUser.getEmail(),
+                    timeProvider.now()
+            ));
+
+            return Result.success(AuthMapper.toResponse(persistedUser, session));
         }
-        catch (RuntimeException e)
+        catch (ValidationException | ForbiddenException | ConflictException | NotFoundException e)
         {
             return Result.failure(e.getMessage());
         }
-
-        UserModel user = createUser(request);
-        UserModel persistedUser =
-                userRepository.save(user).orElseThrow();
-
-        return Result.success(registerAndAuthenticate(persistedUser));
     }
 
-
-    private UserModel createUser(RegisterRequest request)
+    private UserModel createUserModel(RegisterRequest request)
     {
         String passwordHash = passwordHasher.hash(request.password());
-
         return UserModel.createNew(
                 null,
                 request.username(),
@@ -69,19 +76,5 @@ public class RegisterUserUseCase
                 passwordHash,
                 timeProvider.now()
         );
-    }
-
-    private AuthResponse registerAndAuthenticate(UserModel user)
-    {
-
-        eventPublisher.publish(new UserRegisteredEvent(
-                user.getId(),
-                user.getUsername(),
-                user.getEmail(),
-                timeProvider.now()
-        ));
-
-        Session session = sessionManager.startSession(user.getId());
-        return AuthMapper.toResponse(user, session);
     }
 }

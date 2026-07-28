@@ -1,10 +1,13 @@
 package logic_core.app.usecase.auth;
 
 import Shared.Models.Session.Session;
+import jakarta.transaction.Transactional;
 import logic_core.app.dto.request.LoginRequest;
 import logic_core.app.dto.response.AuthResponse;
 import logic_core.app.dto.validator.LoginValidator;
 import logic_core.app.mapper.AuthMapper;
+import logic_core.app.security.AuthLockOrchestrator;
+import logic_core.app.security.SessionUserContext;
 import logic_core.common.result.Result;
 import logic_core.common.security.PasswordHasher;
 import logic_core.common.util.TimeProvider;
@@ -19,13 +22,14 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class LoginUserUseCase
 {
-    @NonNull private final UserRepository userRepository;
     @NonNull private final LoginValidator validator;
     @NonNull private final PasswordHasher passwordHasher;
     @NonNull private final SessionManager sessionManager;
     @NonNull private final EventPublisher eventPublisher;
     @NonNull private final TimeProvider timeProvider;
+    @NonNull private final AuthLockOrchestrator lockOrchestrator;
 
+    @Transactional
     public Result<AuthResponse> execute(LoginRequest request)
     {
         try
@@ -37,16 +41,12 @@ public class LoginUserUseCase
             return Result.failure(e.getMessage());
         }
 
-        return userRepository.findByUsername(request.username())
-                .map(user -> authenticateUser(request, user))
-                .orElseGet(() -> Result.failure("Invalid credentials."));
-    }
+        SessionUserContext context = lockOrchestrator.lockAndGetUserByUsername(request.username());
+        UserModel lockedUser = context.lockedUser();
 
-    private Result<AuthResponse> authenticateUser(LoginRequest request, UserModel user)
-    {
         boolean passwordMatches = passwordHasher.verify(
                 request.password(),
-                user.getPasswordHash()
+                lockedUser.getPasswordHash()
         );
 
         if (!passwordMatches)
@@ -54,16 +54,15 @@ public class LoginUserUseCase
             return Result.failure("Invalid credentials.");
         }
 
-        Session session = sessionManager.startSession(user.getId());
+        Session session = sessionManager.startSession(lockedUser.getId());
 
         eventPublisher.publish(new UserLoggedInEvent(
-                user.getId(),
-                user.getUsername(),
+                lockedUser.getId(),
+                lockedUser.getUsername(),
                 session.getId(),
                 timeProvider.now()
         ));
 
-        AuthResponse response = AuthMapper.toResponse(user, session);
-        return Result.success(response);
+        return Result.success(AuthMapper.toResponse(lockedUser, session));
     }
 }
