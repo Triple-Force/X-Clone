@@ -23,8 +23,10 @@
                     </VBox.margin>
                 </Label>
                 <Button maxWidth="1.7976931348623157E308" onAction="#showTimeline" style="-fx-background-color: transparent; -fx-text-fill: #0f1419; -fx-alignment: center-left; -fx-font-weight: bold; -fx-font-size: 16px;" text="🏠  Home" />
-                <Button maxWidth="1.7976931348623157E308" onAction="#showMessages" style="-fx-background-color: transparent; -fx-text-fill: #0f1419; -fx-alignment: center-left; -fx-font-size: 16px;" text="📩  Messages" />
-                <Button maxWidth="1.7976931348623157E308" onAction="#showProfile" style="-fx-background-color: transparent; -fx-text-fill: #0f1419; -fx-alignment: center-left; -fx-font-size: 16px;" text="👤  Profile" />
+                <Button maxWidth="1.7976931348623157E308" onAction="#showMessages" style="-fx-background-color: transparent; -fx-text-fill: #0f1419; -fx-alignment: center-left; -fx-font-weight: bold; -fx-font-size: 16px;" text="📩  Messages" />
+                <Button maxWidth="1.7976931348623157E308" onAction="#showProfile" style="-fx-background-color: transparent; -fx-text-fill: #0f1419; -fx-alignment: center-left; -fx-font-weight: bold; -fx-font-size: 16px;" text="👤  Profile" />
+
+                <Button fx:id="themeButton" maxWidth="1.7976931348623157E308" onAction="#toggleTheme" style="-fx-background-color: transparent; -fx-text-fill: #0f1419; -fx-alignment: center-left; -fx-font-weight: bold; -fx-font-size: 16px;" text="☀️  Light Mode" />
             </children>
         </VBox>
 
@@ -32,7 +34,7 @@
 
         <VBox prefWidth="320.0" spacing="15.0" style="-fx-border-color: #eff3f4; -fx-border-width: 0 0 0 1; -fx-padding: 15;">
             <children>
-                <TextField promptText="Search 🔎" style="-fx-background-color: #eff3f4; -fx-background-radius: 20; -fx-padding: 10 15 10 15;" />
+                <TextField fx:id="searchTextField" onAction="#handleSearch" promptText="Search 🔎" style="-fx-background-color: #eff3f4; -fx-background-radius: 20; -fx-padding: 10 15 10 15;" />
             </children>
         </VBox>
 
