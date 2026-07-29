@@ -187,4 +187,26 @@ public class DirectMessageDao extends GenericDAO<DirectMessage>
                         .setParameter("receiverUserId", receiverUserId)
         );
     }
+
+    public DirectMessage findLastMessage(UUID conversationId)
+    {
+        if (conversationId == null)
+        {
+            return null;
+        }
+
+        return findOneByJpql(
+                """
+                SELECT dm
+                FROM DirectMessage dm
+                WHERE dm.conversation.id = :conversationId
+                  AND dm.isDeleted = false
+                  AND dm.conversation.isDeleted = false
+                  AND dm.sender.isDeleted = false
+                ORDER BY dm.createdAt DESC
+                """,
+                q -> q.setParameter("conversationId", conversationId)
+                        .setMaxResults(1)
+        );
+    }
 }

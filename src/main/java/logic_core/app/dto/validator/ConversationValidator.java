@@ -58,6 +58,26 @@ public class ConversationValidator
         requireNonNull(conversationId, "conversationId must not be null.");
     }
 
+    public void validateGetConversations(
+            int page,
+            int pageSize)
+    {
+        if (page < 0)
+        {
+            throw new ValidationException("page must not be negative.");
+        }
+
+        if (pageSize <= 0)
+        {
+            throw new ValidationException("pageSize must be greater than zero.");
+        }
+
+        if (pageSize > 100)
+        {
+            throw new ValidationException("pageSize must not exceed 100.");
+        }
+    }
+
     private void requireParticipantList(List<UUID> participantIds)
     {
         if (participantIds == null)

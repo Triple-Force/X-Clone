@@ -14,6 +14,7 @@ public enum RequestType
     MEMBER_ADD,
     MEMBER_DELETE,
     CONVERSATION_DELETE,
+    CONVERSATION_GET,
 
     MESSAGE_SEND,
     MESSAGE_EDIT,

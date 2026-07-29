@@ -48,16 +48,23 @@ public class JpaConversationRepository implements ConversationRepository
     }
 
     @Override
-    public List<ConversationModel> findConversationsByUserId(UUID userId)
+    public List<ConversationModel> findConversationsByUserId(UUID userId, int page, int pageSize)
     {
         if (userId == null)
         {
             return List.of();
         }
 
-        return conversationDao.findConversationsByUserId(userId).stream()
+        return conversationDao.findConversationsByUserId(userId, page, pageSize).stream()
                 .map(ConversationPersistenceMapper::toModel)
                 .toList();
+    }
+
+    @Override
+    public long countConversations(UUID userId)
+    {
+
+        return conversationDao.countConversations(userId);
     }
 
     @Override

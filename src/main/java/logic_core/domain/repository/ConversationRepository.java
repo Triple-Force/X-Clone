@@ -11,7 +11,9 @@ public interface ConversationRepository
 {
     Optional<ConversationModel> findById(UUID conversationId);
 
-    List<ConversationModel> findConversationsByUserId(UUID userId);
+    List<ConversationModel> findConversationsByUserId(UUID userId, int page, int pageSize);
+
+    long countConversations(UUID userId);
 
     ConversationModel save(ConversationModel conversation);
 

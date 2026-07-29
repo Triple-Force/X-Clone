@@ -130,4 +130,9 @@ public class JpaDirectMessageRepository implements DirectMessageRepository
                 .map(DirectMessagePersistenceMapper::toDomain)
                 .toList();
     }
+
+    public DirectMessage findLastMessage(UUID conversationId)
+    {
+        return dao.findLastMessage(conversationId);
+    }
 }

@@ -6,13 +6,11 @@ import Client.transport.SocketClient;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
-import logic_core.app.dto.request.AddConversationMemberRequest;
-import logic_core.app.dto.request.CreateConversationRequest;
-import logic_core.app.dto.request.DeleteConversationRequest;
-import logic_core.app.dto.request.RemoveConversationMemberRequest;
+import logic_core.app.dto.request.*;
 import logic_core.app.dto.response.ConversationInfoResponse;
 import logic_core.app.dto.response.CreateConversationResponse;
 import logic_core.app.dto.response.DeleteConversationResponse;
+import logic_core.app.dto.response.GetConversationsResponse;
 import logic_core.common.result.Result;
 import logic_core.infrastructure.transport.RequestEnvelope;
 import logic_core.infrastructure.transport.RequestType;
@@ -95,6 +93,22 @@ public final class ConversationClientService
         );
     }
 
+    public CompletableFuture<Result<GetConversationsResponse>> getConversations(
+            int page,
+            int pageSize)
+    {
+        GetConversationsRequest request = GetConversationsRequest.builder()
+                .page(page)
+                .pageSize(pageSize)
+                .sessionToken(session.getToken())
+                .build();
+
+        return execute(
+                RequestType.CONVERSATION_GET,
+                request,
+                GetConversationsResponse.class
+        );
+    }
 
     private <T> CompletableFuture<Result<T>> execute(
             RequestType type,
