@@ -4,6 +4,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
 import logic_core.app.bootstrap.EventListenerRegistrar;
+import logic_core.app.dto.response.GetConversationsResponse;
 import logic_core.app.dto.validator.*;
 import logic_core.app.facade.*;
 import logic_core.app.security.AuthLockOrchestrator;
@@ -16,10 +17,7 @@ import logic_core.app.systemMessage.LoggingSystemMessageDispatcher;
 import logic_core.app.systemMessage.SystemMessageService;
 import logic_core.app.systemMessage.SystemMessageServiceImpl;
 import logic_core.app.usecase.auth.*;
-import logic_core.app.usecase.conversation.AddMemberToConversationUseCase;
-import logic_core.app.usecase.conversation.CreateConversationUseCase;
-import logic_core.app.usecase.conversation.DeleteConversationUseCase;
-import logic_core.app.usecase.conversation.DeleteMemberFromConversationUseCase;
+import logic_core.app.usecase.conversation.*;
 import logic_core.app.usecase.message.*;
 import logic_core.app.usecase.relation.*;
 import logic_core.app.usecase.timeline.GetTimelineUseCase;
@@ -362,7 +360,7 @@ public final class DependencyContainer
 
         ConversationDao conversationDao = new ConversationDao();
         ConversationMemberDao conversationMemberDao = new ConversationMemberDao();
-
+        DirectMessageDao directMessageDao = new DirectMessageDao();
         RelationshipRepository relationshipRepository = new JpaRelationshipRepository(
                 followDao,
                 blockDao,
@@ -390,6 +388,11 @@ public final class DependencyContainer
 
         SessionRepository sessionRepository = new JpaSessionRepository(
                 sessionDao,
+                em
+        );
+
+        DirectMessageRepository directMessageRepository = new JpaDirectMessageRepository(
+                directMessageDao,
                 em
         );
 
@@ -444,11 +447,22 @@ public final class DependencyContainer
                 lockOrchestrator
         );
 
+
+        GetConversationsUseCase getConversationsUseCase = new GetConversationsUseCase(
+                conversationRepository,
+                directMessageRepository,
+                userRepository,
+                lockOrchestrator,
+                eventPublisher,
+                timeProvider
+        );
+
         return new ConversationFacade(
                 addMemberToConversationUseCase,
                 createConversationUseCase,
                 deleteConversationUseCase,
-                deleteMemberFromConversationUseCase
+                deleteMemberFromConversationUseCase,
+                getConversationsUseCase
         );
     }
 

@@ -82,7 +82,8 @@ public class RequestDispatcher
             case CONVERSATION_CREATE,
                  MEMBER_ADD,
                  MEMBER_DELETE,
-                 CONVERSATION_DELETE ->
+                 CONVERSATION_DELETE,
+                 CONVERSATION_GET ->
 
                     dispatchConversation(request);
 
@@ -184,7 +185,6 @@ public class RequestDispatcher
                         case AUTH_REFRESH -> handleRefresh(requestId, payload, facade);
 
                         case AUTH_REQUEST_PASSWORD_RESET -> handelRequestPasswordReset(requestId, payload, facade);
-
                         case AUTH_VERIFY_PASSWORD_RESET_CODE -> handelVerifyPasswordResetCode(requestId, payload, facade);
 
                         case AUTH_RESET_PASSWORD -> handelResetPassword(requestId, payload, facade);
@@ -211,6 +211,8 @@ public class RequestDispatcher
                         case MEMBER_ADD -> handleAddMember(requestId, payload, facade);
 
                         case MEMBER_DELETE -> handleDeleteMember(requestId, payload, facade);
+
+                        case CONVERSATION_GET -> handleGetConversations(requestId, payload, facade);
 
                         case CONVERSATION_DELETE -> handleDeleteConversation(requestId, payload, facade);
 
@@ -683,6 +685,32 @@ public class RequestDispatcher
         return successResponse(
                 requestId,
                 ResponseType.MESSAGE_DELETE_RESPONSE,
+                result.getData()
+        );
+    }
+
+    private ResponseEnvelope handleGetConversations(
+            UUID requestId,
+            JsonElement payload,
+            ConversationFacade facade)
+    {
+        GetConversationsRequest request = gson.fromJson(payload, GetConversationsRequest.class);
+
+        Result<GetConversationsResponse> result = facade.getConversations(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.CONVERSATION_GET_RESPONSE,
+                    "GET_CONVERSATIONS_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.CONVERSATION_GET_RESPONSE,
                 result.getData()
         );
     }
@@ -1162,6 +1190,7 @@ public class RequestDispatcher
             case AUTH_VERIFY_PASSWORD_RESET_CODE -> ResponseType.AUTH_VERIFY_PASSWORD_RESET_CODE_RESPONSE;
             case AUTH_RESET_PASSWORD -> ResponseType.AUTH_RESET_PASSWORD_RESPONSE;
             case CONVERSATION_CREATE ->ResponseType.CONVERSATION_CREATE_RESPONSE;
+            case CONVERSATION_GET -> ResponseType.CONVERSATION_GET_RESPONSE;
             case MEMBER_ADD -> ResponseType.CONVERSATION_ADD_MEMBER_RESPONSE;
             case MEMBER_DELETE -> ResponseType.CONVERSATION_REMOVE_MEMBER_RESPONSE;
             case CONVERSATION_DELETE -> ResponseType.CONVERSATION_DELETE_RESPONSE;

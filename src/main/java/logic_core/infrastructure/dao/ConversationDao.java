@@ -109,22 +109,22 @@ public class ConversationDao extends GenericDAO<Conversation>
         );
     }
 
-    public List<Conversation> findConversationsByUserId(UUID userId)
+    public List<Conversation> findConversationsByUserId(UUID userId, int page, int pageSize)
     {
         if (userId == null)
         {
             return List.of();
         }
 
+        int offset = Math.max(0, (page - 1) * pageSize);
+
         return findByJpql(
                 """
-                SELECT DISTINCT c
+                SELECT c
                 FROM Conversation c
-                LEFT JOIN FETCH c.members cmFetch
-                LEFT JOIN FETCH cmFetch.user u
                 WHERE c.isDeleted = false
-                  AND (u IS NULL OR u.isDeleted = false)
-                  AND c.id IN (
+                  AND c.id IN
+                  (
                         SELECT cm.conversation.id
                         FROM ConversationMember cm
                         WHERE cm.user.id = :userId
@@ -133,7 +133,32 @@ public class ConversationDao extends GenericDAO<Conversation>
                   )
                 ORDER BY c.updatedAt DESC
                 """,
-                query -> query.setParameter("userId", userId)
+                query ->
+                {
+                    query.setParameter("userId", userId);
+                    query.setFirstResult(offset);
+                    query.setMaxResults(pageSize);
+                }
+        );
+    }
+
+    public long countConversations(UUID userId)
+    {
+        if (userId == null)
+        {
+            return 0;
+        }
+
+        return countByJpql(
+                """
+                SELECT COUNT(DISTINCT c)
+                FROM Conversation c
+                JOIN c.members cm
+                WHERE c.isDeleted = false
+                  AND cm.user.id = :userId
+                  AND cm.user.isDeleted = false
+                """,
+                q -> q.setParameter("userId", userId)
         );
     }
 
