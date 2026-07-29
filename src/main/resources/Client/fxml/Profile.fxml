@@ -72,15 +72,16 @@
 
                                         <HBox spacing="20.0" style="-fx-padding: 5 0 0 0;">
                                             <children>
-                                                <HBox spacing="5.0">
+                                                <HBox onMouseClicked="#handleShowFollowing" spacing="5.0" style="-fx-cursor: hand;">
                                                     <children>
-                                                        <Label style="-fx-font-weight: bold; -fx-text-fill: #0f1419;" text="0" />
+                                                        <Label fx:id="followingCountLabel" style="-fx-font-weight: bold; -fx-text-fill: #0f1419;" text="0" />
                                                         <Label text="Following" textFill="#536471" />
                                                     </children>
                                                 </HBox>
-                                                <HBox spacing="5.0">
+
+                                                <HBox onMouseClicked="#handleShowFollowers" spacing="5.0" style="-fx-cursor: hand;">
                                                     <children>
-                                                        <Label style="-fx-font-weight: bold; -fx-text-fill: #0f1419;" text="0" />
+                                                        <Label fx:id="followersCountLabel" style="-fx-font-weight: bold; -fx-text-fill: #0f1419;" text="0" />
                                                         <Label text="Followers" textFill="#536471" />
                                                     </children>
                                                 </HBox>
