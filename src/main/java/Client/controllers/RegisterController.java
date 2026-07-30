@@ -15,7 +15,7 @@ public class RegisterController
 {
     private static final Logger log = Logger.getLogger(RegisterController.class.getName());
 
-    private static final String HOME_FXML = "/Client/fxml/Home.fxml";
+    private static final String HOME_FXML = "/Client/fxml/MainLayout.fxml";
     private static final String LOGIN_FXML = "/Client/fxml/Login.fxml";
 
     @FXML
@@ -40,12 +40,10 @@ public class RegisterController
     private Label errorLabel;
 
     private final ClientApplicationContext context;
-    private final AuthClientService authClientService;
 
     public RegisterController(ClientApplicationContext context)
     {
         this.context = context;
-        this.authClientService = new AuthClientService(context);
     }
 
     @FXML
@@ -73,38 +71,8 @@ public class RegisterController
 
         setLoading(true);
 
-        authClientService.register(username, email, password, displayName)
-                .thenAccept(result -> Platform.runLater(() -> {
-                    setLoading(false);
 
-                    if (result.isSuccess())
-                    {
-                        AuthResponse auth = result.data();
-                        log.info("Register OK: " + auth.username() + " / " + auth.userId());
-
-                        context.navigation().navigateTo(HOME_FXML, "X - Home");
-                    }
-                    else
-                    {
-                        showError(result.errorMessage() != null
-                                ? result.errorMessage()
-                                : "Registration failed");
-                    }
-                }))
-                .exceptionally(ex -> {
-                    Platform.runLater(() -> {
-                        setLoading(false);
-
-                        showError("Connection error. Please try again later.");
-
-                        log.log(Level.SEVERE, "Register flow failed", ex);
-                    });
-                    return null;
-                });
-
-        setLoading(true);
-
-        authClientService.register(username, email, password, username)
+        context.getAuthClientService().register(username, email, password, displayName)
                 .thenAccept(result -> Platform.runLater(() -> {
                     setLoading(false);
 

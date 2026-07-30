@@ -100,10 +100,13 @@ public final class SocketClient implements AutoCloseable
     {
         try
         {
+            System.out.println(1);
             out.write(payload);
+            System.out.println(2);
             out.newLine();
+            System.out.println(3);
             out.flush();
-
+            System.out.println(4);
             String rawResponse = in.readLine();
             if (rawResponse == null || rawResponse.isBlank())
             {

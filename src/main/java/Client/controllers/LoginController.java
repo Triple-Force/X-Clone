@@ -10,15 +10,17 @@ import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.scene.image.ImageView;
 import logic_core.app.dto.response.AuthResponse;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class LoginController
 {
-    private static final String FORGOT_PASSWORD_FXML = "/Client/fxml/ForgotPassword.fxml";
+    private static final String FORGOT_PASSWORD_FXML = "/Client/fxml/Forgotpassword.fxml";
     private static final String REGISTER_FXML = "/Client/fxml/Register.fxml";
-    private static final String HOME_FXML = "/Client/fxml/Home.fxml";
+    private static final String HOME_FXML = "/Client/fxml/MainLayout.fxml";
+    public ImageView logoImageView;
     @FXML
     private TextField usernameField;
 

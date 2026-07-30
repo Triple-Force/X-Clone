@@ -1,22 +1,38 @@
 package Client.controllers;
 
 import Client.ClientApplicationContext;
-import com.google.gson.Gson;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.input.KeyCode;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import logic_core.app.dto.response.ConversationMessagesResponse;
+import logic_core.app.dto.response.ConversationSummaryResponse;
+import logic_core.app.dto.response.GetConversationsResponse;
+import logic_core.app.dto.response.MessageInfoResponse;
 
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class MessagesController {
 
     private static final Logger log = Logger.getLogger(MessagesController.class.getName());
+
+    private static final int CONVERSATIONS_PAGE = 1;
+    private static final int CONVERSATIONS_PAGE_SIZE = 50;
+
+    private static final int MESSAGES_PAGE = 1;
+    private static final int MESSAGES_PAGE_SIZE = 100;
+
 
     @FXML
     private VBox chatsContainer;
@@ -34,141 +50,657 @@ public class MessagesController {
     private Button sendMessageButton;
 
     private final ClientApplicationContext context;
-    private final Gson gson = new Gson();
 
     private UUID selectedChatId;
 
-    public MessagesController(ClientApplicationContext context) {
-        this.context = context;
+    private final AtomicLong conversationsRequestVersion =
+            new AtomicLong(0);
+
+    private final AtomicLong messagesRequestVersion =
+            new AtomicLong(0);
+
+    private final AtomicLong sendRequestVersion =
+            new AtomicLong(0);
+
+
+    public MessagesController(
+            ClientApplicationContext context) {
+        this.context = context;;
     }
 
     @FXML
     public void initialize() {
-        loadUserConversations();
-    }
-
-    @FXML
-    void handleSendMessage(ActionEvent event) {
-        String messageText = messageInputField.getText();
-
-        if (messageText == null || messageText.trim().isEmpty()) {
-            return;
-        }
-
-        if (selectedChatId == null) {
-            log.warning("No conversation selected to send message.");
-            return;
-        }
 
         sendMessageButton.setDisable(true);
 
-        context.networkExecutor().execute(() -> {
-            try {
-                log.info("Sending message locally to chat " + selectedChatId + ": " + messageText);
+        messageInputField.setOnKeyPressed(event -> {
 
-                /*
-                 * TODO
-                 *
-                 * MessageEnvelope payload = new MessageEnvelope(selectedChatId, messageText.trim());
-                 * RequestEnvelope request = new RequestEnvelope(
-                 *         UUID.randomUUID(),
-                 *         RequestType.MESSAGE_SEND, // Replace with actual RequestType when available
-                 *         gson.toJsonTree(payload),
-                 *         null
-                 * );
-                 * ResponseEnvelope response = context.socketClient().send(request);
-                 */
-
-                Platform.runLater(() -> {
-                    messageInputField.clear();
-                    sendMessageButton.setDisable(false);
-                    // Refresh current active conversation messages
-                    loadConversationMessages(selectedChatId);
-                });
-
-            } catch (Exception e) {
-                log.severe("Error sending message: " + e.getMessage());
-                Platform.runLater(() -> sendMessageButton.setDisable(false));
+            if (event.getCode() == KeyCode.ENTER) {
+                handleSendMessage(null);
+                event.consume();
             }
         });
-    }
-
-    private void loadUserConversations() {
-        context.networkExecutor().execute(() -> {
-            try {
-                /*
-                 * TODO
-                 *
-                 * RequestEnvelope request = new RequestEnvelope(
-                 *         UUID.randomUUID(),
-                 *         RequestType.MESSAGE_GET_CONVERSATIONS, // Replace with actual RequestType when available
-                 *         null,
-                 *         null
-                 * );
-                 * ResponseEnvelope response = context.socketClient().send(request);
-                 */
 
 
-                List<String> mockChatUsers = List.of();
+        if (!context.session().isLoggedIn()) {
 
-                Platform.runLater(() -> {
-                    chatsContainer.getChildren().clear();
+            showMessagesPlaceholder("Please log in to view your messages.");
 
-                    for (String username : mockChatUsers) {
-                        Label chatItem = new Label(username);
-                        chatItem.setStyle("-fx-padding: 10; -fx-cursor: hand; -fx-font-size: 14px;");
-
-                        chatItem.setOnMouseClicked(e -> {
-                            selectedChatId = UUID.randomUUID();
-                            currentChatUserLabel.setText(username);
-                            loadConversationMessages(selectedChatId);
-                        });
-
-                        chatsContainer.getChildren().add(chatItem);
-                    }
-                });
-
-            } catch (Exception e) {
-                log.severe("Error loading conversations: " + e.getMessage());
-            }
-        });
-    }
-
-    private void loadConversationMessages(UUID chatId) {
-        if (chatId == null) {
             return;
         }
 
-        context.networkExecutor().execute(() -> {
-            try {
-                /*
-                 * TODO
-                 *
-                 * RequestEnvelope request = new RequestEnvelope(
-                 *         UUID.randomUUID(),
-                 *         RequestType.MESSAGE_GET_HISTORY, // Replace with actual RequestType when available
-                 *         gson.toJsonTree(chatId),
-                 *         null
-                 * );
-                 * ResponseEnvelope response = context.socketClient().send(request);
-                 */
+        loadUserConversations();
+    }
 
-                // Temporary mock messages for testing conversation UI layout
-                List<String> mockMessages = List.of("");
 
-                Platform.runLater(() -> {
-                    messagesContainer.getChildren().clear();
+    // =========================================================
+    // CONVERSATIONS
+    // =========================================================
 
-                    for (String msg : mockMessages) {
-                        Label msgLabel = new Label(msg);
-                        msgLabel.setStyle("-fx-background-color: #eff3f4; -fx-padding: 8 12 8 12; -fx-background-radius: 12;");
-                        messagesContainer.getChildren().add(msgLabel);
-                    }
+    private void loadUserConversations() {
+
+        long requestVersion = conversationsRequestVersion.incrementAndGet();
+
+        showChatsPlaceholder("Loading conversations...");
+
+        context.getConversationClientService()
+                .getConversations(
+                        CONVERSATIONS_PAGE,
+                        CONVERSATIONS_PAGE_SIZE
+                )
+
+                .thenAccept(result ->
+                        Platform.runLater(() -> {
+
+                            if (requestVersion != conversationsRequestVersion.get()) {
+                                return;
+                            }
+
+
+                            if (result == null || result.isFailure()) {
+
+                                String error = result == null ? "UNKNOWN_ERROR" : result.getError();
+
+                                log.warning("Failed to load conversations: " + error);
+
+                                showChatsPlaceholder("Failed to load conversations.");
+
+                                return;
+                            }
+
+                            GetConversationsResponse response = result.getData();
+
+
+                            if (response == null || response.conversations() == null || response.conversations().isEmpty()) {
+
+                                showChatsPlaceholder("No conversations yet.");
+
+                                currentChatUserLabel.setText("Select a chat");
+
+                                messagesContainer.getChildren().clear();
+
+                                sendMessageButton.setDisable(true);
+
+                                return;
+                            }
+
+
+                            renderConversations(response.conversations());
+
+                            ConversationSummaryResponse first = response.conversations().get(0);
+
+                            selectConversation(first);
+                        })
+                )
+
+                .exceptionally(error -> {
+
+                    log.log(Level.SEVERE, "Critical error loading conversations", error);
+
+                    Platform.runLater(() -> showChatsPlaceholder("Connection error."));
+
+                    return null;
                 });
+    }
 
-            } catch (Exception e) {
-                log.severe("Error loading conversation messages: " + e.getMessage());
+
+    private void renderConversations(List<ConversationSummaryResponse> conversations) {
+
+        chatsContainer.getChildren().clear();
+
+
+        for (ConversationSummaryResponse conversation : conversations) {
+
+            if (conversation == null || conversation.conversationId() == null) {
+                continue;
             }
-        });
+
+            VBox conversationCard = createConversationCard(conversation);
+
+            chatsContainer.getChildren().add(conversationCard);
+        }
+    }
+
+
+    private VBox createConversationCard(ConversationSummaryResponse conversation) {
+
+        String title = safeText(conversation.title(), "Conversation");
+
+
+        String lastMessage = safeText(conversation.lastMessage(), "");
+
+
+        Label titleLabel = new Label(title);
+
+        titleLabel.setStyle("-fx-font-size: 14px; " + "-fx-font-weight: bold;");
+
+
+        Label previewLabel = new Label(lastMessage);
+
+        previewLabel.setWrapText(true);
+
+        previewLabel.setMaxWidth(190);
+
+        previewLabel.setStyle("-fx-text-fill: #536471; " + "-fx-font-size: 12px;");
+
+        VBox textContainer =
+                new VBox(
+                        3,
+                        titleLabel,
+                        previewLabel
+                );
+
+        HBox.setHgrow(textContainer, Priority.ALWAYS);
+
+        Label unreadLabel = new Label();
+
+        if (conversation.unreadCount() > 0) {
+
+            unreadLabel.setText(String.valueOf(conversation.unreadCount()));
+
+            unreadLabel.setStyle(
+                    "-fx-background-color: #1d9bf0; " +
+                            "-fx-text-fill: white; " +
+                            "-fx-font-weight: bold; " +
+                            "-fx-padding: 4 7 4 7; " +
+                            "-fx-background-radius: 20;"
+            );
+        }
+
+
+        HBox card =
+                new HBox(
+                        10,
+                        textContainer,
+                        unreadLabel
+                );
+
+        card.setStyle(
+                "-fx-padding: 10; " +
+                        "-fx-background-radius: 10; " +
+                        "-fx-cursor: hand;"
+        );
+
+        card.setMaxWidth(Double.MAX_VALUE);
+
+        VBox wrapper = new VBox(card);
+
+        wrapper.setMaxWidth(Double.MAX_VALUE);
+
+        if (conversation.conversationId().equals(selectedChatId)) {
+
+            card.setStyle(
+                    "-fx-padding: 10; " +
+                            "-fx-background-color: #eff3f4; " +
+                            "-fx-background-radius: 10; " +
+                            "-fx-cursor: hand;"
+            );
+        }
+
+
+        card.setOnMouseClicked(event -> selectConversation(conversation));
+
+        return wrapper;
+    }
+
+
+    private void selectConversation(ConversationSummaryResponse conversation) {
+
+        if (conversation == null || conversation.conversationId() == null) {
+            return;
+        }
+
+        selectedChatId = conversation.conversationId();
+
+        currentChatUserLabel.setText(
+                safeText(
+                        conversation.title(),
+                        "Conversation"
+                )
+        );
+
+
+        sendMessageButton.setDisable(false);
+
+        loadUserConversationsWithoutAutoSelection();
+
+
+        loadConversationMessages(
+                selectedChatId
+        );
+    }
+
+    private void loadUserConversationsWithoutAutoSelection() {
+
+        long requestVersion = conversationsRequestVersion.incrementAndGet();
+
+
+        context.getConversationClientService()
+                .getConversations(
+                        CONVERSATIONS_PAGE,
+                        CONVERSATIONS_PAGE_SIZE
+                )
+
+                .thenAccept(result ->
+                        Platform.runLater(() -> {
+
+                            if (requestVersion != conversationsRequestVersion.get()) {
+                                return;
+                            }
+
+
+                            if (result == null || result.isFailure()) {
+                                return;
+                            }
+
+
+                            GetConversationsResponse response = result.getData();
+
+
+                            if (response == null || response.conversations() == null) {
+                                return;
+                            }
+
+
+                            chatsContainer.getChildren().clear();
+
+
+                            for (ConversationSummaryResponse conversation : response.conversations()) {
+
+                                if (conversation == null || conversation.conversationId() == null) {
+                                    continue;
+                                }
+
+
+                                VBox card = createConversationCard(conversation);
+
+                                chatsContainer.getChildren().add(card);
+                            }
+                        })
+                )
+
+                .exceptionally(error -> {
+
+                    log.log(
+                            Level.WARNING,
+                            "Failed to refresh conversation list",
+                            error
+                    );
+
+                    return null;
+                });
+    }
+
+
+    // =========================================================
+    // MESSAGES
+    // =========================================================
+
+    private void loadConversationMessages(UUID conversationId) {
+
+        if (conversationId == null) {
+            return;
+        }
+
+
+        long requestVersion = messagesRequestVersion.incrementAndGet();
+
+
+        showMessagesPlaceholder("Loading messages...");
+
+
+        context.getMessageClientService()
+                .getConversationMessages(
+                        conversationId,
+                        MESSAGES_PAGE,
+                        MESSAGES_PAGE_SIZE
+                )
+
+                .thenAccept(result ->
+                        Platform.runLater(() -> {
+
+                            if (requestVersion != messagesRequestVersion.get()) {
+                                return;
+                            }
+
+
+                            if (!conversationId.equals(selectedChatId)) {
+                                return;
+                            }
+
+
+                            if (result == null || result.isFailure()) {
+
+                                String error =
+                                        result == null
+                                                ? "UNKNOWN_ERROR"
+                                                : result.getError();
+
+                                log.warning("Failed to load conversation messages: " + error);
+
+                                showMessagesPlaceholder("Failed to load messages.");
+
+                                return;
+                            }
+
+                            ConversationMessagesResponse response = result.getData();
+
+                            if (response == null || response.messages() == null || response.messages().isEmpty()) {
+
+                                showMessagesPlaceholder("No messages yet. Start the conversation!");
+
+                                return;
+                            }
+
+                            renderMessages(response.messages());
+                        })
+                )
+
+                .exceptionally(error -> {
+
+                    log.log(
+                            Level.SEVERE,
+                            "Critical error loading messages",
+                            error
+                    );
+
+                    Platform.runLater(() -> showMessagesPlaceholder("Connection error."));
+
+                    return null;
+                });
+    }
+
+
+    private void renderMessages(List<MessageInfoResponse> messages) {
+
+        messagesContainer.getChildren().clear();
+
+        UUID currentUserId = context.session().getCurrentUserId();
+
+        for (MessageInfoResponse message : messages) {
+
+            if (message == null) {
+                continue;
+            }
+
+            boolean sentByCurrentUser =
+                    currentUserId != null
+                            && currentUserId.equals(
+                            message.senderId()
+                    );
+
+
+            HBox bubble =
+                    createMessageBubble(
+                            message,
+                            sentByCurrentUser
+                    );
+
+
+            messagesContainer.getChildren().add(bubble);
+        }
+    }
+
+
+    private HBox createMessageBubble(MessageInfoResponse message, boolean sentByCurrentUser) {
+
+        Label contentLabel = new Label(safeText(message.content(), ""));
+
+        contentLabel.setWrapText(true);
+
+        contentLabel.setMaxWidth(450);
+
+
+        String timeText = "";
+
+        if (message.createdAt() != null) {
+
+            timeText = message.createdAt().format(DateTimeFormatter.ofPattern("HH:mm"));
+        }
+
+        Label timeLabel = new Label(timeText);
+
+        timeLabel.setStyle(
+                "-fx-font-size: 10px; " +
+                        "-fx-text-fill: #536471;"
+        );
+
+
+        VBox bubbleContent =
+                new VBox(
+                        3,
+                        contentLabel,
+                        timeLabel
+                );
+
+        bubbleContent.setMaxWidth(470);
+
+        HBox bubble =
+                new HBox(
+                        bubbleContent
+                );
+
+
+        bubble.setMaxWidth(Double.MAX_VALUE);
+
+
+        if (sentByCurrentUser) {
+
+            bubble.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
+
+            contentLabel.setStyle(
+                    "-fx-background-color: #1d9bf0; " +
+                            "-fx-text-fill: white; " +
+                            "-fx-padding: 9 13 9 13; " +
+                            "-fx-background-radius: 16;"
+            );
+
+        } else {
+
+            bubble.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+            contentLabel.setStyle(
+                    "-fx-background-color: #eff3f4; " +
+                            "-fx-text-fill: #0f1419; " +
+                            "-fx-padding: 9 13 9 13; " +
+                            "-fx-background-radius: 16;"
+            );
+        }
+
+
+        if (message.edited()) {
+
+            Label editedLabel = new Label("edited");
+
+            editedLabel.setStyle(
+                    "-fx-font-size: 10px; " +
+                            "-fx-text-fill: #536471;"
+            );
+
+            bubbleContent.getChildren().add(editedLabel);
+        }
+
+
+        return bubble;
+    }
+
+
+    // =========================================================
+    // SEND MESSAGE
+    // =========================================================
+
+    @FXML
+    void handleSendMessage(
+            ActionEvent event) {
+
+        if (selectedChatId == null) {
+
+            log.warning("No conversation selected.");
+
+            return;
+        }
+
+
+        String content = messageInputField.getText();
+
+
+        if (content == null || content.isBlank()) {
+            return;
+        }
+
+
+        String trimmedContent = content.trim();
+
+
+        if (trimmedContent.length() > 1000) {
+
+            showMessagesPlaceholder("Message cannot exceed 1000 characters.");
+
+            return;
+        }
+
+
+        UUID conversationId = selectedChatId;
+        long requestVersion = sendRequestVersion.incrementAndGet();
+        sendMessageButton.setDisable(true);
+
+
+        messageInputField.setDisable(true);
+
+
+        context.getMessageClientService()
+                .sendMessage(
+                        conversationId,
+                        trimmedContent
+                )
+
+                .thenAccept(result ->
+                        Platform.runLater(() -> {
+
+                            if (requestVersion != sendRequestVersion.get()) {
+                                return;
+                            }
+
+
+                            if (result == null || result.isFailure()) {
+
+                                String error =
+                                        result == null
+                                                ? "UNKNOWN_ERROR"
+                                                : result.getError();
+
+                                log.warning("Message send failed: " + error);
+
+
+                                sendMessageButton.setDisable(false);
+
+                                messageInputField.setDisable(false);
+
+                                return;
+                            }
+
+
+                            messageInputField.clear();
+
+
+                            loadConversationMessages(
+                                    conversationId
+                            );
+
+
+                            loadUserConversationsWithoutAutoSelection();
+
+
+                            sendMessageButton.setDisable(false);
+
+                            messageInputField.setDisable(false);
+
+
+                            messageInputField.requestFocus();
+                        })
+                )
+
+                .exceptionally(error -> {
+
+                    log.log(
+                            Level.SEVERE,
+                            "Critical error sending message",
+                            error
+                    );
+
+                    Platform.runLater(() -> {
+                        sendMessageButton.setDisable(false);
+                        messageInputField.setDisable(false);
+                    });
+
+                    return null;
+                });
+    }
+
+
+    // =========================================================
+    // UI HELPERS
+    // =========================================================
+
+    private void showChatsPlaceholder(String message) {
+
+        chatsContainer.getChildren().clear();
+
+
+        Label label = new Label(message);
+
+
+        label.setWrapText(true);
+
+
+        label.setStyle(
+                "-fx-padding: 10; " +
+                        "-fx-text-fill: #536471;"
+        );
+
+
+        chatsContainer.getChildren().add(label);
+    }
+
+
+    private void showMessagesPlaceholder(
+            String message) {
+
+        messagesContainer.getChildren().clear();
+
+        Label label = new Label(message);
+        label.setWrapText(true);
+        label.setStyle("-fx-text-fill: #536471;");
+
+        messagesContainer.getChildren().add(label);
+    }
+
+
+    private String safeText(String value, String fallback) {
+
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        return value;
     }
 }

@@ -137,13 +137,16 @@ public class RequestDispatcher
             em = DependencyContainer.createEntityManager();
             EntityManagerContext.set(em);
             tx = em.getTransaction();
+
+            System.out.println(1);
             tx.begin();
-
+            System.out.println(1);
             F facade = facadeFactory.apply(em);
-
+            System.out.println(1);
             ResponseEnvelope response = handler.apply(facade, payload);
-
+            System.out.println(1);
             tx.commit();
+            System.out.println(1);
             return response;
 
         }
@@ -1503,6 +1506,12 @@ public class RequestDispatcher
 
         Result<UpdateCompleteProfileResponse> result =
                 facade.updateCompleteProfile(request);
+
+        System.out.println("=========");
+        System.out.println(request.displayName());
+        System.out.println(request.username());
+        System.out.println(request.banner());
+        System.out.println(request.avatar());
 
         if (result.isFailure())
         {

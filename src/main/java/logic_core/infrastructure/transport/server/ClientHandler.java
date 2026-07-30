@@ -58,10 +58,15 @@ public class ClientHandler implements Runnable
             String line;
             while ((line = reader.readLine()) != null)
             {
+                System.out.println(2);
                 ResponseEnvelope response = handleRawMessage(line);
+                System.out.println(3);
                 writer.write(gson.toJson(response));
+                System.out.println(4);
                 writer.newLine();
+                System.out.println(5);
                 writer.flush();
+                System.out.println(6);
             }
         }
         catch (SocketTimeoutException e)

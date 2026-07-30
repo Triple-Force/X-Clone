@@ -1,20 +1,21 @@
 package Client.controllers;
 
 import Client.ClientApplicationContext;
-import Shared.Models.Tweet.Tweet;
-import Shared.Models.User.User;
-import com.google.gson.Gson;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
-import logic_core.infrastructure.transport.RequestEnvelope;
-import logic_core.infrastructure.transport.RequestType;
-import logic_core.infrastructure.transport.ResponseEnvelope;
+import logic_core.app.dto.request.GetTimelineResponse;
+import logic_core.app.dto.timeline.TimelineTweet;
+import logic_core.domain.repository.TimelineType;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
@@ -36,8 +37,14 @@ public class TimelineController {
     @FXML
     private VBox tweetsContainer;
 
+    @FXML
+    private ImageView mediaPreview;
+
+    @FXML
+    private Button addMediaButton;
+
     private final ClientApplicationContext context;
-    private final Gson gson = new Gson();
+
 
     public TimelineController(ClientApplicationContext context) {
         this.context = context;
@@ -59,114 +66,152 @@ public class TimelineController {
 
         submitTweetButton.setDisable(true);
 
-        context.networkExecutor().execute(() -> {
-            try {
-                log.info("Tweet action triggered locally. Content: " + tweetContent);
-
-                /*
-                 * TODO
-                 *
-                 * User author = new User();
-                 * Tweet newTweet = Tweet.builder()
-                 *         .author(author)
-                 *         .content(tweetContent.trim())
-                 *         .build();
-                 *
-                 * JsonElement payloadJson = gson.toJsonTree(newTweet);
-                 *
-                 * RequestEnvelope request = new RequestEnvelope(
-                 *         UUID.randomUUID(),
-                 *         RequestType.TWEET_CREATE,
-                 *         payloadJson,
-                 *         null
-                 * );
-                 *
-                 * ResponseEnvelope response = context.socketClient().send(request);
-                 */
-                Platform.runLater(() -> {
-                    newTweetField.clear();
+        context.getTweetService().createTweet(
+                tweetContent.trim(),
+                null,
+                null,
+                List.of(),
+                null
+        ).thenAccept(result ->
+                Platform.runLater(() ->
+                {
                     submitTweetButton.setDisable(false);
-                    loadTimelineTweets();
-                });
 
-            } catch (Exception e) {
-                log.severe("Error in handleSubmitTweet: " + e.getMessage());
-                Platform.runLater(() -> submitTweetButton.setDisable(false));
-            }
+                    if (result == null || result.isFailure())
+                    {
+                        log.warning("Create Tweet failed : " + (result == null ? "" : result.getError()));
+                        return;
+                    }
+                    newTweetField.clear();
+
+                    loadTimelineTweets();
+                })
+        ).exceptionally(ex ->
+        {
+            Platform.runLater(() ->
+                    submitTweetButton.setDisable(false));
+
+            log.severe(ex.getMessage());
+
+            return null;
         });
     }
 
     private void loadCurrentUserProfile() {
-        if (context.session().isLoggedIn()) {
-            UUID currentUserId = context.session().getCurrentUserId();
-
-            /*
-             * TODO
-             *
-             * RequestEnvelope request = new RequestEnvelope(
-             *         UUID.randomUUID(),
-             *         RequestType.USER_GET_PROFILE,
-             *         gson.toJsonTree(currentUserId),
-             *         null
-             * );
-             * ResponseEnvelope response = context.socketClient().send(request);
-             */
-
-            // Temporary local update for UI layout testing
-            Platform.runLater(() -> {
-                // TODO
-                // userDisplayNameLabel.setText("Current User");
-                // usernameLabel.setText("@current_user");
-            });
-        }
+        // بعداً Avatar از Cache یا ProfileService خوانده می‌شود.
     }
 
 
     private void loadTimelineTweets() {
-        context.networkExecutor().execute(() -> {
-            try {
-                /*
-                 * TODO
-                 *
-                 * RequestEnvelope request = new RequestEnvelope(
-                 *         UUID.randomUUID(),
-                 *         RequestType.TWEET_GET_TIMELINE,
-                 *         null,
-                 *         null
-                 * );
-                 * ResponseEnvelope response = context.socketClient().send(request);
-                 */
+        if (!context.session().isLoggedIn()) {
+            return;
+        }
 
-                // Temporary mock data for UI testing
-                List<Tweet> mockTweets = createMockTweets();
+        UUID currentUser = context.getSnapshot().userId();
 
-                Platform.runLater(() -> {
+        context.getTimelineService().getTimeline(
+                TimelineType.HOME,
+                currentUser,
+                null,
+                0,
+                20
+        ).thenAccept(result ->
+                Platform.runLater(() ->
+                {
                     tweetsContainer.getChildren().clear();
 
-                    for (Tweet tweet : mockTweets) {
-                        // TODO
-                        // Node tweetCard = createTweetCardNode(tweet);
-                        // tweetsContainer.getChildren().add(tweetCard);
-                    }
-                });
+                    if (result == null || result.isFailure())
+                    {
+                        log.warning("Timeline Error : "
+                                + (result == null ? "" : result.getError()));
 
-            } catch (Exception e) {
-                log.severe("Error loading timeline tweets: " + e.getMessage());
-            }
+                        showEmptyState("Unable to load timeline.");
+                        return;
+                    }
+
+                    GetTimelineResponse response =
+                            result.getData();
+
+                    if (response == null
+                            || response.tweets() == null
+                            || response.tweets().isEmpty())
+                    {
+                        showEmptyState(
+                                "No posts yet! Your timeline is empty."
+                        );
+                        return;
+                    }
+
+                    for (TimelineTweet tweet : response.tweets())
+                    {
+                        addTweetCard(tweet);
+                    }
+
+                })
+        ).exceptionally(ex ->
+        {
+            Platform.runLater(() ->
+                    showEmptyState(
+                            "Something went wrong while loading timeline."
+                    ));
+
+            log.severe(ex.getMessage());
+
+            return null;
         });
     }
 
-    // Helper method to generate dummy data for UI testing
-    private List<Tweet> createMockTweets() {
-        User sampleUser = new User();
-        sampleUser.setDisplayName("Test User");
-        sampleUser.setUsername("test_user");
+    private void addTweetCard(TimelineTweet tweet) {
 
-        Tweet t1 = Tweet.builder()
-                .author(sampleUser)
-                .content("This is a mock tweet for testing the timeline layout")
-                .build();
+        try {
 
-        return List.of(t1);
+            FXMLLoader loader = new FXMLLoader(
+                    getClass().getResource("/Client/fxml/TweetItem.fxml")
+            );
+
+            loader.setControllerFactory(type -> {
+
+                if (type == TweetItemController.class) {
+                    return new TweetItemController(context);
+                }
+
+                try {
+                    return type.getDeclaredConstructor().newInstance();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
+            Node node = loader.load();
+
+            TweetItemController controller = loader.getController();
+            controller.setTweet(tweet);
+
+            tweetsContainer.getChildren().add(node);
+
+        } catch (IOException e) {
+            log.severe(e.getMessage());
+        }
+    }
+
+    private void showEmptyState(String message)
+    {
+        Label label = new Label(message);
+
+        label.setStyle("-fx-text-fill:#666666;" + "-fx-padding:16;");
+
+        tweetsContainer.getChildren().add(label);
+    }
+
+    @FXML
+    void handleSelectMedia()
+    {
+
+    }
+
+    @FXML
+    void handleCreatePoll()
+    {
+
     }
 }
