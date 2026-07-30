@@ -23,9 +23,12 @@
                         <Insets bottom="10.0" left="10.0" />
                     </VBox.margin>
                 </Label>
+
                 <Button maxWidth="1.7976931348623157E308" onAction="#showTimeline" style="-fx-background-color: transparent; -fx-text-fill: #0f1419; -fx-alignment: center-left; -fx-font-weight: bold; -fx-font-size: 16px; -fx-cursor: hand;" text="🏠  Home" />
-                <Button maxWidth="1.7976931348623157E308" onAction="#showMessages" style="-fx-background-color: transparent; -fx-text-fill: #0f1419; -fx-alignment: center-left; -fx-font-size: 16px; -fx-cursor: hand;" text="📩  Messages" />
-                <Button maxWidth="1.7976931348623157E308" onAction="#showProfile" style="-fx-background-color: transparent; -fx-text-fill: #0f1419; -fx-alignment: center-left; -fx-font-size: 16px; -fx-cursor: hand;" text="👤  Profile" />
+                <Button maxWidth="1.7976931348623157E308" onAction="#showMessages" style="-fx-background-color: transparent; -fx-text-fill: #0f1419; -fx-alignment: center-left; -fx-font-weight: bold; -fx-font-size: 16px; -fx-cursor: hand;" text="📩  Messages" />
+                <Button maxWidth="1.7976931348623157E308" onAction="#showProfile" style="-fx-background-color: transparent; -fx-text-fill: #0f1419; -fx-alignment: center-left; -fx-font-weight: bold; -fx-font-size: 16px; -fx-cursor: hand;" text="👤  Profile" />
+                <Button maxWidth="1.7976931348623157E308" onAction="#showFollowingList" style="-fx-background-color: transparent; -fx-text-fill: #0f1419; -fx-alignment: center-left; -fx-font-weight: bold; -fx-font-size: 16px; -fx-cursor: hand;" text="🤝  Following" />
+                <Button maxWidth="1.7976931348623157E308" onAction="#showFollowersList" style="-fx-background-color: transparent; -fx-text-fill: #0f1419; -fx-alignment: center-left; -fx-font-weight: bold; -fx-font-size: 16px; -fx-cursor: hand;" text="👥  Followers" />
             </children>
         </VBox>
 
