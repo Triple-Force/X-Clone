@@ -108,6 +108,7 @@ public class DatabaseHelper
                     SELECT COUNT(u)
                     FROM User u
                     WHERE u.username = :username
+                    AND u.isDeleted = false
                     """, Long.class)
                     .setParameter("username", username)
                     .getSingleResult();
@@ -159,6 +160,7 @@ public class DatabaseHelper
             return em.createQuery("""
                     SELECT COUNT(t)
                     FROM Tweet t
+                    WHERE t.isDeleted = false
                     """, Long.class)
                     .getSingleResult();
         }
@@ -225,6 +227,7 @@ public class DatabaseHelper
             return em.createQuery("""
                 SELECT COUNT(c)
                 FROM Conversation c
+                WHERE c.isDeleted = false
                 """, Long.class)
                     .getSingleResult();
         }
@@ -246,9 +249,33 @@ public class DatabaseHelper
         {
             return em.createQuery("""
                 SELECT COUNT(m)
-                FROM Message m
+                FROM DirectMessage m
                 """, Long.class)
                     .getSingleResult();
+        }
+        finally
+        {
+            em.close();
+        }
+    }
+
+    public boolean isFollowing(UUID followerId, UUID followingId)
+    {
+        EntityManager em = emf.createEntityManager();
+
+        try
+        {
+            Long count = em.createQuery("""
+            SELECT COUNT(f)
+            FROM Follow f
+            WHERE f.follower.id = :follower
+              AND f.following.id = :following
+            """, Long.class)
+                    .setParameter("follower", followerId)
+                    .setParameter("following", followingId)
+                    .getSingleResult();
+
+            return count > 0;
         }
         finally
         {
