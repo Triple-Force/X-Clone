@@ -4,6 +4,7 @@ import Shared.Database.DAO.GenericDAO;
 import Shared.Models.User.User;
 import jakarta.persistence.LockModeType;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -166,6 +167,26 @@ public class UserDao extends GenericDAO<User>
                         """,
                         q -> q.setParameter("tweetId", tweetId)
                 )
+        );
+    }
+
+    public List<User> searchUsers(UUID actorId, String query, int page, int pageSize)
+    {
+        int offset = page * pageSize;
+
+        return findByJpql("""
+        SELECT u
+        FROM User u
+        WHERE u.isDeleted = false
+          AND u.id <> :actorId
+          AND (
+                u.username LIKE :keyword
+             OR u.displayName LIKE :keyword
+          )
+        ORDER BY u.username ASC
+        """,
+                q -> q.setParameter("actorId", actorId)
+                        .setParameter("keyword", "%" + query + "%")
         );
     }
 }

@@ -127,6 +127,8 @@ public interface TweetRepository
 
     List<TweetModel> findTweetsByAuthorId(UUID authorId);
 
+    long countTweetsById(UUID authorId);
+
     TweetEdit appendEditHistory(UUID tweetId, String previousContent);
 
     List<TweetEdit> findEditHistoryByTweetId(UUID tweetId);
