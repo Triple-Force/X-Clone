@@ -1,5 +1,6 @@
 package Client;
 
+import Client.Service.*;
 import Client.cache.ClientCacheService;
 import Client.config.ServerConfig;
 import Client.session.ClientSession;
@@ -26,6 +27,13 @@ public final class ClientApplicationContext implements AutoCloseable
     @Setter private NavigationManager navigationManager;
     private final ClientCacheDatabase cacheDatabase;
     @Getter private final ClientCacheService cacheService;
+    @Getter private final TimelineClientService timelineService;
+    @Getter private final RelationClientService relationClientService;
+    @Getter private final AuthClientService authClientService;
+    @Getter private final ConversationClientService conversationClientService;
+    @Getter private final TweetClientService tweetService;
+    @Getter private final UserClientService userClientService;
+    @Getter private final MessageClientService messageClientService;
 
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
@@ -40,6 +48,14 @@ public final class ClientApplicationContext implements AutoCloseable
             t.setDaemon(true);
             return t;
         });
+
+        this.timelineService = new TimelineClientService(this);
+        this.tweetService = new TweetClientService(this);
+        this.relationClientService = new RelationClientService(this);
+        this.authClientService = new AuthClientService(this);
+        this.conversationClientService = new ConversationClientService(this);
+        this.userClientService = new UserClientService(this);
+        this.messageClientService = new MessageClientService(this);
     }
 
     public ClientSession session()
@@ -67,6 +83,10 @@ public final class ClientApplicationContext implements AutoCloseable
         return cacheService;
     }
 
+    public ClientSession.SessionSnapshot getSnapshot()
+    {
+        return session.snapshot();
+    }
 
     @Override
     public void close()

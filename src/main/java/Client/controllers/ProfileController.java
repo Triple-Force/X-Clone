@@ -1,23 +1,37 @@
 package Client.controllers;
 
 import Client.ClientApplicationContext;
-import Shared.Models.Tweet.Tweet;
-import Shared.Models.User.User;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Node;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import logic_core.app.dto.request.GetTimelineResponse;
+import logic_core.app.dto.response.ProfileInfoResponse;
+import logic_core.app.dto.timeline.TimelineTweet;
+import logic_core.domain.repository.TimelineType;
 
-import java.util.List;
+import java.io.IOException;
 import java.util.UUID;
 import java.util.logging.Logger;
 
 public class ProfileController {
 
     private static final Logger log = Logger.getLogger(ProfileController.class.getName());
+
+    @FXML
+    private Label followersCountLabel;
+
+    @FXML
+    private Label followingCountLabel;
 
     @FXML
     private Label headerNameLabel;
@@ -42,109 +56,278 @@ public class ProfileController {
 
     private final ClientApplicationContext context;
 
+
+    private UUID profileUserId;
+
     public ProfileController(ClientApplicationContext context) {
         this.context = context;
     }
 
     @FXML
     public void initialize() {
-        loadUserProfileData();
-        loadUserTweets();
-    }
 
-    @FXML
-    void handleEditProfile(ActionEvent event) {
-        log.info("Edit Profile button clicked.");
-        // TODO
-    }
-
-    private void loadUserProfileData() {
         if (!context.session().isLoggedIn()) {
             return;
         }
 
-        UUID currentUserId = context.session().getCurrentUserId();
+        this.profileUserId =
+                context.session().getCurrentUserId();
 
-        context.networkExecutor().execute(() -> {
-            try {
-                /*
-                 * TODO
-                 *
-                 * RequestEnvelope request = new RequestEnvelope(
-                 *         UUID.randomUUID(),
-                 *         RequestType.USER_GET_PROFILE,
-                 *         gson.toJsonTree(currentUserId),
-                 *         null
-                 * );
-                 * ResponseEnvelope response = context.socketClient().send(request);
-                 */
 
-                // Temporary mock user data for UI layout testing
-                User mockUser = createMockUser();
-
-                Platform.runLater(() -> {
-                    headerNameLabel.setText(mockUser.getDisplayName());
-                    displayNameLabel.setText(mockUser.getDisplayName());
-                    usernameLabel.setText("@" + mockUser.getUsername());
-                    // bioLabel.setText(mockUser.getBio()); // Uncomment if User model has bio field
-                });
-
-            } catch (Exception e) {
-                log.severe("Error loading profile data: " + e.getMessage());
-            }
-        });
+        loadUserProfileData();
+        loadUserTweets();
     }
+
+
+    private void loadUserProfileData() {
+
+        context.getUserClientService()
+                .getProfile(profileUserId)
+
+                .thenAccept(result -> {
+
+                    Platform.runLater(() -> {
+
+                        if (result == null || result.isFailure()) {
+
+                            log.warning(
+                                    "Profile loading failed : "
+                                            + (result == null
+                                            ? "null"
+                                            : result.getError())
+                            );
+
+                            return;
+                        }
+
+                        ProfileInfoResponse profile = result.getData();
+
+                        if(profile == null)
+                            return;
+
+                        headerNameLabel.setText(safe(profile.displayName()));
+
+                        displayNameLabel.setText(safe(profile.displayName()));
+
+                        usernameLabel.setText(
+                                profile.username() == null
+                                        ? ""
+                                        : "@" + profile.username()
+                        );
+
+
+                        bioLabel.setText(safe(profile.bio()));
+
+                        followersCountLabel.setText(String.valueOf(profile.followers()));
+
+                        followingCountLabel.setText(String.valueOf(profile.following()));
+
+                        loadAvatar(profile);
+                    });
+
+                })
+
+                .exceptionally(error -> {
+
+                    log.severe("Profile exception : " + error.getMessage());
+
+                    return null;
+                });
+    }
+
+
+
+
+    private void loadAvatar(ProfileInfoResponse profile) {
+
+        /*
+          وقتی Media سیستم کامل شد:
+
+          profile.avatarUrl()
+          یا
+          profile.avatar()
+
+          اینجا تبدیل به Image شود
+        */
+
+    }
+
+
+
 
     private void loadUserTweets() {
-        context.networkExecutor().execute(() -> {
-            try {
-                /*
-                 * TODO
-                 *
-                 * RequestEnvelope request = new RequestEnvelope(
-                 *         UUID.randomUUID(),
-                 *         RequestType.TWEET_GET_USER_TWEETS,
-                 *         null,
-                 *         null
-                 * );
-                 * ResponseEnvelope response = context.socketClient().send(request);
-                 */
 
-                // Temporary mock data for testing profile posts list
-                List<Tweet> mockUserTweets = createMockUserTweets();
+        context.getTimelineService()
 
-                Platform.runLater(() -> {
-                    userTweetsContainer.getChildren().clear();
+                .getTimeline(
+                        TimelineType.USER,
+                        profileUserId,
+                        profileUserId,
+                        0,
+                        20
+                )
 
-                    if (mockUserTweets.isEmpty()) {
-                        Label emptyLabel = new Label("You haven't posted anything yet.");
-                        emptyLabel.setStyle("-fx-text-fill: #666666;");
-                        userTweetsContainer.getChildren().add(emptyLabel);
-                    } else {
-                        for (Tweet tweet : mockUserTweets) {
-                            // TODO
-                            // Node tweetCard = createTweetCardNode(tweet);
-                            // userTweetsContainer.getChildren().add(tweetCard);
+                .thenAccept(result -> {
+
+
+                    Platform.runLater(() -> {
+
+                        userTweetsContainer.getChildren()
+                                .clear();
+
+                        if(result == null || result.isFailure()) {
+
+                            showEmptyState("Unable to load tweets");
+
+                            return;
                         }
-                    }
+
+
+                        GetTimelineResponse response = result.getData();
+
+                        if(response == null || response.tweets() == null || response.tweets().isEmpty()) {
+
+                            showEmptyState("No tweets yet");
+
+                            return;
+                        }
+
+
+
+                        for(TimelineTweet tweet : response.tweets()) {
+
+                            addTweetCard(tweet);
+                        }
+                    });
+
+                })
+                .exceptionally(error -> {
+
+                    Platform.runLater(() -> showEmptyState("Something went wrong")
+                    );
+
+                    return null;
                 });
 
-            } catch (Exception e) {
-                log.severe("Error loading user tweets: " + e.getMessage());
-            }
-        });
     }
 
-    private User createMockUser() {
-        User user = new User();
-        user.setDisplayName("");
-        user.setUsername("");
-        return user;
+    private void addTweetCard(TimelineTweet tweet) {
+
+        try {
+
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/Client/fxml/TweetItem.fxml"));
+
+
+            loader.setControllerFactory(type -> {
+
+                if(type == TweetItemController.class)
+                {
+                    return new TweetItemController(context);
+                }
+
+
+                try {
+
+                    return type.getDeclaredConstructor().newInstance();
+
+                } catch(Exception e) {
+
+                    throw new RuntimeException(e);
+                }
+
+            });
+
+            Node card = loader.load();
+
+            TweetItemController controller = loader.getController();
+
+            controller.setTweet(tweet);
+
+            userTweetsContainer.getChildren().add(card);
+
+
+        } catch(IOException e) {
+
+            log.severe("Tweet card error : " + e.getMessage()
+            );
+        }
+
     }
 
-    private List<Tweet> createMockUserTweets() {
-        User mockUser = createMockUser();
 
-        return List.of();
+    @FXML
+    private void handleEditProfile(ActionEvent event) {
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/Client/fxml/EditProfile.fxml"));
+
+            loader.setControllerFactory(type -> {
+
+                if (type == EditProfileController.class) {return new EditProfileController(context);}
+
+                try {
+                    return type.getDeclaredConstructor().newInstance();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
+            Parent root = loader.load();
+
+            Stage dialog = new Stage();
+
+            dialog.setTitle("Edit Profile");
+
+            dialog.initOwner(
+                    (Stage) editProfileButton.getScene().getWindow()
+            );
+
+            dialog.initModality(Modality.APPLICATION_MODAL);
+
+            dialog.setScene(new Scene(root));
+
+            dialog.setResizable(false);
+
+            dialog.showAndWait();
+
+            loadUserProfileData();
+
+        } catch (IOException e) {
+
+            log.severe(e.getMessage());
+        }
+    }
+
+    @FXML
+    private void handleShowFollowers() {
+
+    }
+
+
+
+    @FXML
+    private void handleShowFollowing() {
+
+
+    }
+
+    private void showEmptyState(String text) {
+
+
+        userTweetsContainer.getChildren().clear();
+
+        Label label = new Label(text);
+
+        label.setStyle("-fx-text-fill:#666666;" + "-fx-padding:16px;");
+
+        userTweetsContainer.getChildren().add(label);
+
+    }
+
+
+    private String safe(String value){
+
+        return value == null ? "" : value;
+
     }
 }

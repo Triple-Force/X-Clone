@@ -1,5 +1,6 @@
 package logic_core.infrastructure.transport.server;
 
+import Server.ServerDAOManager;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -14,6 +15,11 @@ public final class ServerMain
     public static void main(String[] args)
     {
         int port = resolvePort(args);
+
+
+        System.out.println("Warmup...");
+        ServerDAOManager.getInstance();
+        System.out.println("Warmup finished.");
 
         Gson gson = new GsonBuilder()
                 .serializeNulls()

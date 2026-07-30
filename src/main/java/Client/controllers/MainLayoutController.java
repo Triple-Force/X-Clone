@@ -42,8 +42,17 @@ public class MainLayoutController {
         loadSubView(MESSAGES_FXML);
     }
 
+
     @FXML
-    void showProfile(ActionEvent event) {
+    public void toggleTheme(ActionEvent event) {
+    }
+    @FXML
+    public void handleSearch(ActionEvent event) {
+    }
+
+    @FXML
+    public void showProfile(ActionEvent event) {
+
         loadSubView(PROFILE_FXML);
     }
 

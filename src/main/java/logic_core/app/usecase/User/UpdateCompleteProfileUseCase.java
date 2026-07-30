@@ -75,6 +75,9 @@ public class UpdateCompleteProfileUseCase
                 user.setBannerUrl(bannerPath);
             }
 
+            user.setDisplayName(request.displayName());
+            user.setUsername(request.username());
+            user.setBio(request.bio());
 
             userRepository.update(user);
 

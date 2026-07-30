@@ -1,23 +1,41 @@
 package Client.controllers;
 
 import Client.ClientApplicationContext;
-import com.google.gson.Gson;
+import Client.Service.UserClientService;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import logic_core.app.dto.media.UploadFile;
+import logic_core.app.dto.response.ProfileInfoResponse;
+import logic_core.app.dto.response.UpdateCompleteProfileResponse;
+import logic_core.common.result.Result;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.Locale;
+import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 public class EditProfileController {
 
     private static final Logger log = Logger.getLogger(EditProfileController.class.getName());
+
+    private static final int MAX_DISPLAY_NAME_LENGTH = 50;
+    private static final int MAX_BIO_LENGTH = 160;
+    private static final int MAX_AVATAR_SIZE = 5 * 1024 * 1024;
+
+    private static final Pattern USERNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_-]{3,20}$");
+
 
     @FXML
     private Button closeButton;
@@ -44,100 +62,526 @@ public class EditProfileController {
     private Button saveButton;
 
     private final ClientApplicationContext context;
-    private final Gson gson = new Gson();
 
     private File selectedAvatarFile;
 
-    public EditProfileController(ClientApplicationContext context) {
+    private boolean profileLoaded = false;
+
+    public EditProfileController(
+            ClientApplicationContext context) {
+
         this.context = context;
     }
 
     @FXML
     public void initialize() {
+
+        if (!context.session().isLoggedIn()) {
+            showError(
+                    "Session Error",
+                    "You are not logged in."
+            );
+
+            disableForm(true);
+            return;
+        }
+
+        disableForm(true);
+
         loadCurrentUserData();
     }
 
     @FXML
-    void handleChangeAvatar(ActionEvent event) {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Select Profile Image");
-        fileChooser.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg")
-        );
+    private void loadCurrentUserData() {
 
-        Stage stage = (Stage) changeAvatarButton.getScene().getWindow();
-        File file = fileChooser.showOpenDialog(stage);
+        var userId =
+                context.session().getCurrentUserId();
 
-        if (file != null) {
-            this.selectedAvatarFile = file;
-            log.info("Selected new avatar file: " + file.getAbsolutePath());
-            // TODO
-        }
-    }
+        if (userId == null) {
 
-    @FXML
-    void handleSave(ActionEvent event) {
-        String newDisplayName = displayNameField.getText();
-        String newUsername = usernameField.getText();
-        String newBio = bioTextArea.getText();
+            showError(
+                    "Session Error",
+                    "Current user was not found."
+            );
 
-        if (newDisplayName == null || newDisplayName.trim().isEmpty()) {
             return;
         }
 
-        saveButton.setDisable(true);
 
-        context.networkExecutor().execute(() -> {
-            try {
-                log.info("Saving updated profile information...");
+        context.getUserClientService()
+                .getProfile(userId)
 
-                /*
-                 * TODO
-                 *
-                 * User updatedUser = new User();
-                 * updatedUser.setDisplayName(newDisplayName.trim());
-                 * updatedUser.setUsername(newUsername.trim());
-                 * // updatedUser.setBio(newBio.trim());
-                 *
-                 * RequestEnvelope request = new RequestEnvelope(
-                 *         UUID.randomUUID(),
-                 *         RequestType.USER_UPDATE_PROFILE, // Replace with actual RequestType when available
-                 *         gson.toJsonTree(updatedUser),
-                 *         null
-                 * );
-                 * ResponseEnvelope response = context.socketClient().send(request);
-                 */
+                .thenAccept(result ->
+                        Platform.runLater(() -> {
 
-                Platform.runLater(() -> {
-                    saveButton.setDisable(false);
-                    closeModal();
+                            if (result == null
+                                    || result.isFailure()) {
+
+                                String error =
+                                        result == null
+                                                ? "UNKNOWN_ERROR"
+                                                : result.getError();
+
+                                log.warning(
+                                        "Failed to load profile: "
+                                                + error
+                                );
+
+                                showError(
+                                        "Load Profile Failed",
+                                        error != null
+                                                ? error
+                                                : "Could not load your profile."
+                                );
+
+                                return;
+                            }
+
+
+                            ProfileInfoResponse profile =
+                                    result.getData();
+
+                            if (profile == null) {
+
+                                showError(
+                                        "Load Profile Failed",
+                                        "Profile data is empty."
+                                );
+
+                                return;
+                            }
+
+
+                            populateFields(profile);
+
+                            profileLoaded = true;
+
+                            disableForm(false);
+                        })
+                )
+
+                .exceptionally(error -> {
+
+                    log.log(
+                            Level.SEVERE,
+                            "Critical error while loading profile",
+                            error
+                    );
+
+                    Platform.runLater(() ->
+                            showError(
+                                    "Load Profile Failed",
+                                    "Connection error."
+                            )
+                    );
+
+                    return null;
                 });
+    }
 
-            } catch (Exception e) {
-                log.severe("Error saving profile changes: " + e.getMessage());
-                Platform.runLater(() -> saveButton.setDisable(false));
+
+    private void populateFields(
+            ProfileInfoResponse profile) {
+
+
+        System.out.println("DISPLAY = " + profile.displayName());
+        System.out.println("USERNAME = " + profile.username());
+        System.out.println("BIO = " + profile.bio());
+        displayNameField.setText(
+                valueOrEmpty(profile.displayName())
+        );
+
+        usernameField.setText(
+                valueOrEmpty(profile.username())
+        );
+
+        bioTextArea.setText(
+                valueOrEmpty(profile.bio())
+        );
+
+
+        avatarPreview.setImage(null);
+    }
+
+
+    @FXML
+    private void handleChangeAvatar(ActionEvent event) {
+
+        if (!profileLoaded) {
+            return;
+        }
+
+
+        FileChooser fileChooser = new FileChooser();
+
+        fileChooser.setTitle("Select Profile Image");
+
+        fileChooser
+                .getExtensionFilters()
+                .add(
+                        new FileChooser.ExtensionFilter(
+                                "Image Files",
+                                "*.png",
+                                "*.jpg",
+                                "*.jpeg"
+                        )
+                );
+
+
+        Stage stage = (Stage) changeAvatarButton.getScene().getWindow();
+
+
+        File file = fileChooser.showOpenDialog(stage);
+
+
+        if (file == null) {
+            return;
+        }
+
+
+        try {
+
+            long fileSize = Files.size(file.toPath());
+
+            if (fileSize > MAX_AVATAR_SIZE) {
+
+                showError("Invalid Image", "Avatar size cannot exceed 5 MB.");
+
+                return;
             }
-        });
+
+
+            String contentType = detectContentType(file);
+
+
+            if (!contentType.startsWith("image/")) {
+
+                showError("Invalid Image", "Please select a valid image file.");
+
+                return;
+            }
+
+            selectedAvatarFile = file;
+
+            Image preview =
+                    new Image(
+                            file.toURI().toString(),
+                            true
+                    );
+
+
+            avatarPreview.setImage(preview);
+
+            log.info("Selected avatar: " + file.getAbsolutePath());
+
+        }
+        catch (IOException e) {
+
+            log.log(Level.SEVERE, "Failed to read avatar file", e);
+
+            showError("Image Error", "Could not read the selected image.");
+        }
     }
 
     @FXML
-    void handleCancel(ActionEvent event) {
+    private void handleSave(ActionEvent event) {
+
+        if (!profileLoaded) {
+            return;
+        }
+
+        String displayName = normalize(displayNameField.getText());
+
+        String username = normalize(usernameField.getText());
+
+        String bio = normalize(bioTextArea.getText());
+
+
+        String validationError = validateInput(displayName, username, bio);
+
+
+        if (validationError != null) {
+
+            showError("Invalid Profile", validationError);
+
+            return;
+        }
+
+        UploadFile avatar = null;
+
+
+        if (selectedAvatarFile != null) {
+
+            try {
+
+                avatar = createUploadFile(selectedAvatarFile);
+
+            }
+            catch (IOException e) {
+
+                log.log(Level.SEVERE, "Failed to prepare avatar upload", e);
+
+                showError("Upload Error", "Could not read the selected avatar.");
+
+                return;
+            }
+        }
+
+
+        UUIDHolder userId =
+                new UUIDHolder(
+                        context.session().getCurrentUserId()
+                );
+
+
+        if (userId.value == null) {
+
+            showError("Session Error", "Current user was not found.");
+
+            return;
+        }
+
+        disableForm(true);
+        context.getUserClientService()
+                .updateCompleteProfile(
+                        userId.value,
+                        displayName,
+                        username,
+                        bio,
+                        avatar,
+                        null
+                )
+
+                .thenAccept(result ->
+                        Platform.runLater(() -> {
+
+                            if (result == null || result.isFailure()) {
+
+                                String error = result == null ? "UNKNOWN_ERROR" : result.getError();
+
+                                log.warning("Profile update failed: " + error);
+
+                                showError(
+                                        "Update Failed",
+                                        error != null
+                                                ? error
+                                                : "Could not update your profile."
+                                );
+
+                                disableForm(false);
+
+                                return;
+                            }
+
+
+                            UpdateCompleteProfileResponse response = result.getData();
+
+                            System.out.println(response.profile().displayName());
+                            System.out.println(response.profile().username());
+                            System.out.println(response.profile().bio());
+
+                            if (response != null && response.profile() != null) {
+
+                                log.info("Profile updated successfully for user " + response.profile().userId());
+                            }
+                            else {
+
+                                log.info("Profile updated successfully.");
+                            }
+
+
+                            closeModal();
+                        })
+                )
+
+                .exceptionally(error -> {
+
+                    log.log(Level.SEVERE, "Critical error while updating profile", error);
+
+                    Platform.runLater(() -> {
+
+                        showError(
+                                "Update Failed",
+                                "Connection error."
+                        );
+
+                        disableForm(false);
+                    });
+
+                    return null;
+                });
+    }
+
+
+
+    @FXML
+    private void handleCancel(ActionEvent event) {
+
         closeModal();
     }
 
-    private void loadCurrentUserData() {
-        if (!context.session().isLoggedIn()) {
-            return;
-        }
-        displayNameField.setText("Current User");
-        usernameField.setText("current_user");
-        bioTextArea.setText("Sample bio text...");
-    }
 
     private void closeModal() {
+
+        if (saveButton == null || saveButton.getScene() == null) {
+
+            return;
+        }
+
+
         Stage stage = (Stage) saveButton.getScene().getWindow();
+
+
         if (stage != null) {
             stage.close();
+        }
+    }
+
+    private String validateInput(String displayName, String username, String bio) {
+
+        if (displayName.isBlank()) {
+
+            return "Display name cannot be empty.";
+        }
+
+
+        if (displayName.length() > MAX_DISPLAY_NAME_LENGTH) {
+
+            return
+                    "Display name must be at most "
+                            + MAX_DISPLAY_NAME_LENGTH
+                            + " characters.";
+        }
+
+
+        if (username.isBlank()) {
+
+            return "Username cannot be empty.";
+        }
+
+
+        if (!USERNAME_PATTERN.matcher(username).matches()) {
+
+            return
+                    "Username must be 3-20 characters "
+                            + "and contain only letters, numbers, "
+                            + "underscore, or hyphen.";
+        }
+
+        if (bio.length() > MAX_BIO_LENGTH) {
+
+            return
+                    "Bio must be at most "
+                            + MAX_BIO_LENGTH
+                            + " characters.";
+        }
+
+        return null;
+    }
+
+
+    private UploadFile createUploadFile(File file) throws IOException {
+
+        byte[] data = Files.readAllBytes(file.toPath());
+
+        String contentType = detectContentType(file);
+
+
+        return new UploadFile(
+                file.getName(),
+                contentType,
+                data
+        );
+    }
+
+
+    private String detectContentType(File file) {
+
+        try {
+
+            String contentType = Files.probeContentType(file.toPath());
+
+            if (contentType != null && !contentType.isBlank()) {
+
+                return contentType;
+            }
+
+        }
+        catch (IOException ignored) {
+        }
+
+
+        String name = file.getName().toLowerCase(Locale.ROOT);
+
+        if (name.endsWith(".png")) {
+            return "image/png";
+        }
+
+        if (name.endsWith(".jpg")
+                || name.endsWith(".jpeg")) {
+            return "image/jpeg";
+        }
+
+
+        return "application/octet-stream";
+    }
+
+
+    private void disableForm(boolean disabled) {
+
+        displayNameField.setDisable(disabled);
+        usernameField.setDisable(disabled);
+        bioTextArea.setDisable(disabled);
+
+        changeAvatarButton.setDisable(disabled);
+
+        saveButton.setDisable(disabled);
+    }
+
+
+    private String normalize(String value) {
+
+        return value == null
+                ? ""
+                : value.trim();
+    }
+
+
+    private String valueOrEmpty(String value) {
+
+        return value == null
+                ? ""
+                : value;
+    }
+
+
+    private void showError(String title, String message) {
+
+        Alert alert =
+                new Alert(
+                        Alert.AlertType.ERROR
+                );
+
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(
+                message == null
+                        ? "Unknown error."
+                        : message
+        );
+
+        alert.showAndWait();
+    }
+
+
+    private static final class UUIDHolder {
+
+        private final java.util.UUID value;
+
+        private UUIDHolder(
+                java.util.UUID value) {
+
+            this.value = value;
         }
     }
 }

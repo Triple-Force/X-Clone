@@ -47,7 +47,7 @@ public class ClientSession
 
         public boolean isLoggedIn()
         {
-            return token != null && !token.isBlank();
+            return token != null && !token.isBlank() & userId != null;
         }
     }
 }
