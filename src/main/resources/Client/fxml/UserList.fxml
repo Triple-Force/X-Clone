@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minWidth="450.0" style="-fx-background-color: #ffffff;" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Client.controllers.UserListController">
+    <children>
+        <HBox alignment="CENTER_LEFT" style="-fx-border-color: #eff3f4; -fx-border-width: 0 0 1 0; -fx-padding: 15 20 15 20;">
+            <children>
+                <Label fx:id="pageTitleLabel" text="Followers" textFill="#0f1419">
+                    <font>
+                        <Font name="System Bold" size="20.0" />
+                    </font>
+                </Label>
+            </children>
+        </HBox>
+
+        <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: #ffffff; -fx-hbar-policy: NEVER;" VBox.vgrow="ALWAYS">
+            <content>
+                <VBox fx:id="usersContainer" spacing="10.0" style="-fx-padding: 15;" />
+            </content>
+        </ScrollPane>
+    </children>
+</VBox>
