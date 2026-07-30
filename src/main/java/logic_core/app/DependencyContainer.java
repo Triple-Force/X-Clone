@@ -16,6 +16,7 @@ import logic_core.app.systemMessage.DefaultSystemMessageFactory;
 import logic_core.app.systemMessage.LoggingSystemMessageDispatcher;
 import logic_core.app.systemMessage.SystemMessageService;
 import logic_core.app.systemMessage.SystemMessageServiceImpl;
+import logic_core.app.usecase.User.*;
 import logic_core.app.usecase.auth.*;
 import logic_core.app.usecase.conversation.*;
 import logic_core.app.usecase.message.*;
@@ -29,12 +30,16 @@ import logic_core.domain.event.EventBus;
 import logic_core.domain.event.EventPublisher;
 import logic_core.domain.policy.*;
 import logic_core.domain.repository.*;
+import logic_core.domain.service.LocalMediaStorageService;
+import logic_core.domain.service.MediaStorageService;
 import logic_core.infrastructure.dao.*;
 import logic_core.infrastructure.event.AsyncEventBus;
+import logic_core.infrastructure.media.MediaProperties;
 import logic_core.infrastructure.repository.*;
 import logic_core.session.SessionFactory;
 import logic_core.session.SessionManager;
 import lombok.Getter;
+import lombok.NonNull;
 
 
 public final class DependencyContainer
@@ -757,6 +762,166 @@ public final class DependencyContainer
                 replyTweetUseCase,
                 retweetUseCase,
                 unlikeTweetUseCase
+        );
+    }
+
+    public static UserFacade createUserFacade(EntityManager em)
+    {
+
+        TimeProvider timeProvider = new TimeProvider();
+        TokenGenerator tokenGenerator = new TokenGenerator();
+
+        EventPublisher eventPublisher = eventBus;
+
+        TweetValidator tweetValidator = new TweetValidator();
+        UserValidator userValidator = new UserValidator();
+        TweetDao tweetDao = new TweetDao();
+        TweetEditDao tweetEditDao = new TweetEditDao();
+
+        UserDao userDao = new UserDao();
+
+        FollowDao followDao = new FollowDao();
+        BlockDao blockDao = new BlockDao();
+        MuteDao muteDao = new MuteDao();
+        LikeDao likeDao = new LikeDao();
+        SessionDao sessionDao = new SessionDao(timeProvider);
+
+        TweetRepository tweetRepository = new JpaTweetRepository(
+                tweetDao,
+                tweetEditDao,
+                em
+        );
+
+
+        RelationshipRepository relationshipRepository = new JpaRelationshipRepository(
+                followDao,
+                blockDao,
+                muteDao,
+                likeDao,
+                em
+        );
+        UserRepository userRepository = new JpaUserRepository(userDao, em);
+
+
+        SessionRepository sessionRepository = new JpaSessionRepository(
+                sessionDao,
+                em
+        );
+
+        SessionFactory sessionFactory = new SessionFactory(tokenGenerator, timeProvider);
+
+        SessionManager sessionManager = new SessionManager(
+                sessionRepository,
+                userRepository,
+                sessionFactory,
+                em
+        );
+
+        AuthLockOrchestrator lockOrchestrator = new AuthLockOrchestrator(
+                userRepository,
+                sessionManager
+        );
+
+        UserPolicy userPolicy = new UserPolicy(
+                relationshipRepository,
+                userRepository
+        );
+
+        MediaProperties mediaProperties = new MediaProperties("data/media");
+
+        MediaStorageService mediaStorageService = new LocalMediaStorageService(
+                mediaProperties
+        );
+
+        DeleteAccountUseCase deleteAccountUseCase = new DeleteAccountUseCase(
+                userRepository,
+                lockOrchestrator,
+                timeProvider
+        );
+
+        GetProfileUseCase getProfileUseCase = new GetProfileUseCase(
+               userRepository,
+                lockOrchestrator,
+                relationshipRepository,
+                tweetRepository
+       );
+
+
+         SearchUsersUseCase searchUsersUseCase = new SearchUsersUseCase(
+                 lockOrchestrator,
+                 userRepository,
+                 userPolicy,
+                 userValidator
+         );
+
+
+         UpdateAvatarUseCase updateAvatarUseCase = new UpdateAvatarUseCase(
+                 lockOrchestrator,
+                 userRepository,
+                 userValidator,
+                 userPolicy,
+                 mediaStorageService
+
+         );
+
+
+         UpdateBannerUseCase updateBannerUseCase = new UpdateBannerUseCase(
+              lockOrchestrator,
+                 userRepository,
+                 userValidator,
+                 userPolicy,
+                 mediaStorageService
+      );
+
+
+         UpdateBioUseCase updateBioUseCase = new UpdateBioUseCase(
+                 lockOrchestrator,
+                 userRepository,
+                 userValidator,
+                 userPolicy
+         );
+
+
+         UpdateEmailUseCase updateEmailUseCase = new UpdateEmailUseCase(
+                 userRepository,
+                 lockOrchestrator
+         );
+
+
+       UpdatePasswordUseCase updatePasswordUseCase = new UpdatePasswordUseCase(
+               userRepository,
+               lockOrchestrator
+       );
+
+
+      UpdateProfileUseCase updateProfileUseCase = new UpdateProfileUseCase(
+              userRepository,
+              lockOrchestrator
+      );
+
+
+        UpdateCompleteProfileUseCase updateCompleteProfileUseCase = new UpdateCompleteProfileUseCase(
+                lockOrchestrator,
+                userRepository,
+                relationshipRepository,
+                tweetRepository,
+                mediaStorageService,
+                userValidator,
+                userPolicy
+        );
+
+
+        return new UserFacade(
+                deleteAccountUseCase,
+                getProfileUseCase,
+                searchUsersUseCase,
+                updateAvatarUseCase,
+                updateBannerUseCase,
+                updateBioUseCase,
+                updateEmailUseCase,
+                updatePasswordUseCase,
+                updateProfileUseCase,
+                updateCompleteProfileUseCase
         );
     }
 

@@ -31,7 +31,7 @@ public class UserModel
     private OffsetDateTime updatedAt;
 
 
-    public static UserModel createNew(UUID id,String username, String email, String passwordHash, OffsetDateTime now)
+    public static UserModel createNew(UUID id,String username,String displayName, String email, String passwordHash, OffsetDateTime now)
     {
 
         if (username == null || username.isBlank()) throw new IllegalArgumentException("Username is required");
@@ -44,7 +44,7 @@ public class UserModel
                 .username(username)
                 .email(email)
                 .passwordHash(passwordHash)
-                .displayName(username)
+                .displayName(displayName)
                 .bio(null)
                 .avatarUrl(null)
                 .bannerUrl(null)

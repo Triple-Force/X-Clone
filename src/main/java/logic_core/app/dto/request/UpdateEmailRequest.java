@@ -2,9 +2,10 @@ package logic_core.app.dto.request;
 
 import java.util.UUID;
 
-public record UpdateProfileRequest(
+public record UpdateEmailRequest(
         String sessionToken,
         UUID userId,
-        String displayName,
-        String username
-) {}
+        String email
+)
+{
+}

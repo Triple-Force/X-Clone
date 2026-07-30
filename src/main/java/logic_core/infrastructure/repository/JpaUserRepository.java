@@ -7,9 +7,7 @@ import logic_core.domain.repository.UserRepository;
 import logic_core.infrastructure.dao.UserDao;
 import logic_core.infrastructure.mapper.UserPersistenceMapper;
 
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 public class JpaUserRepository implements UserRepository
 {
@@ -68,7 +66,6 @@ public class JpaUserRepository implements UserRepository
     @Override
     public boolean existsByEmail(String email)
     {
-        System.out.println(email);
         return userDao.existsByEmail(email);
     }
 
@@ -111,6 +108,21 @@ public class JpaUserRepository implements UserRepository
     {
         return userDao.findByUsernameForUpdate(username)
                 .map(UserPersistenceMapper::toModel);
+    }
+
+    @Override
+    public List<UserModel> searchUsers(UUID actorId, String query, int page, int pageSize)
+    {
+        List<User> users = userDao.searchUsers(actorId,query,page, pageSize);
+
+        List<UserModel> userModels = new ArrayList<>(users.size());
+
+        for (User user : users)
+        {
+            userModels.add(UserPersistenceMapper.toModel(user));
+        }
+
+        return userModels;
     }
 
     @Override

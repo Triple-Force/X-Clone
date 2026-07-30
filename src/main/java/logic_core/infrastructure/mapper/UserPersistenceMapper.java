@@ -60,6 +60,7 @@ public final class UserPersistenceMapper
         entity.setPasswordHash(model.getPasswordHash());
         entity.setDisplayName(model.getDisplayName());
         entity.setBio(model.getBio());
+        entity.setDisplayName(model.getDisplayName());
         entity.setAvatarUrl(model.getAvatarUrl());
         entity.setBannerUrl(model.getBannerUrl());
         entity.setVerified(model.isVerified());

@@ -1,8 +1,10 @@
 package Client;
 
+import Client.cache.ClientCacheService;
 import Client.config.ServerConfig;
 import Client.session.ClientSession;
 import Client.transport.SocketClient;
+
 import lombok.Getter;
 import lombok.Setter;
 import org.slf4j.Logger;
@@ -22,6 +24,8 @@ public final class ClientApplicationContext implements AutoCloseable
     private final SocketClient socketClient;
     private final ExecutorService networkExecutor;
     @Setter private NavigationManager navigationManager;
+    private final ClientCacheDatabase cacheDatabase;
+    @Getter private final ClientCacheService cacheService;
 
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
@@ -29,6 +33,8 @@ public final class ClientApplicationContext implements AutoCloseable
     {
         this.session = new ClientSession();
         this.socketClient = new SocketClient(config, session);
+        this.cacheDatabase = new ClientCacheDatabase();
+        this.cacheService = new ClientCacheService();
         this.networkExecutor = Executors.newFixedThreadPool(4, r -> {
             Thread t = new Thread(r, "client-network");
             t.setDaemon(true);
@@ -54,6 +60,11 @@ public final class ClientApplicationContext implements AutoCloseable
     public NavigationManager navigation()
     {
         return navigationManager;
+    }
+
+    public ClientCacheService cache()
+    {
+        return cacheService;
     }
 
 

@@ -3,6 +3,7 @@ package logic_core.domain.repository;
 import Shared.Models.User.User;
 import logic_core.domain.model.UserModel;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -37,4 +38,6 @@ public interface UserRepository
 //    Optional<UserModel> findAuthorByMediaId(UUID mediaId);
 
 Optional<UserModel> findByUsernameForUpdate(String username);
+
+    List<UserModel> searchUsers(UUID actorId, String page, int limit, int pageSize);
 }

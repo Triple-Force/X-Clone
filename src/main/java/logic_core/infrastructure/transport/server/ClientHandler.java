@@ -40,7 +40,7 @@ public class ClientHandler implements Runnable
     {
         try
         {
-            socket.setSoTimeout(30000);
+            socket.setSoTimeout(0);
         }
         catch (IOException e)
         {

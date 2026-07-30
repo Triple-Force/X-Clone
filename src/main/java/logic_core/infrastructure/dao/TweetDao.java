@@ -109,7 +109,7 @@ public class TweetDao extends GenericDAO<Tweet> {
     {
         return Optional.ofNullable(
                 findOneByJpql(
-                        "SELECT t FROM Tweet t WHERE t.id = :id AND t.isDeleted = false",
+                        "SELECT t FROM Tweet t WHERE t.id = :id",
                         q -> q.setParameter("id", tweetId)
                 )
         );

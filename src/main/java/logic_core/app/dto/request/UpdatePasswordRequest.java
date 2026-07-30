@@ -2,9 +2,11 @@ package logic_core.app.dto.request;
 
 import java.util.UUID;
 
-public record UpdateProfileRequest(
+public record UpdatePasswordRequest(
         String sessionToken,
         UUID userId,
-        String displayName,
-        String username
-) {}
+        String oldPassword,
+        String newPassword
+)
+{
+}

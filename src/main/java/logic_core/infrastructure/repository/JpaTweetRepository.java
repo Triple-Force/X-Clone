@@ -120,6 +120,12 @@ public class JpaTweetRepository implements TweetRepository
     }
 
     @Override
+    public long countTweetsById(UUID authorId)
+    {
+        return findTweetsByAuthorId(authorId).size();
+    }
+
+    @Override
     public boolean isRepliedByUser(UUID tweetId, UUID userId)
     {
         Boolean result = tweetDao.isRepliedByUser(tweetId, userId);
