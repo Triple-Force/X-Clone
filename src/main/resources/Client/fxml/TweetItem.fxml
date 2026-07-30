@@ -36,17 +36,18 @@
                         <Font size="15.0" />
                     </font>
                 </Label>
-                <!-- ====================  MEDIA ==================== -->
-                <ImageView fx:id="mediaImageView" fitWidth="380.0" preserveRatio="true" visible="false" managed="false" style="-fx-background-radius: 10;" />
+
+                <!-- ==================== MEDIA ==================== -->
+                <ImageView fx:id="mediaImageView" fitWidth="380.0" managed="false" preserveRatio="true" style="-fx-background-radius: 10;" visible="false" />
+
                 <!-- ==================== POLL ==================== -->
-                <VBox fx:id="pollContainer" spacing="6.0" style="-fx-padding: 5 0 5 0;" visible="false" managed="false">
-                </VBox>
+                <VBox fx:id="pollContainer" managed="false" spacing="6.0" style="-fx-padding: 5 0 5 0;" visible="false" />
 
                 <HBox spacing="60.0" style="-fx-padding: 5 0 0 0;">
                     <children>
-                        <Button fx:id="commentButton" style="-fx-background-color: transparent; -fx-text-fill: #536471;" text="💬 0" />
-                        <Button fx:id="retweetButton" style="-fx-background-color: transparent; -fx-text-fill: #536471;" text="🔁 0" />
-                        <Button fx:id="likeButton" style="-fx-background-color: transparent; -fx-text-fill: #536471;" text="👍 0" />
+                        <Button fx:id="commentButton" onAction="#handleComment" style="-fx-background-color: transparent; -fx-text-fill: #536471; -fx-cursor: hand;" text="💬 0" />
+                        <Button fx:id="retweetButton" onAction="#handleRetweet" style="-fx-background-color: transparent; -fx-text-fill: #536471; -fx-cursor: hand;" text="🔁 0" />
+                        <Button fx:id="likeButton" onAction="#handleLike" style="-fx-background-color: transparent; -fx-text-fill: #536471; -fx-cursor: hand;" text="👍 0" />
                     </children>
                 </HBox>
             </children>
