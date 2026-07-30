@@ -72,6 +72,7 @@ public class RegisterUserUseCase
         return UserModel.createNew(
                 null,
                 request.username(),
+                request.displayName(),
                 request.email(),
                 passwordHash,
                 timeProvider.now()

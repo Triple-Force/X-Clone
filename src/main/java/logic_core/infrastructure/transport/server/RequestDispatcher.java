@@ -16,6 +16,7 @@ import logic_core.infrastructure.transport.RequestType;
 import logic_core.infrastructure.transport.ResponseEnvelope;
 import logic_core.infrastructure.transport.ResponseType;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.BiFunction;
@@ -96,6 +97,21 @@ public class RequestDispatcher
                  MESSAGE_GET_CONVERSATION ->
 
                     dispatchMessage(request);
+
+            // ---------------- USER ----------------
+
+            case USER_GET_PROFILE,
+                 USER_SEARCH,
+                 USER_UPDATE_PROFILE,
+                 USER_UPDATE_BIO,
+                 USER_UPDATE_AVATAR,
+                 USER_UPDATE_BANNER,
+                 USER_UPDATE_EMAIL,
+                 USER_UPDATE_PASSWORD,
+                 USER_DELETE_ACCOUNT,
+                 USER_UPDATE_COMPLETE_PROFILE ->
+
+                    dispatchUser(request);
         };
     }
 
@@ -323,6 +339,44 @@ public class RequestDispatcher
                         case TWEET_RETWEET -> handleRetweet(requestId, payload, facade);
 
                         default -> throw new IllegalArgumentException("Unsupported tweet request: " + request.type());
+                    };
+                });
+    }
+
+    public ResponseEnvelope dispatchUser(RequestEnvelope request)
+    {
+        return execute(
+                request,
+                DependencyContainer::createUserFacade,
+                (facade, payload) ->
+                {
+                    UUID requestId = request.requestId();
+
+                    return switch (request.type())
+                    {
+                        case USER_GET_PROFILE -> handleGetProfile(requestId, payload, facade);
+
+                        case USER_SEARCH -> handleSearchUsers(requestId, payload, facade);
+
+                        case USER_UPDATE_PROFILE -> handleUpdateProfile(requestId, payload, facade);
+
+                        case USER_UPDATE_BIO -> handleUpdateBio(requestId, payload, facade);
+
+                        case USER_UPDATE_AVATAR -> handleUpdateAvatar(requestId, payload, facade);
+
+                        case USER_UPDATE_BANNER -> handleUpdateBanner(requestId, payload, facade);
+
+                        case USER_UPDATE_EMAIL -> handleUpdateEmail(requestId, payload, facade);
+
+                        case USER_UPDATE_PASSWORD -> handleUpdatePassword(requestId, payload, facade);
+
+                        case USER_DELETE_ACCOUNT -> handleDeleteAccount(requestId, payload, facade);
+
+                        case USER_UPDATE_COMPLETE_PROFILE -> handleUpdateCompleteProfile(requestId,payload,facade);
+                        default ->
+                                throw new IllegalArgumentException(
+                                        "Unsupported user request: " + request.type()
+                                );
                     };
                 });
     }
@@ -1153,6 +1207,319 @@ public class RequestDispatcher
         );
     }
 
+    //===============================================================
+    //                     DISPATCH USER
+    //===============================================================
+    private ResponseEnvelope handleGetProfile(
+            UUID requestId,
+            JsonElement payload,
+            UserFacade facade)
+    {
+        GetProfileRequest request =
+                gson.fromJson(payload, GetProfileRequest.class);
+
+
+        Result<ProfileInfoResponse> result =
+                facade.getProfile(request);
+
+
+        if(result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.USER_GET_PROFILE_RESPONSE,
+                    "GET_PROFILE_FAILED",
+                    result.getError()
+            );
+        }
+
+
+        return successResponse(
+                requestId,
+                ResponseType.USER_GET_PROFILE_RESPONSE,
+                result.getData()
+        );
+    }
+
+    private ResponseEnvelope handleSearchUsers(
+            UUID requestId,
+            JsonElement payload,
+            UserFacade facade)
+    {
+        SearchUsersRequest request =
+                gson.fromJson(payload, SearchUsersRequest.class);
+
+
+        Result<List<UserSearchResponse>> result =
+                facade.searchUsers(request);
+
+
+        if(result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.USER_SEARCH_RESPONSE,
+                    "SEARCH_USERS_FAILED",
+                    result.getError()
+            );
+        }
+
+
+        return successResponse(
+                requestId,
+                ResponseType.USER_SEARCH_RESPONSE,
+                result.getData()
+        );
+    }
+
+    private ResponseEnvelope handleUpdateProfile(
+            UUID requestId,
+            JsonElement payload,
+            UserFacade facade)
+    {
+        UpdateProfileRequest request = gson.fromJson(payload, UpdateProfileRequest.class);
+
+
+        Result<Void> result = facade.updateProfile(request);
+
+
+        if(result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.USER_UPDATE_PROFILE_RESPONSE,
+                    "UPDATE_PROFILE_FAILED",
+                    result.getError()
+            );
+        }
+
+
+        return successResponse(
+                requestId,
+                ResponseType.USER_UPDATE_PROFILE_RESPONSE,
+                null
+        );
+    }
+
+    private ResponseEnvelope handleUpdateBio(
+            UUID requestId,
+            JsonElement payload,
+            UserFacade facade)
+    {
+        UpdateBioRequest request =
+                gson.fromJson(payload, UpdateBioRequest.class);
+
+
+        Result<UpdateBioResponse> result =
+                facade.updateBio(request);
+
+
+        if(result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.USER_UPDATE_BIO_RESPONSE,
+                    "UPDATE_BIO_FAILED",
+                    result.getError()
+            );
+        }
+
+
+        return successResponse(
+                requestId,
+                ResponseType.USER_UPDATE_BIO_RESPONSE,
+                result.getData()
+        );
+    }
+
+    private ResponseEnvelope handleUpdateAvatar(
+            UUID requestId,
+            JsonElement payload,
+            UserFacade facade)
+    {
+        UpdateAvatarRequest request =
+                gson.fromJson(payload, UpdateAvatarRequest.class);
+
+
+        Result<UpdateAvatarResponse> result =
+                facade.updateAvatar(request);
+
+
+        if(result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.USER_UPDATE_AVATAR_RESPONSE,
+                    "UPDATE_AVATAR_FAILED",
+                    result.getError()
+            );
+        }
+
+
+        return successResponse(
+                requestId,
+                ResponseType.USER_UPDATE_AVATAR_RESPONSE,
+                result.getData()
+        );
+    }
+
+
+    private ResponseEnvelope handleUpdateBanner(
+            UUID requestId,
+            JsonElement payload,
+            UserFacade facade)
+    {
+        UpdateBannerRequest request =
+                gson.fromJson(payload, UpdateBannerRequest.class);
+
+
+        Result<UpdateBannerResponse> result =
+                facade.updateBanner(request);
+
+
+        if(result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.USER_UPDATE_BANNER_RESPONSE,
+                    "UPDATE_BANNER_FAILED",
+                    result.getError()
+            );
+        }
+
+
+        return successResponse(
+                requestId,
+                ResponseType.USER_UPDATE_BANNER_RESPONSE,
+                result.getData()
+        );
+    }
+
+    private ResponseEnvelope handleUpdateEmail(
+            UUID requestId,
+            JsonElement payload,
+            UserFacade facade)
+    {
+        UpdateEmailRequest request =
+                gson.fromJson(payload, UpdateEmailRequest.class);
+
+
+        Result<Void> result =
+                facade.updateEmail(request);
+
+
+        if(result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.USER_UPDATE_EMAIL_RESPONSE,
+                    "UPDATE_EMAIL_FAILED",
+                    result.getError()
+            );
+        }
+
+
+        return successResponse(
+                requestId,
+                ResponseType.USER_UPDATE_EMAIL_RESPONSE,
+                null
+        );
+    }
+
+
+    private ResponseEnvelope handleUpdatePassword(
+            UUID requestId,
+            JsonElement payload,
+            UserFacade facade)
+    {
+        UpdatePasswordRequest request =
+                gson.fromJson(payload, UpdatePasswordRequest.class);
+
+
+        Result<Void> result =
+                facade.updatePassword(request);
+
+
+        if(result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.USER_UPDATE_PASSWORD_RESPONSE,
+                    "UPDATE_PASSWORD_FAILED",
+                    result.getError()
+            );
+        }
+
+
+        return successResponse(
+                requestId,
+                ResponseType.USER_UPDATE_PASSWORD_RESPONSE,
+                null
+        );
+    }
+
+
+    private ResponseEnvelope handleDeleteAccount(
+            UUID requestId,
+            JsonElement payload,
+            UserFacade facade)
+    {
+        DeleteAccountRequest request =
+                gson.fromJson(payload, DeleteAccountRequest.class);
+
+
+        Result<Void> result =
+                facade.deleteAccount(request);
+
+
+        if(result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.USER_DELETE_ACCOUNT_RESPONSE,
+                    "DELETE_ACCOUNT_FAILED",
+                    result.getError()
+            );
+        }
+
+
+        return successResponse(
+                requestId,
+                ResponseType.USER_DELETE_ACCOUNT_RESPONSE,
+                null
+        );
+    }
+
+    private ResponseEnvelope handleUpdateCompleteProfile(
+            UUID requestId,
+            JsonElement payload,
+            UserFacade facade)
+    {
+        UpdateCompleteProfileRequest request =
+                gson.fromJson(
+                        payload,
+                        UpdateCompleteProfileRequest.class
+                );
+
+        Result<UpdateCompleteProfileResponse> result =
+                facade.updateCompleteProfile(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.USER_UPDATE_COMPLETE_PROFILE_RESPONSE,
+                    "UPDATE_COMPLETE_PROFILE_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.USER_UPDATE_COMPLETE_PROFILE_RESPONSE,
+                gson.toJsonTree(result.getData())   // یا result.getValue() بسته به Result
+        );
+    }
 
     private ResponseEnvelope successResponse(UUID requestId, ResponseType type, Object body)
     {
@@ -1213,6 +1580,16 @@ public class RequestDispatcher
             case TWEET_UNLIKE -> ResponseType.TWEET_UNLIKE_RESPONSE;
             case TWEET_REPLY -> ResponseType.TWEET_REPLY_RESPONSE;
             case TWEET_RETWEET -> ResponseType.TWEET_RETWEET_RESPONSE;
+            case USER_GET_PROFILE -> ResponseType.USER_GET_PROFILE_RESPONSE;
+            case USER_SEARCH -> ResponseType.USER_SEARCH_RESPONSE;
+            case USER_UPDATE_PROFILE -> ResponseType.USER_UPDATE_PROFILE_RESPONSE;
+            case USER_UPDATE_BIO -> ResponseType.USER_UPDATE_BIO_RESPONSE;
+            case USER_UPDATE_AVATAR -> ResponseType.USER_UPDATE_AVATAR_RESPONSE;
+            case USER_UPDATE_BANNER -> ResponseType.USER_UPDATE_BANNER_RESPONSE;
+            case USER_UPDATE_EMAIL -> ResponseType.USER_UPDATE_EMAIL_RESPONSE;
+            case USER_UPDATE_PASSWORD -> ResponseType.USER_UPDATE_PASSWORD_RESPONSE;
+            case USER_DELETE_ACCOUNT -> ResponseType.USER_DELETE_ACCOUNT_RESPONSE;
+            case USER_UPDATE_COMPLETE_PROFILE -> ResponseType.USER_UPDATE_COMPLETE_PROFILE_RESPONSE;
         };
     }
 
