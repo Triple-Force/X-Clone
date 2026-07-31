@@ -27,8 +27,10 @@ public class TweetItemController {
 
     @FXML
     public VBox pollContainer;
+
     @FXML
     public ImageView mediaImageView;
+
     @FXML
     private ImageView avatarImageView;
 
@@ -103,6 +105,17 @@ public class TweetItemController {
 
         setAvatar(tweet.avatarUrl());
 
+        if (tweet.mediaUrls() != null && !tweet.mediaUrls().isEmpty()) {
+            String firstMediaUrl = tweet.mediaUrls().get(0);
+            if (firstMediaUrl != null && !firstMediaUrl.isBlank()) {
+                setTweetMedia(firstMediaUrl);
+            } else {
+                hideMedia();
+            }
+        } else {
+            hideMedia();
+        }
+
         checkAndDeleteVisibility(tweet);
     }
 
@@ -135,6 +148,8 @@ public class TweetItemController {
         retweetButton.setText("🔁 0");
         likeButton.setText("❤ 0");
 
+        hideMedia();
+
         if (deleteButton != null) {
             deleteButton.setVisible(false);
             deleteButton.setManaged(false);
@@ -146,6 +161,25 @@ public class TweetItemController {
             repliesContainer.getChildren().clear();
             repliesContainer.setVisible(false);
             repliesContainer.setManaged(false);
+        }
+    }
+
+    private void setTweetMedia(String mediaUrl) {
+        if (mediaImageView == null) return;
+        try {
+            mediaImageView.setImage(new Image(mediaUrl, true));
+            mediaImageView.setVisible(true);
+            mediaImageView.setManaged(true);
+        } catch (Exception e) {
+            hideMedia();
+        }
+    }
+
+    private void hideMedia() {
+        if (mediaImageView != null) {
+            mediaImageView.setImage(null);
+            mediaImageView.setVisible(false);
+            mediaImageView.setManaged(false);
         }
     }
 
