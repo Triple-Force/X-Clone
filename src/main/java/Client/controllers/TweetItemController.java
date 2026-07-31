@@ -3,11 +3,16 @@ package Client.controllers;
 import Client.ClientApplicationContext;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 import logic_core.app.dto.timeline.TimelineTweet;
 
 import java.io.File;
@@ -242,7 +247,27 @@ public class TweetItemController {
     }
 
     private void handleReply() {
-        if (tweet == null) return;
-        System.out.println("Reply to tweet: " + tweet.tweetId());
+        if (tweet == null) {
+            return;
+        }
+
+        try {
+            FXMLLoader loader =
+                    new FXMLLoader(getClass().getResource("/Client/fxml/Comment.fxml"));
+
+            Parent root = loader.load();
+
+            CommentController controller = loader.getController();
+            controller.setDialogData(context, tweet);
+
+            Stage stage = new Stage();
+            stage.setTitle("Reply");
+            stage.initModality(Modality.APPLICATION_MODAL);
+            stage.setScene(new Scene(root));
+            stage.showAndWait();
+
+        } catch (Exception e) {
+            log.severe(e.getMessage());
+        }
     }
 }
