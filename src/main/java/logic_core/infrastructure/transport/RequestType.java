@@ -38,6 +38,7 @@ public enum RequestType
     TWEET_UNLIKE,
     TWEET_REPLY,
     TWEET_RETWEET,
+    TWEET_GET_REPLIES,
 
     USER_GET_PROFILE,
     USER_SEARCH,
