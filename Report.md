@@ -234,4 +234,46 @@ traversing lazy-loaded entity associations.
 
 ## 4. AI Usage Disclosure
 
-*To be written*
+In compliance with academic integrity standards and to ensure transparency in the project development process, the details regarding the use of Artificial Intelligence (AI) tools in this project are disclosed below:
+
+### 4.1 AI Tool(s) and Model(s) Used
+* **Google Gemini (Gemini 3.6 Flash / Pro)**
+
+### 4.2 Purpose of Use
+The AI tool was primarily utilized for **guidance, educational purposes, brainstorming, and workflow facilitation** across the following areas:
+
+* **Development Roadmap:** Outlining a step-by-step path for developing various modules, prioritizing method implementations, and breaking down complex problems into manageable tasks.
+* **Education and Learning:** Guidance on utilizing Scene Builder, constructing FXML code, and managing controller lifecycles in JavaFX.
+* **Visual Brainstorming and UI Design:** Assistance with selecting engaging color palettes, element placement, and leveraging design tools to create a modern user interface.
+* **CSS Styling:** Designing and providing inline CSS code and stylesheets to enhance the overall visual appeal of graphical elements.
+* **Naming Standardization:** Suggesting and refining clear, meaningful, and standardized names for variables, methods, classes, and controllers across the codebase.
+* **Version Control Management (Git):** Recommending Git commands and standardized commit messages (following conventional commit guidelines).
+* **Debugging and Integration:** Guidance on resolving View-layer issues and connecting UI event handlers to backend services.
+
+### 4.3 Extent and Scope of AI Assistance
+The core architecture, primary business logic, service layer, network communication, database structure, and DTOs were entirely designed and implemented by the team/developer. The estimated proportion of AI involvement across different layers is as follows:
+
+* **Consultation, Roadmap, CSS, and Git:** Approximately **70–80%** (The primary focus and largest share of AI contribution was in structuring the development roadmap, visual brainstorming, color palette design, inline CSS styling, and standardizing variable/method naming conventions).
+* **FXML Code:** Low (**10–15%**); Graphical layouts were built using Scene Builder, with AI assisting primarily in resolving structural FXML bugs and applying specific tags.
+* **Controller Code:** Limited (**15–20%**); Mainly focused on structural suggestions for controllers and advice on invoking backend service methods.
+
+### 4.4 Practical Application Examples
+
+* **Development Roadmap Creation:**
+  * *Example:* Defining a step-by-step roadmap for implementing the Profile module—ranging from initial FXML design in Scene Builder to controller creation, DTO integration, and handling followers/following lists sequentially.
+
+* **Color Selection, CSS Styling, and UI Brainstorming:**
+  * *Example:* Designing the application's visual theme by proposing a modern color scheme (primary text `#0f1419`, brand button color `#1d9bf0`, background `#f7f9fa`) and providing CSS properties such as drop-shadow effects and rounded corners (`-fx-background-radius: 20`).
+
+* **Standardized Naming Across the Codebase:**
+  * *Example:* Guiding the selection of consistent and descriptive identifiers across all files (e.g., using `followersCountLabel` instead of ambiguous names, or `handleShowFollowers` for event handler methods).
+
+* **Scene Builder Learning & FXML Troubleshooting:**
+  * *Example:* Demonstrating the use of `<clip>` with a `<Circle>` shape to achieve circular profile images (`ImageView`) in Scene Builder, and resolving background-radius application issues on images within `UserItem.fxml` and `Profile.fxml`.
+
+### 4.5 Review, Modification, and Validation
+All AI-generated suggestions, roadmaps, and guidance were reviewed, validated, and executed through the following processes:
+
+1. **Architectural Alignment:** All recommendations were carefully reviewed to ensure seamless integration with the existing `ClientApplicationContext` and custom service layer architecture.
+2. **Scene Builder Evaluation:** Proposed FXML modifications and visual styles were tested and verified inside Scene Builder to guarantee correct layout structure and responsiveness.
+3. **Comprehension & Ownership:** The implementation logic, JavaFX threading rules (such as `Platform.runLater`), and design patterns were fully understood and mastered to ensure complete readiness for project presentation and evaluation.
