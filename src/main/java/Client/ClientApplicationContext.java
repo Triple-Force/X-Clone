@@ -26,7 +26,6 @@ public final class ClientApplicationContext implements AutoCloseable
     private final ExecutorService networkExecutor;
     @Setter private NavigationManager navigationManager;
     private final ClientCacheDatabase cacheDatabase;
-    @Getter private final ClientCacheService cacheService;
     @Getter private final TimelineClientService timelineService;
     @Getter private final RelationClientService relationClientService;
     @Getter private final AuthClientService authClientService;
@@ -44,7 +43,6 @@ public final class ClientApplicationContext implements AutoCloseable
         this.session = new ClientSession();
         this.socketClient = new SocketClient(config, session);
         this.cacheDatabase = new ClientCacheDatabase();
-        this.cacheService = new ClientCacheService();
         this.networkExecutor = Executors.newFixedThreadPool(4, r -> {
             Thread t = new Thread(r, "client-network");
             t.setDaemon(true);
@@ -82,10 +80,6 @@ public final class ClientApplicationContext implements AutoCloseable
         return navigationManager;
     }
 
-    public ClientCacheService cache()
-    {
-        return cacheService;
-    }
 
     public ClientSession.SessionSnapshot getSnapshot()
     {

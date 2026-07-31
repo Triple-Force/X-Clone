@@ -1,8 +1,6 @@
 package Client.Service;
 
 import Client.ClientApplicationContext;
-import Client.cache.ClientCacheService;
-import Client.cache.TweetCacheService;
 import Client.session.ClientSession;
 import Client.transport.SocketClient;
 import com.google.gson.Gson;
@@ -32,7 +30,7 @@ public final class TweetClientService
     private final ClientSession session;
     private final ExecutorService networkExecutor;
     private final Gson gson;
-    private final ClientCacheService cacheService;
+
 
     public TweetClientService(ClientApplicationContext context)
     {
@@ -40,8 +38,7 @@ public final class TweetClientService
                 context.socketClient(),
                 context.session(),
                 context.networkExecutor(),
-                new GsonBuilder().serializeNulls().create(),
-                context.getCacheService()
+                new GsonBuilder().serializeNulls().create()
         );
     }
 
@@ -54,14 +51,12 @@ public final class TweetClientService
     {
         CreateTweetRequest request = new CreateTweetRequest(content, replyToId, quoteOfId, scheduledAt, session.getToken(),mediaUrls);
 
-        return cacheOnSuccess(
-                execute(
+        return execute(
                         RequestType.TWEET_CREATE,
                         request,
                         TweetResponse.class
-                ),
-                cacheService.getTweetCacheService()::cacheTweet
-        );
+                );
+
     }
 
     public CompletableFuture<Result<TweetResponse>> editTweet(
@@ -70,14 +65,11 @@ public final class TweetClientService
     {
         EditTweetRequest request = new EditTweetRequest(tweetId, content, session.getToken());
 
-        return cacheOnSuccess(
-                execute(
+        return execute(
                         RequestType.TWEET_EDIT,
                         request,
                         TweetResponse.class
-                ),
-                cacheService.getTweetCacheService()::updateTweet
-        );
+                );
     }
 
     public CompletableFuture<Result<TweetResponse>> deleteTweet(

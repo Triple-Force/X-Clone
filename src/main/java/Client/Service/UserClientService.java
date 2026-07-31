@@ -1,7 +1,7 @@
 package Client.Service;
 
 import Client.ClientApplicationContext;
-import Client.cache.ClientCacheService;
+
 import Client.session.ClientSession;
 import Client.transport.SocketClient;
 import com.google.gson.Gson;
@@ -30,7 +30,7 @@ public final class UserClientService
     private final ClientSession session;
     private final ExecutorService networkExecutor;
     private final Gson gson;
-    private final ClientCacheService cacheService;
+
 
     public UserClientService(ClientApplicationContext context)
     {
@@ -38,8 +38,7 @@ public final class UserClientService
                 context.socketClient(),
                 context.session(),
                 context.networkExecutor(),
-                new GsonBuilder().serializeNulls().create(),
-                context.getCacheService()
+                new GsonBuilder().serializeNulls().create()
 
         );
     }
@@ -47,20 +46,15 @@ public final class UserClientService
 
     public CompletableFuture<Result<ProfileInfoResponse>> getProfile(UUID userId)
     {
-        ProfileInfoResponse cached = cacheService.getUserCacheService().getProfile(userId);
 
-        if (cached != null)
-        {
-            return CompletableFuture.completedFuture(Result.success(cached));
-        }
+
 
         GetProfileRequest request = new GetProfileRequest(session.getToken(), userId);
 
-        return executeAndCache(
+        return execute(
                 RequestType.USER_GET_PROFILE,
                 request,
-                ProfileInfoResponse.class,
-                cacheService.getUserCacheService()::cacheProfile
+                ProfileInfoResponse.class
         );
     }
 
@@ -81,12 +75,9 @@ public final class UserClientService
     {
         UpdateProfileRequest request = new UpdateProfileRequest(session.getToken(), userId, displayName, username);
 
-        return executeVoidAndCache(
+        return executeVoid(
                 RequestType.USER_UPDATE_PROFILE,
-                request,
-                () -> cacheService
-                        .getUserCacheService()
-                        .updateProfile(userId, username, displayName)
+                request
         );
     }
 
@@ -96,11 +87,10 @@ public final class UserClientService
     {
         UpdateBioRequest request = new UpdateBioRequest(session.getToken(), bio);
 
-        return executeAndCache(
+        return execute(
                 RequestType.USER_UPDATE_BIO,
                 request,
-                UpdateBioResponse.class,
-                cacheService.getUserCacheService()::updateBio
+                UpdateBioResponse.class
         );
     }
 
@@ -113,11 +103,10 @@ public final class UserClientService
                         avatar
                 );
 
-        return executeAndCache(
+        return execute(
                 RequestType.USER_UPDATE_AVATAR,
                 request,
-                UpdateAvatarResponse.class,
-                cacheService.getUserCacheService()::updateAvatar
+                UpdateAvatarResponse.class
         );
     }
 
@@ -126,11 +115,10 @@ public final class UserClientService
     {
         UpdateBannerRequest request = new UpdateBannerRequest(session.getToken(), banner);
 
-        return executeAndCache(
+        return execute(
                 RequestType.USER_UPDATE_BANNER,
                 request,
-                UpdateBannerResponse.class,
-                cacheService.getUserCacheService()::updateBanner
+                UpdateBannerResponse.class
         );
     }
 
@@ -161,12 +149,10 @@ public final class UserClientService
     {
         DeleteAccountRequest request = new DeleteAccountRequest(userId,session.getToken(), password);
 
-        return executeVoidAndCache(
+        return executeVoid(
                 RequestType.USER_DELETE_ACCOUNT,
-                request,
-                () -> cacheService
-                        .getUserCacheService()
-                        .deleteUser(userId)
+                request
+
         );
     }
 
@@ -174,11 +160,10 @@ public final class UserClientService
     {
         UpdateCompleteProfileRequest request = new UpdateCompleteProfileRequest(session.getToken(), userId, displayName, username, bio,avatar, banner);
 
-        return executeAndCache(
+        return execute(
                 RequestType.USER_UPDATE_COMPLETE_PROFILE,
                 request,
-                UpdateCompleteProfileResponse.class,
-                cacheService.getUserCacheService()::updateCompleteProfile
+                UpdateCompleteProfileResponse.class
         );
     }
 

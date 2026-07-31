@@ -6,9 +6,11 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
+
 import java.io.IOException;
-import java.util.UUID;
 import java.util.logging.Logger;
 
 public class MainLayoutController {
@@ -18,7 +20,11 @@ public class MainLayoutController {
     private static final String TIMELINE_FXML = "/Client/fxml/Timeline.fxml";
     private static final String MESSAGES_FXML = "/Client/fxml/Messages.fxml";
     private static final String PROFILE_FXML = "/Client/fxml/Profile.fxml";
-    private static final String USER_LIST_FXML = "/Client/fxml/UserList.fxml";
+
+   @FXML
+    private TextField searchTextField;
+   @FXML
+    public VBox searchResultsContainer;
 
     @FXML
     private Pane contentArea;
@@ -36,77 +42,52 @@ public class MainLayoutController {
 
     @FXML
     void showTimeline(ActionEvent event) {
-        loadSubView(TIMELINE_FXML, null);
+        loadSubView(TIMELINE_FXML);
     }
 
     @FXML
     void showMessages(ActionEvent event) {
-        loadSubView(MESSAGES_FXML, null);
+        loadSubView(MESSAGES_FXML);
     }
 
-    @FXML
-    public void showProfile(ActionEvent event) {
-        loadSubView(PROFILE_FXML, null);
-    }
 
     @FXML
     public void toggleTheme(ActionEvent event) {
     }
-
     @FXML
     public void handleSearch(ActionEvent event) {
     }
 
-    public void
+    @FXML
+    public void showProfile(ActionEvent event) {
 
-    showUserList(String title, UUID userid, boolean isFollowersList) {
-        Platform.runLater(() -> {
-            try {
-                FXMLLoader loader = new FXMLLoader(getClass().getResource(USER_LIST_FXML));
-                loader.setControllerFactory(this::createControllerInstance);
-                Parent view = loader.load();
-
-                UserListController controller = loader.getController();
-                controller.setContext(context);
-                controller.loadUsers(title, userid, isFollowersList);
-
-                setContentView(view);
-            } catch (IOException e) {
-                log.severe("Could not load UserList view | Error: " + e.getMessage());
-                e.printStackTrace();
-            }
-        });
+        loadSubView(PROFILE_FXML);
     }
 
-    private void loadSubView(String fxmlPath, InitializerCallback callback) {
+    private void loadSubView(String fxmlPath) {
         Platform.runLater(() -> {
             try {
                 FXMLLoader loader = new FXMLLoader(getClass().getResource(fxmlPath));
+
                 loader.setControllerFactory(this::createControllerInstance);
+
                 Parent view = loader.load();
 
-                if (callback != null) {
-                    callback.init(loader.getController());
-                }
+                if (contentArea != null && view != null) {
+                    contentArea.getChildren().clear();
+                    contentArea.getChildren().add(view);
 
-                setContentView(view);
+                    // تنظیم اندازه صفحه لودشده با اندازه contentArea
+                    if (view instanceof Pane paneView) {
+                        paneView.prefWidthProperty().bind(contentArea.widthProperty());
+                        paneView.prefHeightProperty().bind(contentArea.heightProperty());
+                    }
+                }
             } catch (IOException e) {
                 log.severe("Could not load FXML view from path: " + fxmlPath + " | Error: " + e.getMessage());
                 e.printStackTrace();
             }
         });
-    }
-
-    private void setContentView(Parent view) {
-        if (contentArea != null && view != null) {
-            contentArea.getChildren().clear();
-            contentArea.getChildren().add(view);
-
-            if (view instanceof Pane paneView) {
-                paneView.prefWidthProperty().bind(contentArea.widthProperty());
-                paneView.prefHeightProperty().bind(contentArea.heightProperty());
-            }
-        }
     }
 
     private Object createControllerInstance(Class<?> controllerClass) {
@@ -116,10 +97,6 @@ public class MainLayoutController {
             return new MessagesController(context);
         } else if (controllerClass == ProfileController.class) {
             return new ProfileController(context);
-        } else if (controllerClass == UserListController.class) {
-            return new UserListController();
-        } else if (controllerClass == UserItemController.class) {
-            return new UserItemController(context);
         }
 
         try {
@@ -129,29 +106,15 @@ public class MainLayoutController {
         }
     }
 
-    private interface InitializerCallback {
-        void init(Object controller);
+    @FXML
+    void showFollowingList()
+    {
+
     }
 
     @FXML
-    public void showFollowingList(ActionEvent event) {
-        UUID userId = context.getSnapshot().userId();
+    void showFollowersList()
+    {
 
-        if (userId != null) {
-            showUserList("Following", userId, false);
-        } else {
-            log.warning("Cannot load following list: current user ID is null");
-        }
-    }
-
-    @FXML
-    public void showFollowersList(ActionEvent event) {
-        UUID userId = context.getSnapshot().userId();
-
-        if (userId != null) {
-            showUserList("Followers", userId, true);
-        } else {
-            log.warning("Cannot load followers list: current user ID is null");
-        }
     }
 }
