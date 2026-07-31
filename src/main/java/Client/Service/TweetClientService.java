@@ -6,9 +6,11 @@ import Client.transport.SocketClient;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
+import com.google.gson.reflect.TypeToken;
 import logic_core.app.dto.request.*;
 import logic_core.app.dto.response.LikeResponse;
 import logic_core.app.dto.response.TweetResponse;
+import logic_core.app.dto.timeline.TimelineTweet;
 import logic_core.common.result.Result;
 import logic_core.infrastructure.transport.RequestEnvelope;
 import logic_core.infrastructure.transport.RequestType;
@@ -131,6 +133,17 @@ public final class TweetClientService
         );
     }
 
+    public CompletableFuture<Result<List<TimelineTweet>>> getReplies(UUID tweetId)
+    {
+        GetRepliesRequest request = new GetRepliesRequest(tweetId, session.getToken());
+
+        return executeList(
+                RequestType.TWEET_GET_REPLIES,
+                request,
+                TimelineTweet.class
+        );
+    }
+
     private <T> CompletableFuture<Result<T>> execute(
             RequestType type,
             Object request,
@@ -172,6 +185,54 @@ public final class TweetClientService
                         );
 
                 return Result.success(data);
+            }
+            catch (Exception e)
+            {
+                return Result.failure(e.getMessage());
+            }
+        }, networkExecutor);
+    }
+
+    private <T> CompletableFuture<Result<List<T>>> executeList(
+            RequestType type,
+            Object request,
+            Class<T> elementClass)
+    {
+        return CompletableFuture.supplyAsync(() ->
+        {
+            try
+            {
+                socketClient.connect();
+
+                JsonElement payload = gson.toJsonTree(request);
+
+                RequestEnvelope envelope =
+                        new RequestEnvelope(
+                                UUID.randomUUID(),
+                                type,
+                                payload,
+                                session.getToken()
+                        );
+
+                ResponseEnvelope response =
+                        socketClient.send(envelope);
+
+                if (response == null)
+                {
+                    return Result.failure("EMPTY_RESPONSE");
+                }
+
+                if (!response.isSuccess())
+                {
+                    return Result.failure(response.errorMessage());
+                }
+
+                List<T> list = gson.fromJson(
+                        response.getData(),
+                        TypeToken.getParameterized(List.class, elementClass).getType()
+                );
+
+                return Result.success(list);
             }
             catch (Exception e)
             {

@@ -46,11 +46,12 @@
                         <!-- ==================== POLL ==================== -->
                         <VBox fx:id="pollContainer" managed="false" spacing="6.0" style="-fx-padding: 5 0 5 0;" visible="false" />
 
-                        <HBox spacing="60.0" style="-fx-padding: 5 0 0 0;">
+                        <HBox spacing="40.0" style="-fx-padding: 5 0 0 0;">
                             <children>
                                 <Button fx:id="commentButton" style="-fx-background-color: transparent; -fx-text-fill: #536471; -fx-cursor: hand;" text="💬 0" />
                                 <Button fx:id="retweetButton" style="-fx-background-color: transparent; -fx-text-fill: #536471; -fx-cursor: hand;" text="🔁 0" />
                                 <Button fx:id="likeButton" style="-fx-background-color: transparent; -fx-text-fill: #536471; -fx-cursor: hand;" text="❤ 0" />
+                                <Button fx:id="deleteButton" managed="false" style="-fx-background-color: transparent; -fx-text-fill: #e0245e; -fx-cursor: hand;" text="🗑️ Delete" visible="false" />
                             </children>
                         </HBox>
                     </children>
@@ -61,8 +62,6 @@
             </children>
         </HBox>
 
-        <!-- ==================== REPLIES / COMMENTS CONTAINER ==================== -->
-        <!-- کامنت‌ها مستقیماً داخل این VBox و زیر همین توییت قرار می‌گیرند -->
         <VBox fx:id="repliesContainer" managed="false" spacing="10.0" style="-fx-padding: 10 0 0 40.0; -fx-border-color: #eff3f4; -fx-border-width: 1 0 0 0;" visible="false" />
     </children>
 </VBox>

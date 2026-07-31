@@ -53,7 +53,9 @@ public class TweetItemController {
     @FXML
     private Button likeButton;
 
-    // کانتینر نمایش کامنت‌های همین توییت
+    @FXML
+    private Button deleteButton;
+
     @FXML
     private VBox repliesContainer;
 
@@ -71,9 +73,16 @@ public class TweetItemController {
 
         likeButton.setOnAction(e -> handleLike());
         retweetButton.setOnAction(e -> handleRetweet());
-
-        // کلیک روی دکمه کامنت: باز شدن دیالوگ ثبت کامنت جدید
         commentButton.setOnAction(e -> handleReply());
+
+        if (deleteButton != null) {
+            deleteButton.setOnAction(e -> handleDelete());
+        }
+
+        if (tweetTextLabel != null) {
+            tweetTextLabel.setOnMouseClicked(e -> toggleReplies());
+            tweetTextLabel.setStyle("-fx-cursor: hand;");
+        }
     }
 
     public void setTweet(TimelineTweet tweet) {
@@ -93,6 +102,28 @@ public class TweetItemController {
         likeButton.setText("❤ " + tweet.likeCount());
 
         setAvatar(tweet.avatarUrl());
+
+        checkAndDeleteVisibility(tweet);
+    }
+
+    private void checkAndDeleteVisibility(TimelineTweet tweet) {
+        if (deleteButton == null || context == null) {
+            return;
+        }
+
+        try {
+            String currentUsername = context.getCurrentUsername();
+            if (currentUsername != null && currentUsername.equals(tweet.username())) {
+                deleteButton.setVisible(true);
+                deleteButton.setManaged(true);
+            } else {
+                deleteButton.setVisible(false);
+                deleteButton.setManaged(false);
+            }
+        } catch (Exception e) {
+            deleteButton.setVisible(false);
+            deleteButton.setManaged(false);
+        }
     }
 
     private void clear() {
@@ -103,6 +134,12 @@ public class TweetItemController {
         commentButton.setText("💬 0");
         retweetButton.setText("🔁 0");
         likeButton.setText("❤ 0");
+
+        if (deleteButton != null) {
+            deleteButton.setVisible(false);
+            deleteButton.setManaged(false);
+        }
+
         setDefaultAvatar();
 
         if (repliesContainer != null) {
@@ -112,9 +149,6 @@ public class TweetItemController {
         }
     }
 
-    /**
-     * متد برای دریافت و نمایش کامنت‌های زیر توییت (Accordion Style)
-     */
     public void toggleReplies() {
         if (tweet == null || context == null || repliesContainer == null) {
             return;
@@ -155,49 +189,6 @@ public class TweetItemController {
         }
     }
 
-    private void setAvatar(String avatarUrl) {
-        try {
-            if (avatarUrl != null && !avatarUrl.isBlank()) {
-                avatarImageView.setImage(new Image(avatarUrl, true));
-            } else {
-                setDefaultAvatar();
-            }
-        } catch (Exception ignored) {
-            setDefaultAvatar();
-        }
-    }
-
-    private void setDefaultAvatar() {
-        try {
-            URL resource = getClass().getResource(DEFAULT_AVATAR_RESOURCE);
-            if (resource != null) {
-                avatarImageView.setImage(new Image(resource.toExternalForm(), true));
-            }
-        } catch (Exception ignored) {
-        }
-    }
-
-    private String nullSafe(String value) {
-        return value == null ? "" : value;
-    }
-
-    private String formatDate(OffsetDateTime dateTime) {
-        if (dateTime == null) {
-            return "";
-        }
-
-        try {
-            return dateTime.format(
-                    DateTimeFormatter.ofLocalizedDateTime(
-                            FormatStyle.MEDIUM,
-                            FormatStyle.SHORT
-                    ).withLocale(Locale.getDefault())
-            );
-        } catch (Exception e) {
-            return dateTime.toString();
-        }
-    }
-
     private void handleLike() {
         if (tweet == null || context == null) {
             return;
@@ -227,21 +218,77 @@ public class TweetItemController {
             return;
         }
 
-        retweetButton.setDisable(true);
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/Client/fxml/QuoteTweetDialog.fxml"));
 
-        context.getTweetService().retweet(tweet.tweetId(), null)
+            loader.setControllerFactory(param -> {
+                if (param == RetweetController.class) {
+                    return new RetweetController();
+                }
+                try {
+                    return param.getDeclaredConstructor().newInstance();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
+            Parent root = loader.load();
+            RetweetController controller = loader.getController();
+
+            controller.setDialogData(this.context, tweet);
+
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle("Quote Tweet");
+            dialogStage.initModality(Modality.APPLICATION_MODAL);
+
+            Stage mainStage = (Stage) retweetButton.getScene().getWindow();
+            dialogStage.initOwner(mainStage);
+
+            Scene scene = new Scene(root);
+            dialogStage.setScene(scene);
+
+            dialogStage.setOnShown(e -> {
+                dialogStage.setX(mainStage.getX() + (mainStage.getWidth() - dialogStage.getWidth()) / 2);
+                dialogStage.setY(mainStage.getY() + (mainStage.getHeight() - dialogStage.getHeight()) / 2);
+            });
+
+            dialogStage.showAndWait();
+
+        } catch (Exception e) {
+            System.err.println("Failed to open quote tweet dialog: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void handleDelete() {
+        if (tweet == null || context == null) {
+            return;
+        }
+
+        deleteButton.setDisable(true);
+
+        context.getTweetService().deleteTweet(tweet.tweetId())
                 .thenAccept(result -> Platform.runLater(() -> {
-                    retweetButton.setDisable(false);
-
-                    if (result.isFailure()) {
-                        return;
+                    if (result.isSuccess()) {
+                        if (deleteButton.getScene() != null) {
+                            javafx.scene.Node currentRoot = deleteButton;
+                            while (currentRoot.getParent() != null) {
+                                currentRoot = currentRoot.getParent();
+                                if (currentRoot instanceof VBox && currentRoot.getParent() instanceof VBox && ((VBox)currentRoot.getParent()).getChildren().contains(currentRoot)) {
+                                    break;
+                                }
+                            }
+                            if (currentRoot.getParent() instanceof VBox) {
+                                ((VBox) currentRoot.getParent()).getChildren().remove(currentRoot);
+                            }
+                        }
+                    } else {
+                        deleteButton.setDisable(false);
                     }
-
-                    long newCount = tweet.retweetCount() + 1;
-                    retweetButton.setText("🔁 " + newCount);
                 }))
                 .exceptionally(error -> {
-                    Platform.runLater(() -> retweetButton.setDisable(false));
+                    Platform.runLater(() -> deleteButton.setDisable(false));
+                    error.printStackTrace();
                     return null;
                 });
     }
@@ -254,7 +301,6 @@ public class TweetItemController {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/Client/fxml/CommentDialog.fxml"));
 
-            // اصلاح تزریق ساختار کنترلر دیالوگ
             loader.setControllerFactory(param -> {
                 if (param == CommentController.class) {
                     return new CommentController();
@@ -315,6 +361,49 @@ public class TweetItemController {
         } catch (Exception e) {
             System.err.println("Failed to open comment dialog: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    private void setAvatar(String avatarUrl) {
+        try {
+            if (avatarUrl != null && !avatarUrl.isBlank()) {
+                avatarImageView.setImage(new Image(avatarUrl, true));
+            } else {
+                setDefaultAvatar();
+            }
+        } catch (Exception ignored) {
+            setDefaultAvatar();
+        }
+    }
+
+    private void setDefaultAvatar() {
+        try {
+            URL resource = getClass().getResource(DEFAULT_AVATAR_RESOURCE);
+            if (resource != null) {
+                avatarImageView.setImage(new Image(resource.toExternalForm(), true));
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private String nullSafe(String value) {
+        return value == null ? "" : value;
+    }
+
+    private String formatDate(OffsetDateTime dateTime) {
+        if (dateTime == null) {
+            return "";
+        }
+
+        try {
+            return dateTime.format(
+                    DateTimeFormatter.ofLocalizedDateTime(
+                            FormatStyle.MEDIUM,
+                            FormatStyle.SHORT
+                    ).withLocale(Locale.getDefault())
+            );
+        } catch (Exception e) {
+            return dateTime.toString();
         }
     }
 }
