@@ -51,7 +51,7 @@
                                 <Button fx:id="commentButton" style="-fx-background-color: transparent; -fx-text-fill: #536471; -fx-cursor: hand;" text="💬 0" />
                                 <Button fx:id="retweetButton" style="-fx-background-color: transparent; -fx-text-fill: #536471; -fx-cursor: hand;" text="🔁 0" />
                                 <Button fx:id="likeButton" style="-fx-background-color: transparent; -fx-text-fill: #536471; -fx-cursor: hand;" text="❤ 0" />
-                                <Button fx:id="deleteButton" managed="false" style="-fx-background-color: transparent; -fx-text-fill: #e0245e; -fx-cursor: hand;" text="🗑️ Delete" visible="false" />
+                                <Button fx:id="deleteButton" managed="false" style="-fx-background-color: transparent; -fx-text-fill: #e0245e; -fx-cursor: hand;" text="🗑 Delete" visible="false" />
                             </children>
                         </HBox>
                     </children>

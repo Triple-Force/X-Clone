@@ -212,6 +212,13 @@ public class ProfileController {
             TweetItemController controller = loader.getController();
             controller.setTweet(tweet);
 
+            controller.setOnDeleteSuccess(() -> {
+                userTweetsContainer.getChildren().remove(card);
+                if (userTweetsContainer.getChildren().isEmpty()) {
+                    showEmptyState("No tweets yet");
+                }
+            });
+
             userTweetsContainer.getChildren().add(card);
         } catch (IOException e) {
             log.severe("Tweet card error : " + e.getMessage());
