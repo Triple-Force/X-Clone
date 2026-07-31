@@ -2,67 +2,72 @@ package Client.controllers;
 
 import Client.ClientApplicationContext;
 import javafx.application.Platform;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.VBox;
 import logic_core.app.dto.timeline.TimelineTweet;
 
 import java.io.File;
 import java.net.URL;
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.FormatStyle;
-import java.util.Locale;
-import java.util.UUID;
 import java.util.logging.Logger;
 
 public class TweetItemController {
 
     private static final Logger log = Logger.getLogger(TweetItemController.class.getName());
+    private static final String DEFAULT_AVATAR_RESOURCE = "/Client/images/user (1).png";
 
-    @FXML public VBox pollContainer;
-    @FXML public ImageView mediaImageView;
-    @FXML private ImageView avatarImageView;
-    @FXML private Label displayNameLabel;
-    @FXML private Label usernameLabel;
-    @FXML private Label dateLabel;
-    @FXML private Label tweetTextLabel;
-    @FXML private Button commentButton;
-    @FXML private Button retweetButton;
-    @FXML private Button likeButton;
-    @FXML private Button deleteButton;
+    @FXML
+    private ImageView avatarImageView;
+
+    @FXML
+    private Label displayNameLabel;
+
+    @FXML
+    private Label usernameLabel;
+
+    @FXML
+    private Label dateLabel;
+
+    @FXML
+    private Label tweetTextLabel;
+
+    @FXML
+    private Button commentButton;
+
+    @FXML
+    private Button retweetButton;
+
+    @FXML
+    private Button likeButton;
+
+    @FXML
+    private Button deleteButton;
 
     private final ClientApplicationContext context;
-    private long currentLikeCount;
-    private boolean liked;
     private TimelineTweet tweet;
-
+    private boolean liked = false;
+    private long currentLikeCount = 0;
     private Runnable onDeleteSuccess;
-
-    private static final String DEFAULT_AVATAR_RESOURCE = "/Client/images/user (1).png";
 
     public TweetItemController(ClientApplicationContext context) {
         this.context = context;
     }
 
-    public void setOnDeleteSuccess(Runnable onDeleteSuccess) {
-        this.onDeleteSuccess = onDeleteSuccess;
-    }
-
     @FXML
     private void initialize() {
-        clear();
-
-        likeButton.setOnAction(e -> handleLike());
-        retweetButton.setOnAction(e -> handleRetweet());
-        commentButton.setOnAction(e -> handleReply());
-
-        if (deleteButton != null) {
-            deleteButton.setOnAction(e -> handleDelete());
+        if (likeButton != null) {
+            likeButton.setOnAction(this::handleLike);
         }
+        if (deleteButton != null) {
+            deleteButton.setOnAction(this::handleDelete);
+        }
+    }
+
+    public void setOnDeleteSuccess(Runnable onDeleteSuccess) {
+        this.onDeleteSuccess = onDeleteSuccess;
     }
 
     public void setTweet(TimelineTweet tweet) {
@@ -73,6 +78,7 @@ public class TweetItemController {
         }
 
         this.currentLikeCount = tweet.likeCount();
+        this.liked = tweet.isLiked();
 
         displayNameLabel.setText(nullSafe(tweet.displayName()));
         usernameLabel.setText(tweet.username() == null ? "" : "@" + tweet.username());
@@ -81,40 +87,124 @@ public class TweetItemController {
 
         commentButton.setText("💬 " + tweet.replyCount());
         retweetButton.setText("🔁 " + tweet.retweetCount());
-        likeButton.setText("❤ " + tweet.likeCount());
 
+        updateLikeButtonUI();
         setAvatar(tweet.avatarUrl());
         checkDeletePermission();
     }
 
-    private void checkDeletePermission() {
-        if (deleteButton == null || tweet == null) return;
+    @FXML
+    private void handleLike(ActionEvent event) {
+        if (tweet == null || (likeButton != null && likeButton.isDisabled())) return;
 
-        UUID currentUserId = context.session().getCurrentUserId();
-        boolean isOwner = currentUserId != null && currentUserId.equals(tweet.authorId());
+        if (likeButton != null) {
+            likeButton.setDisable(true);
+        }
+
+        final boolean currentlyLiked = this.liked;
+
+        var serviceCall = currentlyLiked
+                ? context.getTweetService().unlikeTweet(tweet.tweetId())
+                : context.getTweetService().likeTweet(tweet.tweetId());
+
+        serviceCall.thenAccept(result -> Platform.runLater(() -> {
+            if (likeButton != null) {
+                likeButton.setDisable(false);
+            }
+
+            if (result == null || result.isFailure()) {
+                log.warning("Like/Unlike action failed: " + (result == null ? "null" : result.getError()));
+                return;
+            }
+
+            this.liked = !currentlyLiked;
+            if (this.liked) {
+                this.currentLikeCount++;
+            } else {
+                this.currentLikeCount = Math.max(0, this.currentLikeCount - 1);
+            }
+
+            updateLikeButtonUI();
+        })).exceptionally(error -> {
+            Platform.runLater(() -> {
+                if (likeButton != null) {
+                    likeButton.setDisable(false);
+                }
+            });
+            log.severe("Error in like/unlike action: " + error.getMessage());
+            return null;
+        });
+    }
+
+    @FXML
+    private void handleDelete(ActionEvent event) {
+        if (tweet == null || (deleteButton != null && deleteButton.isDisabled())) return;
+
+        if (deleteButton != null) {
+            deleteButton.setDisable(true);
+        }
+
+        context.getTweetService().deleteTweet(tweet.tweetId())
+                .thenAccept(result -> Platform.runLater(() -> {
+                    if (deleteButton != null) {
+                        deleteButton.setDisable(false);
+                    }
+
+                    if (result == null || result.isFailure()) {
+                        log.warning("Delete tweet failed: " + (result == null ? "null" : result.getError()));
+                        return;
+                    }
+
+                    if (onDeleteSuccess != null) {
+                        onDeleteSuccess.run();
+                    }
+                }))
+                .exceptionally(error -> {
+                    Platform.runLater(() -> {
+                        if (deleteButton != null) {
+                            deleteButton.setDisable(false);
+                        }
+                    });
+                    log.severe("Error deleting tweet: " + error.getMessage());
+                    return null;
+                });
+    }
+
+    private void updateLikeButtonUI() {
+        if (likeButton == null) return;
+
+        likeButton.setText(" " + currentLikeCount);
+
+        javafx.scene.control.Label iconLabel = new javafx.scene.control.Label(liked ? "♥" : "♡");
+
+        String color = liked ? "#e0245e" : "#666666";
+        iconLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: " + color + ";");
+
+        likeButton.setGraphic(iconLabel);
+
+        likeButton.setStyle(
+                "-fx-background-color: transparent; " +
+                        "-fx-border-color: transparent; " +
+                        "-fx-padding: 2 6; " +
+                        "-fx-font-size: 13px; " +
+                        "-fx-text-fill: " + color + "; " +
+                        "-fx-cursor: hand;"
+        );
+    }
+
+    private void checkDeletePermission() {
+        if (deleteButton == null) return;
+
+        boolean isOwner = context.session().isLoggedIn() &&
+                context.session().getCurrentUserId().equals(tweet.authorId());
 
         deleteButton.setVisible(isOwner);
         deleteButton.setManaged(isOwner);
     }
 
-    private void clear() {
-        displayNameLabel.setText("");
-        usernameLabel.setText("");
-        dateLabel.setText("");
-        tweetTextLabel.setText("");
-        commentButton.setText("💬 0");
-        retweetButton.setText("🔁 0");
-        likeButton.setText("❤ 0");
-
-        if (deleteButton != null) {
-            deleteButton.setVisible(false);
-            deleteButton.setManaged(false);
-        }
-
-        setDefaultAvatar();
-    }
-
     private void setAvatar(String avatarUrl) {
+        if (avatarImageView == null) return;
+
         if (avatarUrl != null && !avatarUrl.isBlank()) {
             try {
                 String cleanPath = avatarUrl.startsWith("/") || avatarUrl.startsWith("\\")
@@ -143,106 +233,35 @@ public class TweetItemController {
             URL resource = getClass().getResource(DEFAULT_AVATAR_RESOURCE);
             if (resource != null) {
                 avatarImageView.setImage(new Image(resource.toExternalForm(), true));
+            } else {
+                avatarImageView.setImage(null);
             }
-        } catch (Exception ignored) {
-        }
-    }
-
-    private String nullSafe(String value) {
-        return value == null ? "" : value;
-    }
-
-    private String formatDate(OffsetDateTime dateTime) {
-        if (dateTime == null) {
-            return "";
-        }
-
-        try {
-            return dateTime.format(
-                    DateTimeFormatter.ofLocalizedDateTime(
-                            FormatStyle.MEDIUM,
-                            FormatStyle.SHORT
-                    ).withLocale(Locale.getDefault())
-            );
         } catch (Exception e) {
-            return dateTime.toString();
+            avatarImageView.setImage(null);
         }
     }
 
-    private void handleLike() {
-        if (tweet == null) return;
-
-        likeButton.setDisable(true);
-
-        context.getTweetService().likeTweet(tweet.tweetId())
-                .thenAccept(result -> Platform.runLater(() -> {
-                    likeButton.setDisable(false);
-
-                    if (result.isFailure()) return;
-
-                    if (result.getData().liked()) {
-                        currentLikeCount++;
-                    } else if (!result.getData().liked() && liked) {
-                        currentLikeCount--;
-                    }
-
-                    likeButton.setText("❤ " + currentLikeCount);
-                    liked = result.getData().liked();
-                }))
-                .exceptionally(error -> {
-                    Platform.runLater(() -> likeButton.setDisable(false));
-                    return null;
-                });
+    private void clear() {
+        displayNameLabel.setText("");
+        usernameLabel.setText("");
+        dateLabel.setText("");
+        tweetTextLabel.setText("");
+        commentButton.setText("💬 0");
+        retweetButton.setText("🔁 0");
+        if (likeButton != null) {
+            likeButton.setText("🖤 0");
+        }
+        if (deleteButton != null) {
+            deleteButton.setVisible(false);
+            deleteButton.setManaged(false);
+        }
     }
 
-    private void handleRetweet() {
-        if (tweet == null) return;
-
-        retweetButton.setDisable(true);
-
-        context.getTweetService().retweet(tweet.tweetId(), null)
-                .thenAccept(result -> Platform.runLater(() -> {
-                    retweetButton.setDisable(false);
-
-                    if (result.isFailure()) return;
-
-                    long newCount = tweet.retweetCount() + 1;
-                    retweetButton.setText("🔁 " + newCount);
-                }))
-                .exceptionally(error -> {
-                    Platform.runLater(() -> retweetButton.setDisable(false));
-                    return null;
-                });
+    private String nullSafe(String text) {
+        return text == null ? "" : text;
     }
 
-    private void handleDelete() {
-        if (tweet == null) return;
-
-        deleteButton.setDisable(true);
-
-        context.getTweetService().deleteTweet(tweet.tweetId())
-                .thenAccept(result -> Platform.runLater(() -> {
-                    deleteButton.setDisable(false);
-
-                    if (result.isFailure()) {
-                        log.warning("Failed to delete tweet: " + result.getError());
-                        return;
-                    }
-
-                    log.info("Tweet deleted successfully on server!");
-
-                    if (onDeleteSuccess != null) {
-                        onDeleteSuccess.run();
-                    }
-                }))
-                .exceptionally(error -> {
-                    Platform.runLater(() -> deleteButton.setDisable(false));
-                    return null;
-                });
-    }
-
-    private void handleReply() {
-        if (tweet == null) return;
-        System.out.println("Reply to tweet: " + tweet.tweetId());
+    private String formatDate(Object dateObj) {
+        return dateObj == null ? "" : dateObj.toString();
     }
 }
