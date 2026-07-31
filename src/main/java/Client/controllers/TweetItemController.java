@@ -3,12 +3,20 @@ package Client.controllers;
 import Client.ClientApplicationContext;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import logic_core.app.dto.response.TweetResponse;
+import logic_core.app.dto.response.UserSummaryResponse;
 import logic_core.app.dto.timeline.TimelineTweet;
+
 import java.net.URL;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
@@ -45,29 +53,30 @@ public class TweetItemController {
     @FXML
     private Button likeButton;
 
-    private final ClientApplicationContext context;
+    // کانتینر نمایش کامنت‌های همین توییت
+    @FXML
+    private VBox repliesContainer;
 
-    public TweetItemController (ClientApplicationContext context)
-    {
+    private final ClientApplicationContext context;
+    private static final String DEFAULT_AVATAR_RESOURCE = "/Client/images/default-avatar.png";
+    private TimelineTweet tweet;
+
+    public TweetItemController(ClientApplicationContext context) {
         this.context = context;
     }
 
-    private static final String DEFAULT_AVATAR_RESOURCE = "/Client/images/default-avatar.png";
-
-    private TimelineTweet tweet;
     @FXML
     private void initialize() {
         clear();
 
         likeButton.setOnAction(e -> handleLike());
-
         retweetButton.setOnAction(e -> handleRetweet());
 
+        // کلیک روی دکمه کامنت: باز شدن دیالوگ ثبت کامنت جدید
         commentButton.setOnAction(e -> handleReply());
     }
 
     public void setTweet(TimelineTweet tweet) {
-
         this.tweet = tweet;
         if (tweet == null) {
             clear();
@@ -95,20 +104,64 @@ public class TweetItemController {
         retweetButton.setText("🔁 0");
         likeButton.setText("❤ 0");
         setDefaultAvatar();
+
+        if (repliesContainer != null) {
+            repliesContainer.getChildren().clear();
+            repliesContainer.setVisible(false);
+            repliesContainer.setManaged(false);
+        }
+    }
+
+    /**
+     * متد برای دریافت و نمایش کامنت‌های زیر توییت (Accordion Style)
+     */
+    public void toggleReplies() {
+        if (tweet == null || context == null || repliesContainer == null) {
+            return;
+        }
+
+        if (!repliesContainer.isVisible()) {
+            context.getTweetService().getReplies(tweet.tweetId())
+                    .thenAccept(result -> Platform.runLater(() -> {
+                        if (result.isSuccess() && result.getData() != null) {
+                            repliesContainer.getChildren().clear();
+
+                            for (TimelineTweet reply : result.getData()) {
+                                try {
+                                    FXMLLoader loader = new FXMLLoader(getClass().getResource("/Client/fxml/TweetItem.fxml"));
+                                    loader.setControllerFactory(param -> new TweetItemController(context));
+                                    VBox replyNode = loader.load();
+
+                                    TweetItemController controller = loader.getController();
+                                    controller.setTweet(reply);
+
+                                    repliesContainer.getChildren().add(replyNode);
+                                } catch (Exception e) {
+                                    System.err.println("Failed to load reply item: " + e.getMessage());
+                                }
+                            }
+
+                            repliesContainer.setVisible(true);
+                            repliesContainer.setManaged(true);
+                        }
+                    }))
+                    .exceptionally(error -> {
+                        error.printStackTrace();
+                        return null;
+                    });
+        } else {
+            repliesContainer.setVisible(false);
+            repliesContainer.setManaged(false);
+        }
     }
 
     private void setAvatar(String avatarUrl) {
         try {
-            Image image = null;
-
             if (avatarUrl != null && !avatarUrl.isBlank()) {
-                image = new Image(avatarUrl, true);
+                avatarImageView.setImage(new Image(avatarUrl, true));
             } else {
                 setDefaultAvatar();
-                return;
             }
-
-            avatarImageView.setImage(image);
         } catch (Exception ignored) {
             setDefaultAvatar();
         }
@@ -145,94 +198,123 @@ public class TweetItemController {
         }
     }
 
-    private void handleLike()
-    {
-        if (tweet == null)
-        {
+    private void handleLike() {
+        if (tweet == null || context == null) {
             return;
         }
 
         likeButton.setDisable(true);
 
         context.getTweetService().likeTweet(tweet.tweetId())
-                .thenAccept(result -> Platform.runLater(() ->
-                {
+                .thenAccept(result -> Platform.runLater(() -> {
                     likeButton.setDisable(false);
 
-                    if (result.isFailure())
-                    {
+                    if (result.isFailure()) {
                         return;
                     }
 
-                    long newCount;
-
-                    if (!result.getData().liked())
-                    {
-                        newCount = tweet.likeCount() + 1;
-                    }
-                    else
-                    {
-                        newCount = tweet.likeCount() - 1;
-                    }
-
-
+                    long newCount = result.getData().liked() ? tweet.likeCount() + 1 : Math.max(0, tweet.likeCount() - 1);
                     likeButton.setText("❤ " + newCount);
                 }))
-                .exceptionally(error ->
-                {
-                    Platform.runLater(() ->
-                            likeButton.setDisable(false));
-
+                .exceptionally(error -> {
+                    Platform.runLater(() -> likeButton.setDisable(false));
                     return null;
                 });
     }
 
-
-    private void handleRetweet()
-    {
-        if (tweet == null)
-        {
+    private void handleRetweet() {
+        if (tweet == null || context == null) {
             return;
         }
 
         retweetButton.setDisable(true);
 
         context.getTweetService().retweet(tweet.tweetId(), null)
-                .thenAccept(result -> Platform.runLater(() ->
-                {
+                .thenAccept(result -> Platform.runLater(() -> {
                     retweetButton.setDisable(false);
 
-                    if (result.isFailure())
-                    {
+                    if (result.isFailure()) {
                         return;
                     }
 
                     long newCount = tweet.retweetCount() + 1;
-
                     retweetButton.setText("🔁 " + newCount);
                 }))
-                .exceptionally(error ->
-                {
-                    Platform.runLater(() ->
-                            retweetButton.setDisable(false));
-
+                .exceptionally(error -> {
+                    Platform.runLater(() -> retweetButton.setDisable(false));
                     return null;
                 });
     }
 
-
-
-    private void handleReply()
-    {
-        if (tweet == null)
-        {
+    private void handleReply() {
+        if (tweet == null || context == null) {
             return;
         }
 
-        System.out.println("Reply to tweet: " + tweet.tweetId());
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/Client/fxml/CommentDialog.fxml"));
 
-        // TODO
-        // Navigation به ReplyScreen
-        // یا باز کردن Dialog نوشتن Reply
+            // اصلاح تزریق ساختار کنترلر دیالوگ
+            loader.setControllerFactory(param -> {
+                if (param == CommentController.class) {
+                    return new CommentController();
+                }
+                try {
+                    return param.getDeclaredConstructor().newInstance();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
+            Parent root = loader.load();
+            CommentController controller = loader.getController();
+
+            UserSummaryResponse authorSummary = new UserSummaryResponse(
+                    null,
+                    tweet.username(),
+                    tweet.displayName(),
+                    tweet.avatarUrl(),
+                    false
+            );
+
+            TweetResponse targetTweetResponse = new TweetResponse(
+                    tweet.tweetId(),
+                    tweet.content(),
+                    authorSummary,
+                    false,
+                    false,
+                    tweet.publishedAt(),
+                    tweet.publishedAt(),
+                    null,
+                    null,
+                    null,
+                    tweet.likeCount(),
+                    tweet.replyCount(),
+                    tweet.retweetCount()
+            );
+
+            controller.setDialogData(this.context, targetTweetResponse);
+
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle("Reply to Tweet");
+            dialogStage.initModality(Modality.APPLICATION_MODAL);
+
+            Stage mainStage = (Stage) commentButton.getScene().getWindow();
+            dialogStage.initOwner(mainStage);
+
+            Scene scene = new Scene(root);
+            dialogStage.setScene(scene);
+
+            dialogStage.setOnShown(e -> {
+                dialogStage.setX(mainStage.getX() + (mainStage.getWidth() - dialogStage.getWidth()) / 2);
+                dialogStage.setY(mainStage.getY() + (mainStage.getHeight() - dialogStage.getHeight()) / 2);
+            });
+
+            dialogStage.showAndWait();
+
+        } catch (Exception e) {
+            System.err.println("Failed to open comment dialog: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }
