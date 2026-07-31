@@ -202,7 +202,7 @@ first run.
 ### Clone & build
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/Triple-Force/X-Clone
 cd X-Clone
 mvn clean compile
 ```
