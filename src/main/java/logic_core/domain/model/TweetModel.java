@@ -32,7 +32,7 @@ public class TweetModel
     private boolean isEdited;
 
     private List<UUID> mentionedUserIds;
-    private List<UUID> mediaIds;
+
 
     public void addMentionUserId(UUID userId)
     {

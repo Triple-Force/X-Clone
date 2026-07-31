@@ -1,9 +1,11 @@
 package logic_core.app.mapper;
 
+import logic_core.app.dto.response.MediaResponse;
 import logic_core.app.dto.response.TweetResponse;
 import logic_core.app.dto.response.UserSummaryResponse;
 import logic_core.domain.model.TweetModel;
 
+import java.util.List;
 import java.util.UUID;
 
 public class TweetMapper
@@ -15,6 +17,7 @@ public class TweetMapper
             UserSummaryResponse author,
             TweetResponse repliedTweet,
             TweetResponse retweetedTweet,
+            List<MediaResponse> mediaResponses,
             TweetResponse quotedTweet
     ) {
         if (model == null) return null;
@@ -32,7 +35,8 @@ public class TweetMapper
                 quotedTweet,
                 model.getLikeCount(),
                 model.getReplyCount(),
-                model.getRetweetCount()
+                model.getRetweetCount(),
+                mediaResponses
         );
     }
 

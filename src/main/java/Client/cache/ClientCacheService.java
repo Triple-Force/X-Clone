@@ -9,7 +9,6 @@ public class ClientCacheService
     private final TweetCacheService tweetCacheService;
     private final ConversationCacheService conversationCacheService;
     private final MediaCacheService mediaCacheService;
-    private final SessionCacheService sessionCacheService;
 
     public ClientCacheService()
     {
@@ -17,6 +16,5 @@ public class ClientCacheService
         this.tweetCacheService = new TweetCacheService();
         this.conversationCacheService = new ConversationCacheService();
         this.mediaCacheService = new MediaCacheService();
-        this.sessionCacheService = new SessionCacheService();
     }
 }

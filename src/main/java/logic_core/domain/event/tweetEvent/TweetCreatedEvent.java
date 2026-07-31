@@ -16,14 +16,13 @@ public class TweetCreatedEvent extends DomainEvent implements TweetEvent
     private final String content;
     private final UUID repliedToTweetId;
     private final UUID quotedTweetId;
-    private final List<UUID> mediaIds;
+
 
     public TweetCreatedEvent(UUID tweetId,
                              UUID authorId,
                              String content,
                              UUID repliedToTweetId,
                              UUID quotedTweetId,
-                             List<UUID> mediaIds,
                              OffsetDateTime occurredAt)
     {
         super(occurredAt);
@@ -32,6 +31,5 @@ public class TweetCreatedEvent extends DomainEvent implements TweetEvent
         this.content = Objects.requireNonNull(content);
         this.repliedToTweetId = repliedToTweetId;
         this.quotedTweetId = quotedTweetId;
-        this.mediaIds = mediaIds == null ? List.of() : List.copyOf(mediaIds);
     }
 }

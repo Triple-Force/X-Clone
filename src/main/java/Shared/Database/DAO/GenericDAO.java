@@ -16,7 +16,7 @@ public class GenericDAO<T>
 {
     Class<T> type;
 
-    private EntityManager getEntityManager()
+    protected EntityManager getEntityManager()
     {
         return EntityManagerContext.get();
     }

@@ -112,6 +112,18 @@ public class RequestDispatcher
                  USER_UPDATE_COMPLETE_PROFILE ->
 
                     dispatchUser(request);
+
+            case FOLLOW_GET_FOLLOWINGS,
+                 FOLLOW_GET_FOLLOWERS ->
+
+                dispatchFollowQuery(request);
+
+            // ------------- MEDIA   --------------
+
+            case MEDIA_DELETE,
+                 MEDIA_DOWNLOAD ->
+
+                dispatchMedia(request);
         };
     }
 
@@ -382,6 +394,59 @@ public class RequestDispatcher
                                 );
                     };
                 });
+    }
+
+
+    public ResponseEnvelope dispatchFollowQuery(RequestEnvelope request)
+    {
+        return execute(
+                request,
+                DependencyContainer::createFollowQueryFacade,
+                (facade, payload) ->
+                {
+                    UUID requestId = request.requestId();
+
+                    return switch (request.type())
+                    {
+                        case FOLLOW_GET_FOLLOWERS ->
+                                handleGetFollowers(requestId, payload, facade);
+
+                        case FOLLOW_GET_FOLLOWINGS ->
+                                handleGetFollowings(requestId, payload, facade);
+
+                        default ->
+                                throw new IllegalArgumentException(
+                                        "Unsupported follow query request: " + request.type()
+                                );
+                    };
+                }
+        );
+    }
+
+    public ResponseEnvelope dispatchMedia(RequestEnvelope request)
+    {
+        return execute(
+                request,
+                DependencyContainer::createMediaFacade,
+                (facade, payload) ->
+                {
+                    UUID requestId = request.requestId();
+
+                    return switch (request.type())
+                    {
+                        case MEDIA_DOWNLOAD ->
+                                handleDownloadMedia(requestId, payload, facade);
+
+                        case MEDIA_DELETE ->
+                                handleDeleteMedia(requestId, payload, facade);
+
+                        default ->
+                                throw new IllegalArgumentException(
+                                        "Unsupported media request: " + request.type()
+                                );
+                    };
+                }
+        );
     }
     //===============================================================
     //                     DISPATCH AUTH
@@ -1507,11 +1572,6 @@ public class RequestDispatcher
         Result<UpdateCompleteProfileResponse> result =
                 facade.updateCompleteProfile(request);
 
-        System.out.println("=========");
-        System.out.println(request.displayName());
-        System.out.println(request.username());
-        System.out.println(request.banner());
-        System.out.println(request.avatar());
 
         if (result.isFailure())
         {
@@ -1526,7 +1586,7 @@ public class RequestDispatcher
         return successResponse(
                 requestId,
                 ResponseType.USER_UPDATE_COMPLETE_PROFILE_RESPONSE,
-                gson.toJsonTree(result.getData())   // یا result.getValue() بسته به Result
+                gson.toJsonTree(result.getData())
         );
     }
 
@@ -1551,6 +1611,138 @@ public class RequestDispatcher
                 type.toWire(),
                 errorCode,
                 errorMessage
+        );
+    }
+
+    //===============================================================
+    //                     DISPATCH FOLLOW QUERY
+    //===============================================================
+    private ResponseEnvelope handleGetFollowers(
+            UUID requestId,
+            JsonElement payload,
+            FollowQueryFacade facade)
+    {
+        GetFollowersRequest request =
+                gson.fromJson(
+                        payload,
+                        GetFollowersRequest.class
+                );
+
+        Result<GetFollowersResponse> result =
+                facade.getFollowers(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.FOLLOW_GET_FOLLOWERS_RESPONSE,
+                    "GET_FOLLOWERS_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.FOLLOW_GET_FOLLOWERS_RESPONSE,
+                gson.toJsonTree(result.getData())
+        );
+    }
+
+
+    private ResponseEnvelope handleGetFollowings(
+            UUID requestId,
+            JsonElement payload,
+            FollowQueryFacade facade)
+    {
+        GetFollowingsRequest request =
+                gson.fromJson(
+                        payload,
+                        GetFollowingsRequest.class
+                );
+
+        Result<FollowingsResponse> result =
+                facade.getFollowings(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.FOLLOW_GET_FOLLOWINGS_RESPONSE,
+                    "GET_FOLLOWINGS_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.FOLLOW_GET_FOLLOWINGS_RESPONSE,
+                gson.toJsonTree(result.getData())
+        );
+    }
+
+
+    //===============================================================
+    //                     DISPATCH MEDIA
+    //===============================================================
+    private ResponseEnvelope handleDownloadMedia(
+            UUID requestId,
+            JsonElement payload,
+            MediaFacade facade)
+    {
+        DownloadMediaRequest request =
+                gson.fromJson(
+                        payload,
+                        DownloadMediaRequest.class
+                );
+
+        Result<DownloadMediaResponse> result =
+                facade.downloadMedia(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.MEDIA_DOWNLOAD_RESPONSE,
+                    "DOWNLOAD_MEDIA_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.MEDIA_DOWNLOAD_RESPONSE,
+                gson.toJsonTree(result.getData())
+        );
+    }
+
+    private ResponseEnvelope handleDeleteMedia(
+            UUID requestId,
+            JsonElement payload,
+            MediaFacade facade)
+    {
+        DeleteMediaRequest request =
+                gson.fromJson(
+                        payload,
+                        DeleteMediaRequest.class
+                );
+
+        Result<Void> result =
+                facade.deleteMedia(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.MEDIA_DELETE_RESPONSE,
+                    "DELETE_MEDIA_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.MEDIA_DELETE_RESPONSE,
+                null
         );
     }
 
@@ -1599,6 +1791,10 @@ public class RequestDispatcher
             case USER_UPDATE_PASSWORD -> ResponseType.USER_UPDATE_PASSWORD_RESPONSE;
             case USER_DELETE_ACCOUNT -> ResponseType.USER_DELETE_ACCOUNT_RESPONSE;
             case USER_UPDATE_COMPLETE_PROFILE -> ResponseType.USER_UPDATE_COMPLETE_PROFILE_RESPONSE;
+            case FOLLOW_GET_FOLLOWINGS -> ResponseType.FOLLOW_GET_FOLLOWINGS_RESPONSE;
+            case FOLLOW_GET_FOLLOWERS -> ResponseType.FOLLOW_GET_FOLLOWERS_RESPONSE;
+            case MEDIA_DELETE -> ResponseType.MEDIA_DELETE_RESPONSE;
+            case MEDIA_DOWNLOAD -> ResponseType.MEDIA_DOWNLOAD_RESPONSE;
         };
     }
 

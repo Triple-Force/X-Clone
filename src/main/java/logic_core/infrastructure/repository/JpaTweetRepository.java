@@ -1,16 +1,20 @@
 package logic_core.infrastructure.repository;
 
+import Shared.Models.Media.Media;
 import Shared.Models.Tweet.Tweet;
 import Shared.Models.TweetEdit.TweetEdit;
 import jakarta.persistence.EntityManager;
+import logic_core.app.dto.timeline.TimelineMedia;
 import logic_core.app.dto.timeline.TimelineTweet;
 import logic_core.domain.model.TweetModel;
 import logic_core.domain.repository.TimelineType;
 import logic_core.domain.repository.TweetRepository;
+import logic_core.infrastructure.dao.MediaDao;
 import logic_core.infrastructure.dao.TweetDao;
 import logic_core.infrastructure.dao.TweetEditDao;
 import logic_core.infrastructure.mapper.TweetPersistenceMapper;
 import logic_core.infrastructure.projection.TimelineTweetProjection;
+
 
 import java.util.List;
 import java.util.Objects;
@@ -23,12 +27,14 @@ public class JpaTweetRepository implements TweetRepository
     private final TweetDao tweetDao;
     private final TweetEditDao tweetEditDao;
     private final EntityManager entityManager;
+    private final MediaDao mediaDao;
 
-    public JpaTweetRepository(TweetDao tweetDao, TweetEditDao tweetEditDao, EntityManager entityManager)
+    public JpaTweetRepository(TweetDao tweetDao, TweetEditDao tweetEditDao,MediaDao mediaDao ,EntityManager entityManager)
     {
         this.tweetDao = Objects.requireNonNull(tweetDao, "tweetDao must not be null");
         this.tweetEditDao = Objects.requireNonNull(tweetEditDao, "tweetEditDao must not be null");
         this.entityManager = Objects.requireNonNull(entityManager, "entityManager must not be null");
+        this.mediaDao = mediaDao;
     }
 
     @Override
@@ -256,6 +262,14 @@ public class JpaTweetRepository implements TweetRepository
     private TimelineTweet toTimelineTweet(
             TimelineTweetProjection projection)
     {
+
+        List<TimelineMedia> media =
+                mediaDao.findByTweetId(projection.tweetId())
+                        .stream()
+                        .map(this::toTimelineMedia)
+                        .toList();
+
+
         return TimelineTweet.builder()
                 .tweetId(projection.tweetId())
                 .authorId(projection.authorId())
@@ -267,6 +281,7 @@ public class JpaTweetRepository implements TweetRepository
                 .replyCount(projection.replyCount())
                 .retweetCount(projection.retweetCount())
                 .publishedAt(projection.publishedAt())
+                .media(media)
                 .build();
     }
 
@@ -275,5 +290,17 @@ public class JpaTweetRepository implements TweetRepository
     {
         return tweetDao.findActiveByIdForUpdate(tweetId)
                 .map(TweetPersistenceMapper::toModel);
+    }
+
+
+
+    public TimelineMedia toTimelineMedia(Media media)
+    {
+        return TimelineMedia.builder()
+                .mediaId(media.getId())
+                .mediaUrl(media.getMediaURL())
+                .mediaType(media.getMediaType())
+                .displayOrder(media.getDisplayOrder())
+                .build();
     }
 }

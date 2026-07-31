@@ -27,7 +27,6 @@ public class InteractionPolicy
     public void validateCreate(String content,
                                UUID replyToId,
                                UUID quoteOfId,
-                               List<UUID> mediaIds,
                                OffsetDateTime scheduledAt,
                                UUID authorId)
     {

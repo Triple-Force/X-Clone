@@ -19,6 +19,10 @@ import logic_core.app.systemMessage.SystemMessageServiceImpl;
 import logic_core.app.usecase.User.*;
 import logic_core.app.usecase.auth.*;
 import logic_core.app.usecase.conversation.*;
+import logic_core.app.usecase.follow.GetFollowersUseCase;
+import logic_core.app.usecase.follow.GetFollowingsUseCase;
+import logic_core.app.usecase.media.DeleteMediaUseCase;
+import logic_core.app.usecase.media.DownloadMediaUseCase;
 import logic_core.app.usecase.message.*;
 import logic_core.app.usecase.relation.*;
 import logic_core.app.usecase.timeline.GetTimelineUseCase;
@@ -610,6 +614,7 @@ public final class DependencyContainer
         TweetRepository tweetRepository = new JpaTweetRepository(
                 tweetDao,
                 tweetEditDao,
+                new MediaDao(),
                 em
         );
 
@@ -651,6 +656,7 @@ public final class DependencyContainer
         TweetRepository tweetRepository = new JpaTweetRepository(
                 tweetDao,
                 tweetEditDao,
+                new MediaDao(),
                 em
         );
 
@@ -688,6 +694,12 @@ public final class DependencyContainer
                 userRepository,
                 sessionManager
         );
+        MediaDao mediaDao = new MediaDao();
+
+        MediaRepository mediaRepository = new JpaMediaRepository(
+                mediaDao
+        );
+
 
         CreateTweetUseCase createTweetUseCase = new CreateTweetUseCase(
                 tweetValidator,
@@ -696,7 +708,8 @@ public final class DependencyContainer
                 userRepository,
                 eventPublisher,
                 timeProvider,
-                lockOrchestrator
+                lockOrchestrator,
+                mediaRepository
         );
 
         DeleteTweetUseCase deleteTweetUseCase = new DeleteTweetUseCase(
@@ -714,7 +727,8 @@ public final class DependencyContainer
                 userRepository,
                 eventPublisher,
                 timeProvider,
-                lockOrchestrator
+                lockOrchestrator,
+                mediaRepository
         );
 
         LikeTweetUseCase likeTweetUseCase = new LikeTweetUseCase(
@@ -733,7 +747,8 @@ public final class DependencyContainer
                 tweetValidator,
                 eventPublisher,
                 timeProvider,
-                lockOrchestrator
+                lockOrchestrator,
+                mediaRepository
         );
 
         RetweetUseCase retweetUseCase = new RetweetUseCase(
@@ -789,6 +804,7 @@ public final class DependencyContainer
         TweetRepository tweetRepository = new JpaTweetRepository(
                 tweetDao,
                 tweetEditDao,
+                new MediaDao(),
                 em
         );
 
@@ -924,6 +940,170 @@ public final class DependencyContainer
                 updateCompleteProfileUseCase
         );
     }
+
+    public static FollowQueryFacade createFollowQueryFacade(EntityManager em)
+    {
+        TimeProvider timeProvider = new TimeProvider();
+        TokenGenerator tokenGenerator = new TokenGenerator();
+
+        EventPublisher eventPublisher = eventBus;
+
+        TweetValidator tweetValidator = new TweetValidator();
+        UserValidator userValidator = new UserValidator();
+        TweetDao tweetDao = new TweetDao();
+        TweetEditDao tweetEditDao = new TweetEditDao();
+
+        UserDao userDao = new UserDao();
+
+        FollowDao followDao = new FollowDao();
+        BlockDao blockDao = new BlockDao();
+        MuteDao muteDao = new MuteDao();
+        LikeDao likeDao = new LikeDao();
+        SessionDao sessionDao = new SessionDao(timeProvider);
+
+        TweetRepository tweetRepository = new JpaTweetRepository(
+                tweetDao,
+                tweetEditDao,
+                new MediaDao(),
+                em
+        );
+
+
+        RelationshipRepository relationshipRepository = new JpaRelationshipRepository(
+                followDao,
+                blockDao,
+                muteDao,
+                likeDao,
+                em
+        );
+        UserRepository userRepository = new JpaUserRepository(userDao, em);
+
+
+        SessionRepository sessionRepository = new JpaSessionRepository(
+                sessionDao,
+                em
+        );
+
+        SessionFactory sessionFactory = new SessionFactory(tokenGenerator, timeProvider);
+
+        SessionManager sessionManager = new SessionManager(
+                sessionRepository,
+                userRepository,
+                sessionFactory,
+                em
+        );
+
+        AuthLockOrchestrator lockOrchestrator = new AuthLockOrchestrator(
+                userRepository,
+                sessionManager
+        );
+
+        UserPolicy userPolicy = new UserPolicy(
+                relationshipRepository,
+                userRepository
+        );
+
+        MediaProperties mediaProperties = new MediaProperties("data/media");
+
+        GetFollowingsUseCase getFollowingsUseCase = new GetFollowingsUseCase(
+                relationshipRepository,
+                userRepository,
+                lockOrchestrator
+        );
+
+
+
+        GetFollowersUseCase getFollowersUseCase = new GetFollowersUseCase(
+                relationshipRepository,
+                userRepository,
+                lockOrchestrator
+        );
+
+
+
+        return new FollowQueryFacade(
+                getFollowingsUseCase,
+                getFollowersUseCase
+        );
+    }
+
+
+
+    public static MediaFacade createMediaFacade(EntityManager em)
+    {
+
+        TimeProvider timeProvider = new TimeProvider();
+        TokenGenerator tokenGenerator = new TokenGenerator();
+
+        TweetDao tweetDao = new TweetDao();
+        TweetEditDao tweetEditDao = new TweetEditDao();
+
+        UserDao userDao = new UserDao();
+
+        FollowDao followDao = new FollowDao();
+        BlockDao blockDao = new BlockDao();
+        MuteDao muteDao = new MuteDao();
+        LikeDao likeDao = new LikeDao();
+        SessionDao sessionDao = new SessionDao(timeProvider);
+
+        TweetRepository tweetRepository = new JpaTweetRepository(
+                tweetDao,
+                tweetEditDao,
+                new MediaDao(),
+                em
+        );
+
+        UserRepository userRepository = new JpaUserRepository(userDao, em);
+
+        RelationshipRepository relationshipRepository = new JpaRelationshipRepository(
+                followDao,
+                blockDao,
+                muteDao,
+                likeDao,
+                em
+        );
+
+        SessionRepository sessionRepository = new JpaSessionRepository(
+                sessionDao,
+                em
+        );
+
+        SessionFactory sessionFactory = new SessionFactory(tokenGenerator, timeProvider);
+
+        SessionManager sessionManager = new SessionManager(
+                sessionRepository,
+                userRepository,
+                sessionFactory,
+                em
+        );
+
+        AuthLockOrchestrator lockOrchestrator = new AuthLockOrchestrator(
+                userRepository,
+                sessionManager
+        );
+        MediaDao mediaDao = new MediaDao();
+
+        MediaRepository mediaRepository = new JpaMediaRepository(
+                mediaDao
+        );
+
+        DeleteMediaUseCase deleteMediaUseCase = new DeleteMediaUseCase(
+                mediaRepository,
+                tweetRepository,
+                lockOrchestrator
+        );
+
+        DownloadMediaUseCase downloadMediaUseCase = new DownloadMediaUseCase(
+                mediaRepository
+        );
+
+
+        return new MediaFacade(
+                deleteMediaUseCase,
+                downloadMediaUseCase
+        );
+    }
+
 
     // -------------------------------------------------------------------------
     // Shutdown

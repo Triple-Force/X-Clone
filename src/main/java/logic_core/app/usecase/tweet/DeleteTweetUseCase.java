@@ -107,6 +107,7 @@ public class DeleteTweetUseCase
                 authorSummary,
                 null,
                 null,
+                null,
                 null
         );
     }

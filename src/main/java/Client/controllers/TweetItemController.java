@@ -89,6 +89,7 @@ public class TweetItemController {
 
     public void setTweet(TimelineTweet tweet) {
         this.tweet = tweet;
+        this.currentLikeCount = tweet.likeCount();
         if (tweet == null) {
             clear();
             return;

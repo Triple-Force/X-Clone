@@ -1,6 +1,7 @@
 package logic_core.app.dto.response;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 public record TweetResponse(
@@ -16,5 +17,6 @@ public record TweetResponse(
         TweetResponse quotedTweet,
         long likeCount,
         long replyCount,
-        long retweetCount
+        long retweetCount,
+        List<MediaResponse> media
 ) {}

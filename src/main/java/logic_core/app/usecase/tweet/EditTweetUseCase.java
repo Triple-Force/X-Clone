@@ -2,6 +2,7 @@ package logic_core.app.usecase.tweet;
 
 import jakarta.transaction.Transactional;
 import logic_core.app.dto.request.EditTweetRequest;
+import logic_core.app.dto.response.MediaResponse;
 import logic_core.app.dto.response.TweetResponse;
 import logic_core.app.dto.response.UserSummaryResponse;
 import logic_core.app.dto.validator.TweetValidator;
@@ -18,11 +19,13 @@ import logic_core.domain.event.tweetEvent.TweetEditedEvent;
 import logic_core.domain.model.TweetModel;
 import logic_core.domain.model.UserModel;
 import logic_core.domain.policy.InteractionPolicy;
+import logic_core.domain.repository.MediaRepository;
 import logic_core.domain.repository.TweetRepository;
 import logic_core.domain.repository.UserRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
+import java.util.List;
 import java.util.UUID;
 
 @RequiredArgsConstructor
@@ -35,6 +38,7 @@ public class EditTweetUseCase
     @NonNull private final EventPublisher eventPublisher;
     @NonNull private final TimeProvider timeProvider;
     @NonNull private final AuthLockOrchestrator lockOrchestrator;
+    @NonNull private final MediaRepository mediaRepository;
 
     @Transactional
     public Result<TweetResponse> execute(EditTweetRequest request)
@@ -100,7 +104,7 @@ public class EditTweetUseCase
         if (tweet.getRepliedToTweetId() != null)
         {
             repliedTweetResponse = tweetRepository.findById(tweet.getRepliedToTweetId())
-                    .map(parent -> TweetMapper.toResponse(parent, null, null, null, null))
+                    .map(parent -> TweetMapper.toResponse(parent, null, null, null, null, null))
                     .orElse(null);
         }
 
@@ -108,7 +112,7 @@ public class EditTweetUseCase
         if (tweet.getQuotedTweetId() != null)
         {
             quotedTweetResponse = tweetRepository.findById(tweet.getQuotedTweetId())
-                    .map(quote -> TweetMapper.toResponse(quote, null, null, null, null))
+                    .map(quote -> TweetMapper.toResponse(quote, null, null,null, null, null))
                     .orElse(null);
         }
 
@@ -116,15 +120,31 @@ public class EditTweetUseCase
         if (tweet.getRetweetedTweetId() != null)
         {
             retweetedTweetResponse = tweetRepository.findById(tweet.getRetweetedTweetId())
-                    .map(retweet -> TweetMapper.toResponse(retweet, null, null, null, null))
+                    .map(retweet -> TweetMapper.toResponse(retweet, null, null,null, null, null))
                     .orElse(null);
         }
+
+        List<MediaResponse> mediaResponses =
+                mediaRepository.findById(tweet.getId())
+                        .stream()
+                        .map(media ->
+                                new MediaResponse(
+                                        media.getMediaId(),
+                                        media.getMediaUrl(),
+                                        media.getOriginalFilename(),
+                                        media.getFileSizeBytes(),
+                                        media.getMediaType(),
+                                        media.getDisplayOrder()
+                                )
+                        )
+                        .toList();
 
         return TweetMapper.toResponse(
                 tweet,
                 authorSummary,
                 repliedTweetResponse,
                 retweetedTweetResponse,
+                mediaResponses,
                 quotedTweetResponse
         );
     }
