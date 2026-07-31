@@ -17,6 +17,7 @@ public class MainLayoutController {
     private static final String TIMELINE_FXML = "/Client/fxml/Timeline.fxml";
     private static final String MESSAGES_FXML = "/Client/fxml/Messages.fxml";
     private static final String PROFILE_FXML = "/Client/fxml/Profile.fxml";
+    private static final String USER_LIST_FXML = "/Client/fxml/UserList.fxml";
 
     @FXML
     private Pane contentArea;
@@ -34,52 +35,75 @@ public class MainLayoutController {
 
     @FXML
     void showTimeline(ActionEvent event) {
-        loadSubView(TIMELINE_FXML);
+        loadSubView(TIMELINE_FXML, null);
     }
 
     @FXML
     void showMessages(ActionEvent event) {
-        loadSubView(MESSAGES_FXML);
-    }
-
-
-    @FXML
-    public void toggleTheme(ActionEvent event) {
-    }
-    @FXML
-    public void handleSearch(ActionEvent event) {
+        loadSubView(MESSAGES_FXML, null);
     }
 
     @FXML
     public void showProfile(ActionEvent event) {
-
-        loadSubView(PROFILE_FXML);
+        loadSubView(PROFILE_FXML, null);
     }
 
-    private void loadSubView(String fxmlPath) {
+    @FXML
+    public void toggleTheme(ActionEvent event) {
+    }
+
+    @FXML
+    public void handleSearch(ActionEvent event) {
+    }
+
+    public void showUserList(String title, String targetUsername, boolean isFollowersList) {
+        Platform.runLater(() -> {
+            try {
+                FXMLLoader loader = new FXMLLoader(getClass().getResource(USER_LIST_FXML));
+                loader.setControllerFactory(this::createControllerInstance);
+                Parent view = loader.load();
+
+                UserListController controller = loader.getController();
+                controller.setContext(context);
+                controller.loadUsers(title, targetUsername, isFollowersList);
+
+                setContentView(view);
+            } catch (IOException e) {
+                log.severe("Could not load UserList view | Error: " + e.getMessage());
+                e.printStackTrace();
+            }
+        });
+    }
+
+    private void loadSubView(String fxmlPath, InitializerCallback callback) {
         Platform.runLater(() -> {
             try {
                 FXMLLoader loader = new FXMLLoader(getClass().getResource(fxmlPath));
-
                 loader.setControllerFactory(this::createControllerInstance);
-
                 Parent view = loader.load();
 
-                if (contentArea != null && view != null) {
-                    contentArea.getChildren().clear();
-                    contentArea.getChildren().add(view);
-
-                    // تنظیم اندازه صفحه لودشده با اندازه contentArea
-                    if (view instanceof Pane paneView) {
-                        paneView.prefWidthProperty().bind(contentArea.widthProperty());
-                        paneView.prefHeightProperty().bind(contentArea.heightProperty());
-                    }
+                if (callback != null) {
+                    callback.init(loader.getController());
                 }
+
+                setContentView(view);
             } catch (IOException e) {
                 log.severe("Could not load FXML view from path: " + fxmlPath + " | Error: " + e.getMessage());
                 e.printStackTrace();
             }
         });
+    }
+
+    private void setContentView(Parent view) {
+        if (contentArea != null && view != null) {
+            contentArea.getChildren().clear();
+            contentArea.getChildren().add(view);
+
+            if (view instanceof Pane paneView) {
+                paneView.prefWidthProperty().bind(contentArea.widthProperty());
+                paneView.prefHeightProperty().bind(contentArea.heightProperty());
+            }
+        }
     }
 
     private Object createControllerInstance(Class<?> controllerClass) {
@@ -89,6 +113,10 @@ public class MainLayoutController {
             return new MessagesController(context);
         } else if (controllerClass == ProfileController.class) {
             return new ProfileController(context);
+        } else if (controllerClass == UserListController.class) {
+            return new UserListController();
+        } else if (controllerClass == UserItemController.class) {
+            return new UserItemController(context);
         }
 
         try {
@@ -96,5 +124,9 @@ public class MainLayoutController {
         } catch (Exception e) {
             throw new RuntimeException("Could not create instance of: " + controllerClass.getName(), e);
         }
+    }
+
+    private interface InitializerCallback {
+        void init(Object controller);
     }
 }

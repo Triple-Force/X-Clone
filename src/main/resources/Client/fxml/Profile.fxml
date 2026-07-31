@@ -8,6 +8,7 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Pane?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.Circle?>
 <?import javafx.scene.text.Font?>
 
 <VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minWidth="450.0" style="-fx-background-color: #f7f9fa;" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Client.controllers.ProfileController">
@@ -41,7 +42,11 @@
                                     <children>
                                         <Pane HBox.hgrow="ALWAYS">
                                             <children>
-                                                <ImageView fx:id="profileAvatar" fitHeight="62.0" fitWidth="63.0" layoutX="-2.0" pickOnBounds="true" preserveRatio="true" style="-fx-background-radius: 55; -fx-border-color: #ffffff; -fx-border-width: 5; -fx-border-radius: 55; -fx-effect: dropshadow(one-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);" />
+                                                <ImageView fx:id="profileAvatar" fitHeight="80.0" fitWidth="80.0" layoutX="0.0" layoutY="-40.0" pickOnBounds="true" preserveRatio="true">
+                                                    <clip>
+                                                        <Circle centerX="40.0" centerY="40.0" radius="40.0" />
+                                                    </clip>
+                                                </ImageView>
                                             </children>
                                         </Pane>
                                         <Button fx:id="editProfileButton" onAction="#handleEditProfile" style="-fx-background-color: #0f1419; -fx-text-fill: #ffffff; -fx-background-radius: 25; -fx-font-weight: bold; -fx-padding: 10 20 10 20; -fx-cursor: hand;" text="Edit Profile" />
@@ -55,13 +60,13 @@
                                                 <Font name="System Bold" size="24.0" />
                                             </font>
                                         </Label>
-                                        <Label fx:id="usernameLabel" text="ID" textFill="#536471">
+                                        <Label fx:id="usernameLabel" text="@username" textFill="#536471">
                                             <font>
                                                 <Font size="14.0" />
                                             </font>
                                         </Label>
 
-                                        <Label fx:id="bioLabel" text="Bio..." textFill="#0f1419" wrapText="true">
+                                        <Label fx:id="bioLabel" text="User bio goes here..." textFill="#0f1419" wrapText="true">
                                             <font>
                                                 <Font size="15.0" />
                                             </font>
