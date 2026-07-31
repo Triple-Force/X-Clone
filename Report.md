@@ -237,7 +237,7 @@ traversing lazy-loaded entity associations.
 In compliance with academic integrity standards and to ensure transparency in the project development process, the details regarding the use of Artificial Intelligence (AI) tools in this project are disclosed below:
 
 ### 4.1 AI Tool(s) and Model(s) Used
-* **Google Gemini (Gemini 3.6 Flash / Pro)**
+* **Google Gemini (Gemini 3.6 Flash)**
 
 ### 4.2 Purpose of Use
 The AI tool was primarily utilized for **guidance, educational purposes, brainstorming, and workflow facilitation** across the following areas:
