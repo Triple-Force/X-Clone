@@ -48,7 +48,13 @@ public enum RequestType
     USER_UPDATE_EMAIL,
     USER_UPDATE_PASSWORD,
     USER_DELETE_ACCOUNT,
-    USER_UPDATE_COMPLETE_PROFILE;
+    USER_UPDATE_COMPLETE_PROFILE,
+
+    FOLLOW_GET_FOLLOWINGS,
+    FOLLOW_GET_FOLLOWERS,
+
+    MEDIA_DELETE,
+    MEDIA_DOWNLOAD;
 
     public static RequestType fromWire(String value)
     {

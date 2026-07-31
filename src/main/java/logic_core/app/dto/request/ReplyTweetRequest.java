@@ -6,6 +6,6 @@ import java.util.UUID;
 public record ReplyTweetRequest(
         UUID parentTweetId,
         String text,
-        List<UUID> mediaIds,
+        List<String> mediaUrls,
         String sessionToken
 ) {}

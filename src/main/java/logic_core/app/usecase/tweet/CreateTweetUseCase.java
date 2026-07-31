@@ -2,6 +2,7 @@ package logic_core.app.usecase.tweet;
 
 import jakarta.transaction.Transactional;
 import logic_core.app.dto.request.CreateTweetRequest;
+import logic_core.app.dto.response.MediaResponse;
 import logic_core.app.dto.response.TweetResponse;
 import logic_core.app.dto.response.UserSummaryResponse;
 import logic_core.app.dto.validator.TweetValidator;
@@ -17,14 +18,19 @@ import logic_core.common.result.Result;
 import logic_core.common.util.TimeProvider;
 import logic_core.domain.event.EventPublisher;
 import logic_core.domain.event.tweetEvent.TweetCreatedEvent;
+import logic_core.domain.model.MediaModel;
 import logic_core.domain.model.TweetModel;
 import logic_core.domain.model.UserModel;
 import logic_core.domain.policy.InteractionPolicy;
+import logic_core.domain.repository.MediaRepository;
 import logic_core.domain.repository.TweetRepository;
 import logic_core.domain.repository.UserRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 @RequiredArgsConstructor
@@ -37,16 +43,14 @@ public class CreateTweetUseCase
     @NonNull private final EventPublisher eventPublisher;
     @NonNull private final TimeProvider timeProvider;
     @NonNull private final AuthLockOrchestrator lockOrchestrator;
+    @NonNull private final MediaRepository mediaRepository;
 
     @Transactional
     public Result<TweetResponse> execute(@NonNull CreateTweetRequest request)
     {
         try
         {
-            SessionUserContext context =
-                    lockOrchestrator.lockAndGetContextByToken(
-                            request.sessionToken()
-                    );
+            SessionUserContext context = lockOrchestrator.lockAndGetContextByToken(request.sessionToken());
 
             UserModel currentUser = context.lockedUser();
             UUID currentUserId = currentUser.getId();
@@ -55,7 +59,7 @@ public class CreateTweetUseCase
                     request.content(),
                     request.replyToId(),
                     request.quoteOfId(),
-                    request.mediaIds(),
+                    request.mediaUrls(),
                     false,
                     request.scheduledAt()
             );
@@ -64,7 +68,6 @@ public class CreateTweetUseCase
                     request.content(),
                     request.replyToId(),
                     request.quoteOfId(),
-                    request.mediaIds(),
                     request.scheduledAt(),
                     currentUserId
             );
@@ -80,8 +83,15 @@ public class CreateTweetUseCase
                                     new RuntimeException("Failed to save tweet.")
                             );
 
-            TweetResponse response =
-                    buildTweetResponse(savedTweet);
+            List<MediaModel> mediaModels =
+                    request.mediaUrls() == null || request.mediaUrls().isEmpty()
+                            ? Collections.emptyList()
+                            : mediaRepository.createMedia(
+                            savedTweet.getId(),
+                            request.mediaUrls()
+                    );
+
+            TweetResponse response = buildTweetResponse(savedTweet, mediaModels);
 
             eventPublisher.publish(
                     new TweetCreatedEvent(
@@ -90,7 +100,6 @@ public class CreateTweetUseCase
                             savedTweet.getContent(),
                             savedTweet.getRepliedToTweetId(),
                             savedTweet.getQuotedTweetId(),
-                            savedTweet.getMediaIds(),
                             timeProvider.now()
                     )
             );
@@ -127,11 +136,12 @@ public class CreateTweetUseCase
                 .scheduledAt(request.scheduledAt())
                 .publishedAt(timeProvider.now())
                 .createdAt(timeProvider.now())
-                .mediaIds(request.mediaIds())
                 .build();
     }
 
-    private TweetResponse buildTweetResponse(TweetModel tweet)
+    private TweetResponse buildTweetResponse(
+            TweetModel tweet,
+            List<MediaModel> mediaModels)
     {
         UserModel author =
                 userRepository.findById(tweet.getAuthorId())
@@ -154,6 +164,7 @@ public class CreateTweetUseCase
                                             null,
                                             null,
                                             null,
+                                            null,
                                             null
                                     )
                             )
@@ -172,17 +183,33 @@ public class CreateTweetUseCase
                                             null,
                                             null,
                                             null,
+                                            null,
                                             null
                                     )
                             )
                             .orElse(null);
         }
 
+        List<MediaResponse> mediaResponses =
+                mediaModels.stream()
+                        .map(media ->
+                                new MediaResponse(
+                                        media.getMediaId(),
+                                        media.getMediaUrl(),
+                                        media.getOriginalFilename(),
+                                        media.getFileSizeBytes(),
+                                        media.getMediaType(),
+                                        media.getDisplayOrder()
+                                )
+                        )
+                        .toList();
+
         return TweetMapper.toResponse(
                 tweet,
                 authorSummary,
                 repliedTweetResponse,
                 null,
+                mediaResponses,
                 quotedTweetResponse
         );
     }

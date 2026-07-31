@@ -34,6 +34,8 @@ public final class ClientApplicationContext implements AutoCloseable
     @Getter private final TweetClientService tweetService;
     @Getter private final UserClientService userClientService;
     @Getter private final MessageClientService messageClientService;
+    @Getter private final FollowQueryClientService followQueryClientService;
+    @Getter private final MediaClientService mediaClientService;
 
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
@@ -56,6 +58,8 @@ public final class ClientApplicationContext implements AutoCloseable
         this.conversationClientService = new ConversationClientService(this);
         this.userClientService = new UserClientService(this);
         this.messageClientService = new MessageClientService(this);
+        this.followQueryClientService = new FollowQueryClientService(this);
+        this.mediaClientService = new MediaClientService(this);
     }
 
     public ClientSession session()

@@ -46,6 +46,8 @@ public class TweetItemController {
     private Button likeButton;
 
     private final ClientApplicationContext context;
+    private long currentLikeCount;
+    private boolean liked;
 
     public TweetItemController (ClientApplicationContext context)
     {
@@ -69,6 +71,7 @@ public class TweetItemController {
     public void setTweet(TimelineTweet tweet) {
 
         this.tweet = tweet;
+        this.currentLikeCount = tweet.likeCount();
         if (tweet == null) {
             clear();
             return;
@@ -164,19 +167,15 @@ public class TweetItemController {
                         return;
                     }
 
-                    long newCount;
-
-                    if (!result.getData().liked())
-                    {
-                        newCount = tweet.likeCount() + 1;
-                    }
-                    else
-                    {
-                        newCount = tweet.likeCount() - 1;
+                    if (result.getData().liked()) {
+                        currentLikeCount++;
+                    } else if (!result.getData().liked() && liked){
+                        currentLikeCount--;
                     }
 
+                    likeButton.setText("❤ " + currentLikeCount);
+                    liked = result.getData().liked();
 
-                    likeButton.setText("❤ " + newCount);
                 }))
                 .exceptionally(error ->
                 {

@@ -1,6 +1,7 @@
 package logic_core.app.dto.validator;
 
 import logic_core.common.exception.ValidationException;
+
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -11,20 +12,26 @@ public class TweetValidator
     private static final int MAX_MEDIA_COUNTS = 4;
 
     public void validateCreateTweet(String content,
-                                    UUID replyToId,
-                                    UUID quoteOfId,
-                                    List<UUID> mediaIds,
-                                    boolean hasPoll,
-                                    OffsetDateTime scheduledAt)
+            UUID replyToId,
+            UUID quoteOfId,
+            List<String> mediaUrls,
+            boolean hasPoll,
+            OffsetDateTime scheduledAt
+    )
     {
-        boolean hasAttachments = (mediaIds != null && !mediaIds.isEmpty()) || hasPoll || quoteOfId != null;
+        boolean hasAttachments = (mediaUrls != null && !mediaUrls.isEmpty()) || hasPoll || quoteOfId != null;
+
         if (!hasAttachments && (content == null || content.trim().isEmpty()))
         {
-            throw new ValidationException("tweet.content.required");
+            throw new ValidationException(
+                    "tweet.content.required"
+            );
         }
 
         validateContentLength(content);
-        validateMediaIds(mediaIds);
+
+        validateUploadTokens(mediaUrls);
+
         validateScheduledAt(scheduledAt);
 
         if (replyToId != null && quoteOfId != null)
@@ -33,19 +40,22 @@ public class TweetValidator
         }
     }
 
-    public void validateReplyTweet(UUID parentTweetId,
-                                   String text,
-                                   List<UUID> mediaIds)
+
+    public void validateReplyTweet(UUID parentTweetId, String text, List<String> uploadTokens)
     {
         requireNonNull(parentTweetId, "reply.parentTweetId.required");
 
-        boolean hasMedia = mediaIds != null && !mediaIds.isEmpty();
+
+        boolean hasMedia = uploadTokens != null && !uploadTokens.isEmpty();
+
+
         if (!hasMedia && (text == null || text.trim().isEmpty()))
         {
             throw new ValidationException("reply.text.or.media.required");
         }
         validateContentLength(text);
-        validateMediaIds(mediaIds);
+
+        validateUploadTokens(uploadTokens);
     }
 
     public void validateSearchTweet(String query)
@@ -86,23 +96,32 @@ public class TweetValidator
     {
         if (content != null && content.length() > MAX_TWEET_LENGTH)
         {
-            throw new ValidationException(
-                    String.format("Tweet content cannot exceed %d characters.", MAX_TWEET_LENGTH)
+            throw new ValidationException("Tweet content cannot exceed " + MAX_TWEET_LENGTH + " characters."
             );
         }
     }
 
-    private void validateMediaIds(List<UUID> mediaIds)
+    private void validateUploadTokens(List<String> uploadTokens)
     {
-        if (mediaIds == null || mediaIds.isEmpty())
+        if (uploadTokens == null || uploadTokens.isEmpty())
         {
             return;
         }
-        if (mediaIds.contains(null))
+
+
+        if (uploadTokens.contains(null))
         {
-            throw new ValidationException("tweet.mediaIds.cannot.contain.null");
+            throw new ValidationException("tweet.uploadTokens.cannot.contain.null");
         }
-        if (mediaIds.size() > MAX_MEDIA_COUNTS)
+
+
+        if (uploadTokens.stream().anyMatch(String::isBlank))
+        {
+            throw new ValidationException("tweet.uploadTokens.cannot.contain.blank");
+        }
+
+
+        if (uploadTokens.size() > MAX_MEDIA_COUNTS)
         {
             throw new ValidationException("tweet.media.max." + MAX_MEDIA_COUNTS);
         }
@@ -115,10 +134,14 @@ public class TweetValidator
             return;
         }
         OffsetDateTime now = OffsetDateTime.now();
+
+
         if (scheduledAt.isBefore(now.plusMinutes(1)))
         {
             throw new ValidationException("Scheduled time must be in the future.");
         }
+
+
         if (scheduledAt.isAfter(now.plusDays(30)))
         {
             throw new ValidationException("Scheduled time is too far in the future.");

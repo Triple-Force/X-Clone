@@ -1,6 +1,8 @@
 package Client.Service;
 
 import Client.ClientApplicationContext;
+import Client.cache.ClientCacheService;
+import Client.cache.TweetCacheService;
 import Client.session.ClientSession;
 import Client.transport.SocketClient;
 import com.google.gson.Gson;
@@ -28,6 +30,7 @@ public final class TweetClientService
     private final ClientSession session;
     private final ExecutorService networkExecutor;
     private final Gson gson;
+    private final ClientCacheService cacheService;
 
     public TweetClientService(ClientApplicationContext context)
     {
@@ -35,7 +38,8 @@ public final class TweetClientService
                 context.socketClient(),
                 context.session(),
                 context.networkExecutor(),
-                new GsonBuilder().serializeNulls().create()
+                new GsonBuilder().serializeNulls().create(),
+                context.getCacheService()
         );
     }
 
@@ -43,15 +47,18 @@ public final class TweetClientService
             String content,
             UUID replyToId,
             UUID quoteOfId,
-            List<UUID> mediaIds,
+            List<String> mediaUrls,
             OffsetDateTime scheduledAt)
     {
-        CreateTweetRequest request = new CreateTweetRequest(content, replyToId, quoteOfId, mediaIds, scheduledAt, session.getToken());
+        CreateTweetRequest request = new CreateTweetRequest(content, replyToId, quoteOfId, scheduledAt, session.getToken(),mediaUrls);
 
-        return execute(
-                RequestType.TWEET_CREATE,
-                request,
-                TweetResponse.class
+        return cacheOnSuccess(
+                execute(
+                        RequestType.TWEET_CREATE,
+                        request,
+                        TweetResponse.class
+                ),
+                cacheService.getTweetCacheService()::cacheTweet
         );
     }
 
@@ -61,10 +68,13 @@ public final class TweetClientService
     {
         EditTweetRequest request = new EditTweetRequest(tweetId, content, session.getToken());
 
-        return execute(
-                RequestType.TWEET_EDIT,
-                request,
-                TweetResponse.class
+        return cacheOnSuccess(
+                execute(
+                        RequestType.TWEET_EDIT,
+                        request,
+                        TweetResponse.class
+                ),
+                cacheService.getTweetCacheService()::updateTweet
         );
     }
 
@@ -83,9 +93,9 @@ public final class TweetClientService
     public CompletableFuture<Result<TweetResponse>> replyTweet(
             UUID parentTweetId,
             String content,
-            List<UUID> mediaIds)
+            List<String> uploadTokens)
     {
-        ReplyTweetRequest request = new ReplyTweetRequest(parentTweetId, content, mediaIds, session.getToken());
+        ReplyTweetRequest request = new ReplyTweetRequest(parentTweetId, content,uploadTokens, session.getToken());
 
         return execute(
                 RequestType.TWEET_REPLY,
@@ -178,5 +188,20 @@ public final class TweetClientService
                 return Result.failure(e.getMessage());
             }
         }, networkExecutor);
+    }
+
+    private <T> CompletableFuture<Result<T>> cacheOnSuccess(
+            CompletableFuture<Result<T>> future,
+            java.util.function.Consumer<T> cacher)
+    {
+        return future.thenApply(result ->
+        {
+            if (result.isSuccess())
+            {
+                cacher.accept(result.getData());
+            }
+
+            return result;
+        });
     }
 }

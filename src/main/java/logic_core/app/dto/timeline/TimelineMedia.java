@@ -1,4 +1,4 @@
-package logic_core.app.dto.response;
+package logic_core.app.dto.timeline;
 
 import Shared.Models.Media.MediaType;
 import lombok.Builder;
@@ -6,11 +6,9 @@ import lombok.Builder;
 import java.util.UUID;
 
 @Builder
-public record MediaResponse(
+public record TimelineMedia(
         UUID mediaId,
         String mediaUrl,
-        String originalFilename,
-        Long fileSizeBytes,
         MediaType mediaType,
         short displayOrder
 ) {}

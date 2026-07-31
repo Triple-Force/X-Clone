@@ -1,6 +1,7 @@
 package Client.Service;
 
 import Client.ClientApplicationContext;
+import Client.cache.ClientCacheService;
 import Client.session.ClientSession;
 import Client.transport.SocketClient;
 import com.google.gson.Gson;
@@ -19,6 +20,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Consumer;
 
 
 @RequiredArgsConstructor
@@ -28,7 +30,7 @@ public final class UserClientService
     private final ClientSession session;
     private final ExecutorService networkExecutor;
     private final Gson gson;
-
+    private final ClientCacheService cacheService;
 
     public UserClientService(ClientApplicationContext context)
     {
@@ -36,16 +38,30 @@ public final class UserClientService
                 context.socketClient(),
                 context.session(),
                 context.networkExecutor(),
-                new GsonBuilder().serializeNulls().create()
+                new GsonBuilder().serializeNulls().create(),
+                context.getCacheService()
+
         );
     }
 
 
     public CompletableFuture<Result<ProfileInfoResponse>> getProfile(UUID userId)
     {
+        ProfileInfoResponse cached = cacheService.getUserCacheService().getProfile(userId);
+
+        if (cached != null)
+        {
+            return CompletableFuture.completedFuture(Result.success(cached));
+        }
+
         GetProfileRequest request = new GetProfileRequest(session.getToken(), userId);
 
-        return execute(RequestType.USER_GET_PROFILE, request, ProfileInfoResponse.class);
+        return executeAndCache(
+                RequestType.USER_GET_PROFILE,
+                request,
+                ProfileInfoResponse.class,
+                cacheService.getUserCacheService()::cacheProfile
+        );
     }
 
 
@@ -65,9 +81,12 @@ public final class UserClientService
     {
         UpdateProfileRequest request = new UpdateProfileRequest(session.getToken(), userId, displayName, username);
 
-        return executeVoid(
+        return executeVoidAndCache(
                 RequestType.USER_UPDATE_PROFILE,
-                request
+                request,
+                () -> cacheService
+                        .getUserCacheService()
+                        .updateProfile(userId, username, displayName)
         );
     }
 
@@ -77,10 +96,11 @@ public final class UserClientService
     {
         UpdateBioRequest request = new UpdateBioRequest(session.getToken(), bio);
 
-        return execute(
+        return executeAndCache(
                 RequestType.USER_UPDATE_BIO,
                 request,
-                UpdateBioResponse.class
+                UpdateBioResponse.class,
+                cacheService.getUserCacheService()::updateBio
         );
     }
 
@@ -93,10 +113,11 @@ public final class UserClientService
                         avatar
                 );
 
-        return execute(
+        return executeAndCache(
                 RequestType.USER_UPDATE_AVATAR,
                 request,
-                UpdateAvatarResponse.class
+                UpdateAvatarResponse.class,
+                cacheService.getUserCacheService()::updateAvatar
         );
     }
 
@@ -105,13 +126,13 @@ public final class UserClientService
     {
         UpdateBannerRequest request = new UpdateBannerRequest(session.getToken(), banner);
 
-        return execute(
+        return executeAndCache(
                 RequestType.USER_UPDATE_BANNER,
                 request,
-                UpdateBannerResponse.class
+                UpdateBannerResponse.class,
+                cacheService.getUserCacheService()::updateBanner
         );
     }
-
 
 
     public CompletableFuture<Result<Void>> updateEmail(UUID userid, String email)
@@ -136,13 +157,16 @@ public final class UserClientService
     }
 
 
-    public CompletableFuture<Result<Void>> deleteAccount(String password, UUID useId)
+    public CompletableFuture<Result<Void>> deleteAccount(String password, UUID userId)
     {
-        DeleteAccountRequest request = new DeleteAccountRequest(useId,session.getToken(), password);
+        DeleteAccountRequest request = new DeleteAccountRequest(userId,session.getToken(), password);
 
-        return executeVoid(
+        return executeVoidAndCache(
                 RequestType.USER_DELETE_ACCOUNT,
-                request
+                request,
+                () -> cacheService
+                        .getUserCacheService()
+                        .deleteUser(userId)
         );
     }
 
@@ -150,10 +174,11 @@ public final class UserClientService
     {
         UpdateCompleteProfileRequest request = new UpdateCompleteProfileRequest(session.getToken(), userId, displayName, username, bio,avatar, banner);
 
-        return execute(
+        return executeAndCache(
                 RequestType.USER_UPDATE_COMPLETE_PROFILE,
                 request,
-                UpdateCompleteProfileResponse.class
+                UpdateCompleteProfileResponse.class,
+                cacheService.getUserCacheService()::updateCompleteProfile
         );
     }
 
@@ -334,5 +359,41 @@ public final class UserClientService
             }
 
         }, networkExecutor);
+    }
+
+    private <T> CompletableFuture<Result<T>> executeAndCache(
+            RequestType type,
+            Object request,
+            Class<T> responseClass,
+            Consumer<T> cacheUpdater)
+    {
+        return execute(type, request, responseClass)
+                .thenApply(result ->
+                {
+                    if (result.isSuccess())
+                    {
+                        cacheUpdater.accept(result.getData());
+                    }
+
+                    return result;
+                });
+    }
+
+
+    private CompletableFuture<Result<Void>> executeVoidAndCache(
+            RequestType type,
+            Object request,
+            Runnable cacheUpdater)
+    {
+        return executeVoid(type, request)
+                .thenApply(result ->
+                {
+                    if (result.isSuccess())
+                    {
+                        cacheUpdater.run();
+                    }
+
+                    return result;
+                });
     }
 }

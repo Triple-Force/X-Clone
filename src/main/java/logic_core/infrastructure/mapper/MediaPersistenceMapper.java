@@ -6,7 +6,7 @@ import logic_core.domain.model.MediaModel;
 
 public class MediaPersistenceMapper
 {
-    public MediaModel toDomain(Media entity)
+    public static MediaModel toDomain(Media entity)
     {
         if (entity == null)
         {
@@ -24,7 +24,7 @@ public class MediaPersistenceMapper
                 .build();
     }
 
-    public Media toEntity(MediaModel model, Tweet tweet)
+    public static Media toEntity(MediaModel model, Tweet tweet)
     {
         if (model == null)
         {

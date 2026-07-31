@@ -18,4 +18,8 @@ public interface MediaRepository
 
     boolean isAlreadyAttached(UUID mediaId);
 
+    List<MediaModel> createMedia(UUID tweetId, List<String> mediaUrls);
+
+    void delete(UUID mediaId);
+
 }
