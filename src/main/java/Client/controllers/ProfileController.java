@@ -10,6 +10,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
@@ -19,7 +20,9 @@ import logic_core.app.dto.response.ProfileInfoResponse;
 import logic_core.app.dto.timeline.TimelineTweet;
 import logic_core.domain.repository.TimelineType;
 
+import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.util.UUID;
 import java.util.logging.Logger;
 
@@ -55,9 +58,9 @@ public class ProfileController {
     private VBox userTweetsContainer;
 
     private final ClientApplicationContext context;
-
-
     private UUID profileUserId;
+
+    private static final String DEFAULT_AVATAR_RESOURCE = "/Client/images/user (1).png";
 
     public ProfileController(ClientApplicationContext context) {
         this.context = context;
@@ -65,100 +68,97 @@ public class ProfileController {
 
     @FXML
     public void initialize() {
-
         if (!context.session().isLoggedIn()) {
             return;
         }
 
-        this.profileUserId =
-                context.session().getCurrentUserId();
-
+        this.profileUserId = context.session().getCurrentUserId();
 
         loadUserProfileData();
         loadUserTweets();
     }
 
-
     private void loadUserProfileData() {
-
         context.getUserClientService()
                 .getProfile(profileUserId)
-
                 .thenAccept(result -> {
-
                     Platform.runLater(() -> {
-
                         if (result == null || result.isFailure()) {
-
-                            log.warning(
-                                    "Profile loading failed : "
-                                            + (result == null
-                                            ? "null"
-                                            : result.getError())
-                            );
-
+                            log.warning("Profile loading failed : " + (result == null ? "null" : result.getError()));
                             return;
                         }
 
                         ProfileInfoResponse profile = result.getData();
-
-                        if(profile == null)
-                            return;
+                        if (profile == null) return;
 
                         headerNameLabel.setText(safe(profile.displayName()));
-
                         displayNameLabel.setText(safe(profile.displayName()));
-
-                        usernameLabel.setText(
-                                profile.username() == null
-                                        ? ""
-                                        : "@" + profile.username()
-                        );
-
-
+                        usernameLabel.setText(profile.username() == null ? "" : "@" + profile.username());
                         bioLabel.setText(safe(profile.bio()));
-
                         followersCountLabel.setText(String.valueOf(profile.followers()));
-
                         followingCountLabel.setText(String.valueOf(profile.following()));
 
                         loadAvatar(profile);
                     });
-
                 })
-
                 .exceptionally(error -> {
-
                     log.severe("Profile exception : " + error.getMessage());
-
                     return null;
                 });
     }
 
-
-
-
     private void loadAvatar(ProfileInfoResponse profile) {
+        if (profileAvatar == null) return;
 
-        /*
-          وقتی Media سیستم کامل شد:
+        String avatarUrl = profile.avatarUrl();
+        log.info("Loading Avatar for profile. avatarUrl = " + avatarUrl);
 
-          profile.avatarUrl()
-          یا
-          profile.avatar()
+        if (avatarUrl != null && !avatarUrl.isBlank()) {
+            try {
+                String cleanPath = avatarUrl.startsWith("/") || avatarUrl.startsWith("\\")
+                        ? avatarUrl.substring(1)
+                        : avatarUrl;
 
-          اینجا تبدیل به Image شود
-        */
+                File avatarFile = new File("data", cleanPath);
 
+                if (!avatarFile.exists()) {
+                    String userDir = System.getProperty("user.dir");
+                    avatarFile = new File(userDir + File.separator + "data", cleanPath);
+                }
+
+                log.info("Resolved Avatar Absolute Path: " + avatarFile.getAbsolutePath() + " | Exists: " + avatarFile.exists());
+
+                if (avatarFile.exists()) {
+                    Image image = new Image(avatarFile.toURI().toString(), true);
+                    profileAvatar.setImage(image);
+                    return;
+                } else {
+                    log.warning("Avatar file NOT found on disk: " + avatarFile.getAbsolutePath());
+                }
+            } catch (Exception e) {
+                log.warning("Failed to load user avatar: " + e.getMessage());
+            }
+        }
+        setDefaultAvatar();
     }
 
-
-
+    private void setDefaultAvatar() {
+        try {
+            URL resource = getClass().getResource(DEFAULT_AVATAR_RESOURCE);
+            if (resource != null) {
+                profileAvatar.setImage(new Image(resource.toExternalForm(), true));
+            } else {
+                profileAvatar.setImage(null);
+                log.warning("Default avatar resource not found at: " + DEFAULT_AVATAR_RESOURCE);
+            }
+        } catch (Exception e) {
+            profileAvatar.setImage(null);
+            log.warning("Failed to load default avatar: " + e.getMessage());
+        }
+    }
 
     private void loadUserTweets() {
-
         context.getTimelineService()
-
                 .getTimeline(
                         TimelineType.USER,
                         profileUserId,
@@ -166,105 +166,67 @@ public class ProfileController {
                         0,
                         20
                 )
-
                 .thenAccept(result -> {
-
-
                     Platform.runLater(() -> {
+                        userTweetsContainer.getChildren().clear();
 
-                        userTweetsContainer.getChildren()
-                                .clear();
-
-                        if(result == null || result.isFailure()) {
-
+                        if (result == null || result.isFailure()) {
                             showEmptyState("Unable to load tweets");
-
                             return;
                         }
-
 
                         GetTimelineResponse response = result.getData();
 
-                        if(response == null || response.tweets() == null || response.tweets().isEmpty()) {
-
+                        if (response == null || response.tweets() == null || response.tweets().isEmpty()) {
                             showEmptyState("No tweets yet");
-
                             return;
                         }
 
-
-
-                        for(TimelineTweet tweet : response.tweets()) {
-
+                        for (TimelineTweet tweet : response.tweets()) {
                             addTweetCard(tweet);
                         }
                     });
-
                 })
                 .exceptionally(error -> {
-
-                    Platform.runLater(() -> showEmptyState("Something went wrong")
-                    );
-
+                    Platform.runLater(() -> showEmptyState("Something went wrong"));
                     return null;
                 });
-
     }
 
     private void addTweetCard(TimelineTweet tweet) {
-
         try {
-
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/Client/fxml/TweetItem.fxml"));
 
-
             loader.setControllerFactory(type -> {
-
-                if(type == TweetItemController.class)
-                {
+                if (type == TweetItemController.class) {
                     return new TweetItemController(context);
                 }
-
-
                 try {
-
                     return type.getDeclaredConstructor().newInstance();
-
-                } catch(Exception e) {
-
+                } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
-
             });
 
             Node card = loader.load();
-
             TweetItemController controller = loader.getController();
-
             controller.setTweet(tweet);
 
             userTweetsContainer.getChildren().add(card);
-
-
-        } catch(IOException e) {
-
-            log.severe("Tweet card error : " + e.getMessage()
-            );
+        } catch (IOException e) {
+            log.severe("Tweet card error : " + e.getMessage());
         }
-
     }
-
 
     @FXML
     private void handleEditProfile(ActionEvent event) {
-
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/Client/fxml/EditProfile.fxml"));
 
             loader.setControllerFactory(type -> {
-
-                if (type == EditProfileController.class) {return new EditProfileController(context);}
-
+                if (type == EditProfileController.class) {
+                    return new EditProfileController(context);
+                }
                 try {
                     return type.getDeclaredConstructor().newInstance();
                 } catch (Exception e) {
@@ -273,61 +235,34 @@ public class ProfileController {
             });
 
             Parent root = loader.load();
-
             Stage dialog = new Stage();
-
             dialog.setTitle("Edit Profile");
-
-            dialog.initOwner(
-                    (Stage) editProfileButton.getScene().getWindow()
-            );
-
+            dialog.initOwner((Stage) editProfileButton.getScene().getWindow());
             dialog.initModality(Modality.APPLICATION_MODAL);
-
             dialog.setScene(new Scene(root));
-
             dialog.setResizable(false);
-
             dialog.showAndWait();
 
             loadUserProfileData();
-
         } catch (IOException e) {
-
             log.severe(e.getMessage());
         }
     }
 
     @FXML
-    private void handleShowFollowers() {
-
-    }
-
-
+    private void handleShowFollowers() {}
 
     @FXML
-    private void handleShowFollowing() {
-
-
-    }
+    private void handleShowFollowing() {}
 
     private void showEmptyState(String text) {
-
-
         userTweetsContainer.getChildren().clear();
-
         Label label = new Label(text);
-
         label.setStyle("-fx-text-fill:#666666;" + "-fx-padding:16px;");
-
         userTweetsContainer.getChildren().add(label);
-
     }
 
-
-    private String safe(String value){
-
+    private String safe(String value) {
         return value == null ? "" : value;
-
     }
 }

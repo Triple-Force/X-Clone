@@ -38,13 +38,13 @@
 
                                 <Pane prefHeight="160.0" style="-fx-background-color: linear-gradient(to right, #1d9bf0, #002244); -fx-background-radius: 15 15 0 0;" />
 
-                                <HBox alignment="BOTTOM_RIGHT" prefHeight="60.0" style="-fx-padding: 0 20 0 20;">
+                                <HBox alignment="BOTTOM_RIGHT" prefHeight="90.0" style="-fx-padding: 0 20 10 20;">
                                     <children>
                                         <Pane HBox.hgrow="ALWAYS">
                                             <children>
-                                                <ImageView fx:id="profileAvatar" fitHeight="80.0" fitWidth="80.0" layoutX="0.0" layoutY="-40.0" pickOnBounds="true" preserveRatio="true">
+                                                <ImageView fx:id="profileAvatar" fitHeight="100.0" fitWidth="100.0" layoutY="-50.0" pickOnBounds="true" preserveRatio="false">
                                                     <clip>
-                                                        <Circle centerX="40.0" centerY="40.0" radius="40.0" />
+                                                        <Circle centerX="50.0" centerY="50.0" radius="50.0" />
                                                     </clip>
                                                 </ImageView>
                                             </children>
