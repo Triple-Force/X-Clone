@@ -187,6 +187,13 @@ public class TimelineController {
             TweetItemController controller = loader.getController();
             controller.setTweet(tweet);
 
+            controller.setOnDeleteSuccess(() -> {
+                tweetsContainer.getChildren().remove(node);
+                if (tweetsContainer.getChildren().isEmpty()) {
+                    showEmptyState("No posts yet! Your timeline is empty.");
+                }
+            });
+
             tweetsContainer.getChildren().add(node);
 
         } catch (IOException e) {
@@ -196,6 +203,7 @@ public class TimelineController {
 
     private void showEmptyState(String message)
     {
+        tweetsContainer.getChildren().clear();
         Label label = new Label(message);
 
         label.setStyle("-fx-text-fill:#666666;" + "-fx-padding:16;");
