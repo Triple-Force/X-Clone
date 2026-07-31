@@ -216,7 +216,7 @@ public final class AuthClientService
             throw new AuthApiException("INVALID_AUTH_RESPONSE", "Authentication response is missing token or user id.");
         }
 
-        session.updateSession(authResponse.token(), authResponse.userId());
+        session.updateSession(authResponse.token(), authResponse.userId(), authResponse.username());
     }
 
     private void maybeClearSessionOnFailure(String errorCode)

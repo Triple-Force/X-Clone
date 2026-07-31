@@ -11,6 +11,7 @@ import javafx.scene.layout.HBox;
 import logic_core.app.dto.response.UserSummaryResponse;
 
 import java.net.URL;
+import java.util.UUID;
 
 public class UserItemController {
 
@@ -50,7 +51,21 @@ public class UserItemController {
 
         setAvatar(user.avatarUrl());
 
-        this.isFollowing = user.isFollowing();
+        context.getFollowQueryClientService()
+                .getFollowers(user.userId())
+                .thenAccept(result -> {
+                    if (result.isSuccess()) {
+                        UUID currentUserId = context.getSnapshot().userId();
+
+                        isFollowing = result.getData()
+                                .followers()
+                                .stream()
+                                .anyMatch(follower -> follower.userId().equals(currentUserId));
+
+                        Platform.runLater(this::updateFollowButtonState);
+                    }
+                });
+
         updateFollowButtonState();
 
         checkSelfUser();
@@ -74,8 +89,8 @@ public class UserItemController {
         followButton.setDisable(true);
 
         var serviceCall = isFollowing
-                ? context.getRelationClientService().unfollowUser(user.username())
-                : context.getRelationClientService().followUser(user.username());
+                ? context.getRelationClientService().unfollow(user.userId())
+                : context.getRelationClientService().follow(user.userId());
 
         serviceCall.thenAccept(result -> Platform.runLater(() -> {
             followButton.setDisable(false);
@@ -93,14 +108,14 @@ public class UserItemController {
     private void handleOpenProfile() {
         if (user == null || context == null || context.navigation() == null) return;
 
-        context.navigation().navigateToProfile(user.username());
+//        context.navigation().navigateToProfile(user.username());
     }
 
     private void checkSelfUser() {
         if (context == null || user == null || followButton == null) return;
         try {
-            String currentUsername = context.getSnapshot().username();
-            if (currentUsername != null && currentUsername.equals(user.username())) {
+            UUID currentUserId = context.getSnapshot().userId();
+            if (currentUserId != null && currentUserId.equals(user.userId())) {
                 followButton.setVisible(false);
                 followButton.setManaged(false);
             }

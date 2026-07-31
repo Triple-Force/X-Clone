@@ -6,12 +6,11 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
-import logic_core.app.dto.response.UserProfileResponse;
+import logic_core.app.dto.response.ProfileInfoResponse;
 
-import java.net.URL;
+import java.util.UUID;
 
 public class UserProfileController {
 
@@ -28,8 +27,9 @@ public class UserProfileController {
 
     private final ClientApplicationContext context;
     private String targetUsername;
+    private UUID userId;
     private boolean isFollowing = false;
-    private int followersCount = 0;
+    private long followersCount = 0;
 
     public UserProfileController(ClientApplicationContext context) {
         this.context = context;
@@ -44,25 +44,42 @@ public class UserProfileController {
         followersCountLabel.setStyle("-fx-cursor: hand;");
     }
 
-    public void setProfileData(UserProfileResponse profile) {
-        if (profile == null) return;
+    public void setProfileData(ProfileInfoResponse profile) {
 
         this.targetUsername = profile.username();
-        this.isFollowing = profile.isFollowing();
-        this.followersCount = profile.followersCount();
+        this.followersCount = profile.followers();
+        this.userId = profile.userId();
 
         headerNameLabel.setText(nullSafe(profile.displayName()));
         displayNameLabel.setText(nullSafe(profile.displayName()));
         usernameLabel.setText("@" + nullSafe(profile.username()));
         bioLabel.setText(nullSafe(profile.bio()));
 
-        tweetCountLabel.setText(profile.tweetsCount() + " Tweets");
-        followingCountLabel.setText(profile.followingCount() + " Following");
+        tweetCountLabel.setText(profile.tweets() + " Tweets");
+        followingCountLabel.setText(profile.following() + " Following");
 
         updateFollowersLabel();
-        updateFollowButtonState();
 
-        checkIfSelfProfile();
+        System.out.println(1);
+        context.getFollowQueryClientService()
+                .getFollowers(profile.userId())
+                .thenAccept(result -> {
+
+                    if (!result.isSuccess() || result.getData() == null)
+                        return;
+
+                    UUID currentUserId = context.getSnapshot().userId();
+
+                    isFollowing = result.getData()
+                            .followers()
+                            .stream()
+                            .anyMatch(u -> u.userId().equals(currentUserId));
+
+                    Platform.runLater(this::updateFollowButtonState);
+                });
+
+        System.out.println(2);
+        updateFollowButtonState();
     }
 
     @FXML
@@ -81,11 +98,12 @@ public class UserProfileController {
         updateFollowersLabel();
         updateFollowButtonState();
 
-        var serviceCall = isFollowing
-                ? context.getRelationClientService().followUser(targetUsername)
-                : context.getRelationClientService().unfollowUser(targetUsername);
+        var future = isFollowing
+                ? context.getRelationClientService().follow(userId)
+                : context.getRelationClientService().unfollow(userId);
 
-        serviceCall.thenAccept(result -> Platform.runLater(() -> {
+        future.thenAccept(result -> Platform.runLater(() -> {
+
             followButton.setDisable(false);
             if (!result.isSuccess()) {
                 revertFollowState();

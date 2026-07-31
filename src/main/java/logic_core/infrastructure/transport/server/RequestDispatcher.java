@@ -124,6 +124,10 @@ public class RequestDispatcher
                  MEDIA_DOWNLOAD ->
 
                 dispatchMedia(request);
+
+
+            case TWEET_GET_REPLIES ->
+                dispatchReply(request);
         };
     }
 
@@ -448,6 +452,13 @@ public class RequestDispatcher
                 }
         );
     }
+
+
+    public ResponseEnvelope dispatchReply(RequestEnvelope request)
+    {
+        return null;
+    }
+
     //===============================================================
     //                     DISPATCH AUTH
     //===============================================================
@@ -1781,6 +1792,7 @@ public class RequestDispatcher
             case TWEET_UNLIKE -> ResponseType.TWEET_UNLIKE_RESPONSE;
             case TWEET_REPLY -> ResponseType.TWEET_REPLY_RESPONSE;
             case TWEET_RETWEET -> ResponseType.TWEET_RETWEET_RESPONSE;
+            case TWEET_GET_REPLIES -> ResponseType.TWEET_GET_REPLY_RESPONSE;
             case USER_GET_PROFILE -> ResponseType.USER_GET_PROFILE_RESPONSE;
             case USER_SEARCH -> ResponseType.USER_SEARCH_RESPONSE;
             case USER_UPDATE_PROFILE -> ResponseType.USER_UPDATE_PROFILE_RESPONSE;

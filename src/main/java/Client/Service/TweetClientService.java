@@ -250,4 +250,20 @@ public final class TweetClientService
             }
         }, networkExecutor);
     }
+
+    private <T> CompletableFuture<Result<T>> cacheOnSuccess(
+            CompletableFuture<Result<T>> future,
+            java.util.function.Consumer<T> cacher)
+    {
+        return future.thenApply(result ->
+        {
+            if (result.isSuccess())
+            {
+                cacher.accept(result.getData());
+            }
+
+            return result;
+        });
+    }
+
 }

@@ -9,6 +9,8 @@ import javafx.scene.layout.VBox;
 import logic_core.app.dto.response.UserSummaryResponse;
 
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
 public class UserListController {
 
@@ -24,28 +26,41 @@ public class UserListController {
         this.context = context;
     }
 
-    public void loadUsers(String title, String targetUsername, boolean isFollowersList) {
+    public void loadUsers(String title, UUID targetId, boolean isFollowersList) {
         pageTitleLabel.setText(title);
         usersContainer.getChildren().clear();
 
         if (context == null) return;
 
-        var serviceCall = isFollowersList
-                ? context.getRelationClientService().getFollowers(targetUsername)
-                : context.getRelationClientService().getFollowing(targetUsername);
 
-        serviceCall.thenAccept(result -> Platform.runLater(() -> {
-            if (result.isSuccess() && result.getData() != null) {
-                renderUserList(result.getData());
-            } else {
-                Label emptyLabel = new Label("No users found.");
-                emptyLabel.setStyle("-fx-text-fill: #536471; -fx-font-size: 14px;");
-                usersContainer.getChildren().add(emptyLabel);
-            }
-        })).exceptionally(error -> {
-            error.printStackTrace();
-            return null;
-        });
+        if (isFollowersList) {
+            context.getFollowQueryClientService()
+                    .getFollowers(targetId)
+                    .thenAccept(result -> Platform.runLater(() -> {
+                        if (result.isSuccess() && result.getData() != null) {
+                            renderUserList(result.getData().followers());
+                        } else {
+                        }
+                    }));
+        } else {
+            context.getFollowQueryClientService()
+                    .getFollowings(targetId)
+                    .thenAccept(result -> Platform.runLater(() -> {
+                        if (result.isSuccess() && result.getData() != null) {
+                            renderUserList(result.getData().users());
+                        } else {
+                            showEmpty();
+                        }
+                    }));
+        }
+    }
+
+    private void showEmpty() {
+        usersContainer.getChildren().clear();
+
+        Label emptyLabel = new Label("No users found.");
+        emptyLabel.setStyle("-fx-text-fill: #536471; -fx-font-size: 14px;");
+        usersContainer.getChildren().add(emptyLabel);
     }
 
     private void renderUserList(List<UserSummaryResponse> users) {

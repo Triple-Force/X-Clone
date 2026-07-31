@@ -219,7 +219,8 @@ public class ProfileController {
         if (context == null || currentUsername == null) return;
 
         if (context.navigation() != null) {
-            context.navigation().showUserList(title, currentUsername, isFollowersList);
+
+//            context.navigation().showUserList(title, currentUsername, isFollowersList);
         }
     }
 

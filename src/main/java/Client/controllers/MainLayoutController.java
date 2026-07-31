@@ -8,6 +8,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.layout.Pane;
 import java.io.IOException;
+import java.util.UUID;
 import java.util.logging.Logger;
 
 public class MainLayoutController {
@@ -56,7 +57,9 @@ public class MainLayoutController {
     public void handleSearch(ActionEvent event) {
     }
 
-    public void showUserList(String title, String targetUsername, boolean isFollowersList) {
+    public void
+
+    showUserList(String title, UUID userid, boolean isFollowersList) {
         Platform.runLater(() -> {
             try {
                 FXMLLoader loader = new FXMLLoader(getClass().getResource(USER_LIST_FXML));
@@ -65,7 +68,7 @@ public class MainLayoutController {
 
                 UserListController controller = loader.getController();
                 controller.setContext(context);
-                controller.loadUsers(title, targetUsername, isFollowersList);
+                controller.loadUsers(title, userid, isFollowersList);
 
                 setContentView(view);
             } catch (IOException e) {
@@ -128,5 +131,27 @@ public class MainLayoutController {
 
     private interface InitializerCallback {
         void init(Object controller);
+    }
+
+    @FXML
+    public void showFollowingList(ActionEvent event) {
+        UUID userId = context.getSnapshot().userId();
+
+        if (userId != null) {
+            showUserList("Following", userId, false);
+        } else {
+            log.warning("Cannot load following list: current user ID is null");
+        }
+    }
+
+    @FXML
+    public void showFollowersList(ActionEvent event) {
+        UUID userId = context.getSnapshot().userId();
+
+        if (userId != null) {
+            showUserList("Followers", userId, true);
+        } else {
+            log.warning("Cannot load followers list: current user ID is null");
+        }
     }
 }

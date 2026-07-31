@@ -5,14 +5,14 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class ClientSession
 {
-    private static final SessionSnapshot EMPTY = new SessionSnapshot(null, null);
+    private static final SessionSnapshot EMPTY = new SessionSnapshot(null, null, null);
 
     private final AtomicReference<SessionSnapshot> state =
             new AtomicReference<>(EMPTY);
 
-    public void updateSession(String token, UUID userId)
+    public void updateSession(String token, UUID userId, String username)
     {
-        state.set(new SessionSnapshot(token, userId));
+        state.set(new SessionSnapshot(token, userId,username));
     }
 
     public void clear()
@@ -42,12 +42,12 @@ public class ClientSession
         return state.get();
     }
 
-    public record SessionSnapshot(String token, UUID userId)
+    public record SessionSnapshot(String token, UUID userId, String username)
     {
 
         public boolean isLoggedIn()
         {
-            return token != null && !token.isBlank() & userId != null;
+            return token != null && !token.isBlank() && userId != null;
         }
     }
 }
