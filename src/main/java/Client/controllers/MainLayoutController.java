@@ -9,6 +9,8 @@ import javafx.scene.Parent;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
+import logic_core.app.dto.response.UserSearchResponse;
+import logic_core.app.dto.response.UserSummaryResponse;
 
 import java.io.IOException;
 import java.util.logging.Logger;
@@ -55,8 +57,61 @@ public class MainLayoutController {
     public void toggleTheme(ActionEvent event) {
     }
     @FXML
-    public void handleSearch(ActionEvent event) {
+    public void handleSearch(ActionEvent event)
+    {
+        String query = searchTextField.getText();
+
+        if (query == null || query.isBlank())
+        {
+            searchResultsContainer.getChildren().clear();
+            return;
+        }
+
+        context.getUserClientService()
+                .searchUsers(query, 20, 0)
+                .thenAccept(result -> Platform.runLater(() ->
+                {
+                    searchResultsContainer.getChildren().clear();
+
+                    if (!result.isSuccess() || result.getData() == null)
+                    {
+                        return;
+                    }
+
+                    for (UserSearchResponse user : result.getData())
+                    {
+                        try
+                        {
+                            FXMLLoader loader =
+                                    new FXMLLoader(getClass().getResource("/Client/fxml/UserItem.fxml"));
+
+                            loader.setControllerFactory(param ->
+                                    new UserItemController(context));
+
+                            Parent node = loader.load();
+
+                            UserItemController controller = loader.getController();
+
+                            controller.setUser(
+                                    UserSummaryResponse.builder()
+                                            .userId(user.id())
+                                            .username(user.username())
+                                            .displayName(user.displayName())
+                                            .avatarUrl(user.avatarUrl())
+                                            .verified(false)
+                                            .build()
+                            );
+
+                            searchResultsContainer.getChildren().add(node);
+                        }
+                        catch (IOException e)
+                        {
+                            e.printStackTrace();
+                        }
+                    }
+                }));
     }
+
 
     @FXML
     public void showProfile(ActionEvent event) {
@@ -107,14 +162,51 @@ public class MainLayoutController {
     }
 
     @FXML
-    void showFollowingList()
-    {
-
+    void showFollowersList() {
+        loadUserList(true);
     }
 
     @FXML
-    void showFollowersList()
-    {
+    void showFollowingList() {
+        loadUserList(false);
+    }
 
+    private void loadUserList(boolean followers) {
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                    getClass().getResource("/Client/fxml/UserList.fxml"));
+
+            loader.setControllerFactory(param -> {
+                if (param == UserListController.class) {
+                    return new UserListController(context);
+                }
+
+                try {
+                    return param.getDeclaredConstructor().newInstance();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
+            Parent view = loader.load();
+
+            UserListController controller = loader.getController();
+
+            if (followers) {
+                controller.loadFollowers(context.getSnapshot().userId());
+            } else {
+                controller.loadFollowing(context.getSnapshot().userId());
+            }
+
+            contentArea.getChildren().setAll(view);
+
+            if (view instanceof Pane pane) {
+                pane.prefWidthProperty().bind(contentArea.widthProperty());
+                pane.prefHeightProperty().bind(contentArea.heightProperty());
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

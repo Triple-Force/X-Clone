@@ -13,137 +13,212 @@ import logic_core.app.dto.response.UserSummaryResponse;
 import java.net.URL;
 import java.util.UUID;
 
-public class UserItemController {
+public class UserItemController
+{
 
-    @FXML private HBox rootContainer;
-    @FXML private ImageView avatarImageView;
-    @FXML private Label displayNameLabel;
-    @FXML private Label usernameLabel;
-    @FXML private Button followButton;
+    @FXML
+    private HBox rootContainer;
+
+    @FXML
+    private ImageView avatarImageView;
+
+    @FXML
+    private Label displayNameLabel;
+
+    @FXML
+    private Label usernameLabel;
+
+    @FXML
+    private Button followButton;
+
+    private static final String DEFAULT_AVATAR =
+            "/Client/images/default-avatar.png";
 
     private final ClientApplicationContext context;
-    private static final String DEFAULT_AVATAR_RESOURCE = "/Client/images/default-avatar.png";
-    private UserSummaryResponse user;
-    private boolean isFollowing;
 
-    public UserItemController(ClientApplicationContext context) {
+    private UserSummaryResponse user;
+
+
+    private boolean isFollowing = false;
+
+    public UserItemController(ClientApplicationContext context)
+    {
         this.context = context;
     }
 
     @FXML
-    private void initialize() {
-        if (followButton != null) {
-            followButton.setOnAction(e -> handleFollowToggle());
-        }
+    private void initialize()
+    {
+        rootContainer.setOnMouseClicked(e -> openProfile());
 
-        if (rootContainer != null) {
-            rootContainer.setOnMouseClicked(e -> handleOpenProfile());
-            rootContainer.setStyle("-fx-cursor: hand;");
-        }
+        followButton.setOnAction(e -> toggleFollow());
+
+        rootContainer.setStyle("-fx-cursor: hand;");
     }
 
     public void setUser(UserSummaryResponse user) {
         this.user = user;
-        if (user == null) return;
 
-        displayNameLabel.setText(nullSafe(user.displayName()));
-        usernameLabel.setText(user.username() == null ? "" : "@" + user.username());
+        if (user == null)
+            return;
 
-        setAvatar(user.avatarUrl());
+        displayNameLabel.setText(
+                user.displayName() == null
+                        ? ""
+                        : user.displayName()
+        );
 
-        context.getFollowQueryClientService()
-                .getFollowers(user.userId())
-                .thenAccept(result -> {
-                    if (result.isSuccess()) {
-                        UUID currentUserId = context.getSnapshot().userId();
+        usernameLabel.setText(
+                user.username() == null
+                        ? ""
+                        : "@" + user.username()
+        );
 
-                        isFollowing = result.getData()
-                                .followers()
-                                .stream()
-                                .anyMatch(follower -> follower.userId().equals(currentUserId));
+        loadAvatar(user.avatarUrl());
 
-                        Platform.runLater(this::updateFollowButtonState);
-                    }
-                });
+        hideButtonIfCurrentUser();
 
-        updateFollowButtonState();
+        /*
+            اگر بعداً following به DTO اضافه شد:
 
-        checkSelfUser();
+            isFollowing = user.following();
+         */
+
+        updateFollowButton();
     }
 
-    private void updateFollowButtonState() {
-        if (followButton == null) return;
-
-        if (isFollowing) {
-            followButton.setText("Following");
-            followButton.setStyle("-fx-background-color: transparent; -fx-border-color: #cfd9de; -fx-border-radius: 20; -fx-text-fill: #0f1419; -fx-font-weight: bold; -fx-padding: 6 16; -fx-cursor: hand;");
-        } else {
-            followButton.setText("Follow");
-            followButton.setStyle("-fx-background-color: #0f1419; -fx-background-radius: 20; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 6 16; -fx-cursor: hand;");
-        }
-    }
-
-    private void handleFollowToggle() {
-        if (user == null || context == null) return;
+    private void toggleFollow()
+    {
+        if (user == null)
+            return;
 
         followButton.setDisable(true);
 
-        var serviceCall = isFollowing
-                ? context.getRelationClientService().unfollow(user.userId())
-                : context.getRelationClientService().follow(user.userId());
+        var future =
+                isFollowing
+                        ? context.getRelationClientService().unfollow(user.userId())
+                        : context.getRelationClientService().follow(user.userId());
 
-        serviceCall.thenAccept(result -> Platform.runLater(() -> {
-            followButton.setDisable(false);
-            if (result.isSuccess()) {
-                isFollowing = !isFollowing;
-                updateFollowButtonState();
-            }
-        })).exceptionally(error -> {
-            Platform.runLater(() -> followButton.setDisable(false));
-            error.printStackTrace();
+        future.thenAccept(result ->
+                Platform.runLater(() ->
+                {
+                    followButton.setDisable(false);
+
+                    if (!result.isSuccess())
+                        return;
+
+                    isFollowing = !isFollowing;
+
+                    updateFollowButton();
+                })
+        ).exceptionally(ex ->
+        {
+            Platform.runLater(() ->
+                    followButton.setDisable(false));
+
+            ex.printStackTrace();
+
             return null;
         });
     }
 
-    private void handleOpenProfile() {
-        if (user == null || context == null || context.navigation() == null) return;
+    private void updateFollowButton()
+    {
+        if (isFollowing)
+        {
+            followButton.setText("Following");
 
-//        context.navigation().navigateToProfile(user.username());
-    }
+            followButton.setStyle("""
+                    -fx-background-color: transparent;
+                    -fx-border-color: #cfd9de;
+                    -fx-border-radius: 20;
+                    -fx-text-fill: #0f1419;
+                    -fx-font-weight: bold;
+                    -fx-padding: 6 16;
+                    -fx-cursor: hand;
+                    """);
+        }
+        else
+        {
+            followButton.setText("Follow");
 
-    private void checkSelfUser() {
-        if (context == null || user == null || followButton == null) return;
-        try {
-            UUID currentUserId = context.getSnapshot().userId();
-            if (currentUserId != null && currentUserId.equals(user.userId())) {
-                followButton.setVisible(false);
-                followButton.setManaged(false);
-            }
-        } catch (Exception ignored) {}
-    }
-
-    private void setAvatar(String avatarUrl) {
-        try {
-            if (avatarUrl != null && !avatarUrl.isBlank()) {
-                avatarImageView.setImage(new Image(avatarUrl, true));
-            } else {
-                setDefaultAvatar();
-            }
-        } catch (Exception ignored) {
-            setDefaultAvatar();
+            followButton.setStyle("""
+                    -fx-background-color: #0f1419;
+                    -fx-text-fill: white;
+                    -fx-background-radius: 20;
+                    -fx-font-weight: bold;
+                    -fx-padding: 6 16;
+                    -fx-cursor: hand;
+                    """);
         }
     }
 
-    private void setDefaultAvatar() {
-        try {
-            URL resource = getClass().getResource(DEFAULT_AVATAR_RESOURCE);
-            if (resource != null) {
-                avatarImageView.setImage(new Image(resource.toExternalForm(), true));
-            }
-        } catch (Exception ignored) {}
+    private void openProfile()
+    {
+        if (user == null)
+            return;
+
+        /*
+            وقتی Navigation کامل شد:
+
+            context.navigation().showProfile(user.userId());
+
+            یا
+
+            context.navigation().showProfile(user.username());
+         */
     }
 
-    private String nullSafe(String value) {
-        return value == null ? "" : value;
+    private void hideButtonIfCurrentUser()
+    {
+        UUID currentUser =
+                context.getSnapshot().userId();
+
+        if (currentUser != null &&
+                currentUser.equals(user.userId()))
+        {
+            followButton.setVisible(false);
+            followButton.setManaged(false);
+        }
+    }
+
+    private void loadAvatar(String avatarUrl)
+    {
+        if (avatarUrl == null || avatarUrl.isBlank())
+        {
+            loadDefaultAvatar();
+            return;
+        }
+
+        try
+        {
+            Image image = new Image(avatarUrl, true);
+
+            image.exceptionProperty().addListener((obs, old, ex) ->
+            {
+                if (ex != null)
+                {
+                    Platform.runLater(this::loadDefaultAvatar);
+                }
+            });
+
+            avatarImageView.setImage(image);
+        }
+        catch (Exception e)
+        {
+            loadDefaultAvatar();
+        }
+    }
+
+    private void loadDefaultAvatar()
+    {
+        URL url = getClass().getResource(DEFAULT_AVATAR);
+
+        if (url != null)
+        {
+            avatarImageView.setImage(
+                    new Image(url.toExternalForm())
+            );
+        }
     }
 }
