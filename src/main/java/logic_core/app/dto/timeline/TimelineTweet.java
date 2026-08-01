@@ -18,6 +18,7 @@ public record TimelineTweet(
         long likeCount,
         long replyCount,
         long retweetCount,
+        boolean isLiked,
         OffsetDateTime publishedAt,
         List<TimelineMedia> media
 ) {}
