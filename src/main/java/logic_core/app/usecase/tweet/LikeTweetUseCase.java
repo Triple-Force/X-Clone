@@ -60,6 +60,7 @@ public class LikeTweetUseCase
 
                 long count = relationshipRepository.countLikesByTweetId(tweet.getId());
 
+                System.out.println("likes : " + count);
                 return Result.success(
                         new LikeResponse(
                                 currentUserId,
@@ -69,13 +70,17 @@ public class LikeTweetUseCase
                         )
                 );
             }
-            relationshipRepository.saveLike(LikeRelation.create(tweet.getId(), currentUserId));
+            else
+            {
+                relationshipRepository.saveLike(LikeRelation.create(tweet.getId(), currentUserId));
 
-            long totalLikesCount = relationshipRepository.countLikesByTweetId(tweet.getId());
+                long totalLikesCount = relationshipRepository.countLikesByTweetId(tweet.getId());
 
-            eventPublisher.publish(new TweetLikedEvent(tweet.getId(), currentUserId, timeProvider.now()));
+                eventPublisher.publish(new TweetLikedEvent(tweet.getId(), currentUserId, timeProvider.now()));
 
-            return Result.success(new LikeResponse(currentUserId, tweet.getId(), true, totalLikesCount));
+                return Result.success(new LikeResponse(currentUserId, tweet.getId(), true, totalLikesCount));
+            }
+
         }
         catch (ValidationException | ForbiddenException | ConflictException | NotFoundException e)
         {

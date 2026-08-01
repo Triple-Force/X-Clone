@@ -48,6 +48,7 @@ public class MessagesController {
 
     @FXML
     private Button sendMessageButton;
+    private List<UUID> pendingRecipientIds;
 
     private final ClientApplicationContext context;
 
@@ -82,6 +83,8 @@ public class MessagesController {
         });
 
 
+
+
         if (!context.session().isLoggedIn()) {
 
             showMessagesPlaceholder("Please log in to view your messages.");
@@ -89,9 +92,27 @@ public class MessagesController {
             return;
         }
 
-        loadUserConversations();
+        if (pendingRecipientIds != null) {
+
+            context.getConversationClientService()
+                    .createConversation(context.getSnapshot().userId(),pendingRecipientIds)
+                    .thenAccept(result ->
+                            Platform.runLater(this::loadUserConversations));
+
+        } else {
+
+            loadUserConversations();
+        }
     }
 
+    public void openConversationWith(UUID userId) {
+
+        if (userId == null) {
+            return;
+        }
+
+        this.pendingRecipientId = userId;
+    }
 
     // =========================================================
     // CONVERSATIONS
@@ -108,7 +129,6 @@ public class MessagesController {
                         CONVERSATIONS_PAGE,
                         CONVERSATIONS_PAGE_SIZE
                 )
-
                 .thenAccept(result ->
                         Platform.runLater(() -> {
 
@@ -116,10 +136,12 @@ public class MessagesController {
                                 return;
                             }
 
-
                             if (result == null || result.isFailure()) {
 
-                                String error = result == null ? "UNKNOWN_ERROR" : result.getError();
+                                String error =
+                                        result == null
+                                                ? "UNKNOWN_ERROR"
+                                                : result.getError();
 
                                 log.warning("Failed to load conversations: " + error);
 
@@ -130,8 +152,9 @@ public class MessagesController {
 
                             GetConversationsResponse response = result.getData();
 
-
-                            if (response == null || response.conversations() == null || response.conversations().isEmpty()) {
+                            if (response == null
+                                    || response.conversations() == null
+                                    || response.conversations().isEmpty()) {
 
                                 showChatsPlaceholder("No conversations yet.");
 
@@ -144,64 +167,75 @@ public class MessagesController {
                                 return;
                             }
 
-
                             renderConversations(response.conversations());
 
-                            ConversationSummaryResponse first = response.conversations().get(0);
+                            ConversationSummaryResponse first =
+                                    response.conversations().get(0);
 
                             selectConversation(first);
                         })
                 )
-
                 .exceptionally(error -> {
 
-                    log.log(Level.SEVERE, "Critical error loading conversations", error);
+                    log.log(Level.SEVERE,
+                            "Critical error loading conversations",
+                            error);
 
-                    Platform.runLater(() -> showChatsPlaceholder("Connection error."));
+                    Platform.runLater(() ->
+                            showChatsPlaceholder("Connection error."));
 
                     return null;
                 });
     }
 
-
-    private void renderConversations(List<ConversationSummaryResponse> conversations) {
+    private void renderConversations(
+            List<ConversationSummaryResponse> conversations) {
 
         chatsContainer.getChildren().clear();
 
-
         for (ConversationSummaryResponse conversation : conversations) {
 
-            if (conversation == null || conversation.conversationId() == null) {
+            if (conversation == null
+                    || conversation.conversationId() == null) {
                 continue;
             }
 
-            VBox conversationCard = createConversationCard(conversation);
-
-            chatsContainer.getChildren().add(conversationCard);
+            chatsContainer.getChildren().add(
+                    createConversationCard(conversation)
+            );
         }
     }
 
+    private VBox createConversationCard(
+            ConversationSummaryResponse conversation) {
 
-    private VBox createConversationCard(ConversationSummaryResponse conversation) {
+        Label titleLabel =
+                new Label(
+                        safeText(
+                                conversation.title(),
+                                "Conversation"
+                        )
+                );
 
-        String title = safeText(conversation.title(), "Conversation");
+        titleLabel.setStyle(
+                "-fx-font-size: 14px;" +
+                        "-fx-font-weight: bold;"
+        );
 
-
-        String lastMessage = safeText(conversation.lastMessage(), "");
-
-
-        Label titleLabel = new Label(title);
-
-        titleLabel.setStyle("-fx-font-size: 14px; " + "-fx-font-weight: bold;");
-
-
-        Label previewLabel = new Label(lastMessage);
+        Label previewLabel =
+                new Label(
+                        safeText(
+                                conversation.lastMessage(),
+                                ""
+                        )
+                );
 
         previewLabel.setWrapText(true);
-
         previewLabel.setMaxWidth(190);
-
-        previewLabel.setStyle("-fx-text-fill: #536471; " + "-fx-font-size: 12px;");
+        previewLabel.setStyle(
+                "-fx-text-fill:#536471;" +
+                        "-fx-font-size:12px;"
+        );
 
         VBox textContainer =
                 new VBox(
@@ -210,23 +244,29 @@ public class MessagesController {
                         previewLabel
                 );
 
-        HBox.setHgrow(textContainer, Priority.ALWAYS);
+        HBox.setHgrow(
+                textContainer,
+                Priority.ALWAYS
+        );
 
         Label unreadLabel = new Label();
 
         if (conversation.unreadCount() > 0) {
 
-            unreadLabel.setText(String.valueOf(conversation.unreadCount()));
+            unreadLabel.setText(
+                    String.valueOf(
+                            conversation.unreadCount()
+                    )
+            );
 
             unreadLabel.setStyle(
-                    "-fx-background-color: #1d9bf0; " +
-                            "-fx-text-fill: white; " +
-                            "-fx-font-weight: bold; " +
-                            "-fx-padding: 4 7 4 7; " +
-                            "-fx-background-radius: 20;"
+                    "-fx-background-color:#1d9bf0;" +
+                            "-fx-text-fill:white;" +
+                            "-fx-font-weight:bold;" +
+                            "-fx-padding:4 7 4 7;" +
+                            "-fx-background-radius:20;"
             );
         }
-
 
         HBox card =
                 new HBox(
@@ -235,38 +275,37 @@ public class MessagesController {
                         unreadLabel
                 );
 
-        card.setStyle(
-                "-fx-padding: 10; " +
-                        "-fx-background-radius: 10; " +
-                        "-fx-cursor: hand;"
-        );
-
         card.setMaxWidth(Double.MAX_VALUE);
 
-        VBox wrapper = new VBox(card);
-
-        wrapper.setMaxWidth(Double.MAX_VALUE);
+        card.setStyle(
+                "-fx-padding:10;" +
+                        "-fx-background-radius:10;" +
+                        "-fx-cursor:hand;"
+        );
 
         if (conversation.conversationId().equals(selectedChatId)) {
 
             card.setStyle(
-                    "-fx-padding: 10; " +
-                            "-fx-background-color: #eff3f4; " +
-                            "-fx-background-radius: 10; " +
-                            "-fx-cursor: hand;"
+                    "-fx-padding:10;" +
+                            "-fx-background-color:#eff3f4;" +
+                            "-fx-background-radius:10;" +
+                            "-fx-cursor:hand;"
             );
         }
 
+        VBox wrapper = new VBox(card);
+        wrapper.setMaxWidth(Double.MAX_VALUE);
 
-        card.setOnMouseClicked(event -> selectConversation(conversation));
+        card.setOnMouseClicked(e ->
+                selectConversation(conversation));
 
         return wrapper;
     }
 
-
     private void selectConversation(ConversationSummaryResponse conversation) {
 
-        if (conversation == null || conversation.conversationId() == null) {
+        if (conversation == null
+                || conversation.conversationId() == null) {
             return;
         }
 
@@ -279,28 +318,22 @@ public class MessagesController {
                 )
         );
 
-
         sendMessageButton.setDisable(false);
 
         loadUserConversationsWithoutAutoSelection();
 
-
-        loadConversationMessages(
-                selectedChatId
-        );
+        loadConversationMessages(selectedChatId);
     }
 
     private void loadUserConversationsWithoutAutoSelection() {
 
         long requestVersion = conversationsRequestVersion.incrementAndGet();
 
-
         context.getConversationClientService()
                 .getConversations(
                         CONVERSATIONS_PAGE,
                         CONVERSATIONS_PAGE_SIZE
                 )
-
                 .thenAccept(result ->
                         Platform.runLater(() -> {
 
@@ -308,37 +341,19 @@ public class MessagesController {
                                 return;
                             }
 
-
                             if (result == null || result.isFailure()) {
                                 return;
                             }
 
-
                             GetConversationsResponse response = result.getData();
-
 
                             if (response == null || response.conversations() == null) {
                                 return;
                             }
 
-
-                            chatsContainer.getChildren().clear();
-
-
-                            for (ConversationSummaryResponse conversation : response.conversations()) {
-
-                                if (conversation == null || conversation.conversationId() == null) {
-                                    continue;
-                                }
-
-
-                                VBox card = createConversationCard(conversation);
-
-                                chatsContainer.getChildren().add(card);
-                            }
+                            renderConversations(response.conversations());
                         })
                 )
-
                 .exceptionally(error -> {
 
                     log.log(
@@ -352,9 +367,14 @@ public class MessagesController {
     }
 
 
+
     // =========================================================
     // MESSAGES
     // =========================================================
+
+    // =========================================================
+// MESSAGES
+// =========================================================
 
     private void loadConversationMessages(UUID conversationId) {
 
@@ -362,12 +382,9 @@ public class MessagesController {
             return;
         }
 
-
         long requestVersion = messagesRequestVersion.incrementAndGet();
 
-
         showMessagesPlaceholder("Loading messages...");
-
 
         context.getMessageClientService()
                 .getConversationMessages(
@@ -375,7 +392,6 @@ public class MessagesController {
                         MESSAGES_PAGE,
                         MESSAGES_PAGE_SIZE
                 )
-
                 .thenAccept(result ->
                         Platform.runLater(() -> {
 
@@ -383,48 +399,39 @@ public class MessagesController {
                                 return;
                             }
 
-
                             if (!conversationId.equals(selectedChatId)) {
                                 return;
                             }
 
-
                             if (result == null || result.isFailure()) {
 
-                                String error =
-                                        result == null
-                                                ? "UNKNOWN_ERROR"
-                                                : result.getError();
-
-                                log.warning("Failed to load conversation messages: " + error);
+                                log.warning(
+                                        "Failed to load messages: " +
+                                                (result == null ? "UNKNOWN" : result.getError())
+                                );
 
                                 showMessagesPlaceholder("Failed to load messages.");
-
                                 return;
                             }
 
                             ConversationMessagesResponse response = result.getData();
 
-                            if (response == null || response.messages() == null || response.messages().isEmpty()) {
+                            if (response == null
+                                    || response.messages() == null
+                                    || response.messages().isEmpty()) {
 
-                                showMessagesPlaceholder("No messages yet. Start the conversation!");
-
+                                showMessagesPlaceholder("No messages yet.");
                                 return;
                             }
 
                             renderMessages(response.messages());
-                        })
-                )
-
+                        }))
                 .exceptionally(error -> {
 
-                    log.log(
-                            Level.SEVERE,
-                            "Critical error loading messages",
-                            error
-                    );
+                    log.log(Level.SEVERE, "Load messages error", error);
 
-                    Platform.runLater(() -> showMessagesPlaceholder("Connection error."));
+                    Platform.runLater(() ->
+                            showMessagesPlaceholder("Connection error."));
 
                     return null;
                 });
@@ -443,48 +450,40 @@ public class MessagesController {
                 continue;
             }
 
-            boolean sentByCurrentUser =
+            boolean mine =
                     currentUserId != null
-                            && currentUserId.equals(
-                            message.senderId()
-                    );
+                            && currentUserId.equals(message.senderId());
 
-
-            HBox bubble =
-                    createMessageBubble(
-                            message,
-                            sentByCurrentUser
-                    );
-
-
-            messagesContainer.getChildren().add(bubble);
+            messagesContainer.getChildren().add(
+                    createMessageBubble(message, mine)
+            );
         }
     }
 
 
-    private HBox createMessageBubble(MessageInfoResponse message, boolean sentByCurrentUser) {
+    private HBox createMessageBubble(
+            MessageInfoResponse message,
+            boolean mine) {
 
-        Label contentLabel = new Label(safeText(message.content(), ""));
+        Label contentLabel =
+                new Label(safeText(message.content(), ""));
 
         contentLabel.setWrapText(true);
-
         contentLabel.setMaxWidth(450);
 
-
-        String timeText = "";
+        String time = "";
 
         if (message.createdAt() != null) {
-
-            timeText = message.createdAt().format(DateTimeFormatter.ofPattern("HH:mm"));
+            time = message.createdAt()
+                    .format(DateTimeFormatter.ofPattern("HH:mm"));
         }
 
-        Label timeLabel = new Label(timeText);
+        Label timeLabel = new Label(time);
 
         timeLabel.setStyle(
-                "-fx-font-size: 10px; " +
-                        "-fx-text-fill: #536471;"
+                "-fx-font-size:10px;" +
+                        "-fx-text-fill:#536471;"
         );
-
 
         VBox bubbleContent =
                 new VBox(
@@ -495,24 +494,33 @@ public class MessagesController {
 
         bubbleContent.setMaxWidth(470);
 
-        HBox bubble =
-                new HBox(
-                        bubbleContent
-                );
+        if (message.edited()) {
 
+            Label edited =
+                    new Label("edited");
+
+            edited.setStyle(
+                    "-fx-font-size:10px;" +
+                            "-fx-text-fill:#536471;"
+            );
+
+            bubbleContent.getChildren().add(edited);
+        }
+
+        HBox bubble =
+                new HBox(bubbleContent);
 
         bubble.setMaxWidth(Double.MAX_VALUE);
 
-
-        if (sentByCurrentUser) {
+        if (mine) {
 
             bubble.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
 
             contentLabel.setStyle(
-                    "-fx-background-color: #1d9bf0; " +
-                            "-fx-text-fill: white; " +
-                            "-fx-padding: 9 13 9 13; " +
-                            "-fx-background-radius: 16;"
+                    "-fx-background-color:#1d9bf0;" +
+                            "-fx-text-fill:white;" +
+                            "-fx-padding:9 13 9 13;" +
+                            "-fx-background-radius:16;"
             );
 
         } else {
@@ -520,26 +528,12 @@ public class MessagesController {
             bubble.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
 
             contentLabel.setStyle(
-                    "-fx-background-color: #eff3f4; " +
-                            "-fx-text-fill: #0f1419; " +
-                            "-fx-padding: 9 13 9 13; " +
-                            "-fx-background-radius: 16;"
+                    "-fx-background-color:#eff3f4;" +
+                            "-fx-text-fill:#0f1419;" +
+                            "-fx-padding:9 13 9 13;" +
+                            "-fx-background-radius:16;"
             );
         }
-
-
-        if (message.edited()) {
-
-            Label editedLabel = new Label("edited");
-
-            editedLabel.setStyle(
-                    "-fx-font-size: 10px; " +
-                            "-fx-text-fill: #536471;"
-            );
-
-            bubbleContent.getChildren().add(editedLabel);
-        }
-
 
         return bubble;
     }
