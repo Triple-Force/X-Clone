@@ -258,8 +258,12 @@ Repeat this command in additional terminals to simulate multiple concurrent user
    password from the profile screen.
 
 ## 9. Demo
-<img src="ERD.png" alt="ERD"/>
-*More to be added*
+<img src="Attachments/ERD.png" alt="ERD"/>
+<img src="Attachments/SC1.jpg" alt="SC1"/>
+<img src="Attachments/SC2.jpg" alt="SC2"/>
+<img src="Attachments/SC3.jpg" alt="SC3"/>
+<img src="Attachments/SC4.png" alt="SC4"/>
+<img src="Attachments/SC5.jpg" alt="SC5"/>
 
 ## 10. Credits
 
