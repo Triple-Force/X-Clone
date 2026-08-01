@@ -5,9 +5,11 @@ import lombok.Builder;
 import java.util.UUID;
 
 @Builder
-public record GetIsFollowingRequest(
+public record GetIsLikedRequest(
 
         String sessionToken,
-        UUID targetUserId
 
-) {}
+        UUID tweetId
+
+) {
+}

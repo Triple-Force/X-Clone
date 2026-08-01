@@ -26,10 +26,12 @@ public class UserProfileController {
     @FXML private VBox userTweetsContainer;
 
     private final ClientApplicationContext context;
+
     private String targetUsername;
     private UUID userId;
-    private boolean isFollowing = false;
-    private long followersCount = 0;
+
+    private boolean isFollowing;
+    private long followersCount;
 
     public UserProfileController(ClientApplicationContext context) {
         this.context = context;
@@ -37,6 +39,7 @@ public class UserProfileController {
 
     @FXML
     public void initialize() {
+
         followingCountLabel.setOnMouseClicked(e -> openUserList("Following", false));
         followingCountLabel.setStyle("-fx-cursor: hand;");
 
@@ -46,9 +49,9 @@ public class UserProfileController {
 
     public void setProfileData(ProfileInfoResponse profile) {
 
+        this.userId = profile.userId();
         this.targetUsername = profile.username();
         this.followersCount = profile.followers();
-        this.userId = profile.userId();
 
         headerNameLabel.setText(nullSafe(profile.displayName()));
         displayNameLabel.setText(nullSafe(profile.displayName()));
@@ -59,42 +62,56 @@ public class UserProfileController {
         followingCountLabel.setText(profile.following() + " Following");
 
         updateFollowersLabel();
+        checkIfSelfProfile();
+        loadFollowState();
+    }
 
-        System.out.println(1);
-        context.getFollowQueryClientService()
-                .getFollowers(profile.userId())
-                .thenAccept(result -> {
+    private void loadFollowState() {
 
-                    if (!result.isSuccess() || result.getData() == null)
+        if (userId == null)
+            return;
+
+        followButton.setDisable(true);
+
+        context.getUserClientService()
+                .isFollow(userId)
+                .thenAccept(result -> Platform.runLater(() -> {
+
+                    followButton.setDisable(false);
+
+                    if (result.isFailure())
                         return;
 
-                    UUID currentUserId = context.getSnapshot().userId();
+                    isFollowing = result.getData().following();
+                    updateFollowButtonState();
 
-                    isFollowing = result.getData()
-                            .followers()
-                            .stream()
-                            .anyMatch(u -> u.userId().equals(currentUserId));
+                }))
+                .exceptionally(error -> {
 
-                    Platform.runLater(this::updateFollowButtonState);
+                    Platform.runLater(() ->
+                            followButton.setDisable(false));
+
+                    return null;
                 });
-
-        System.out.println(2);
-        updateFollowButtonState();
     }
 
     @FXML
     public void handleFollowToggle(ActionEvent event) {
-        if (targetUsername == null || context == null) return;
+
+        if (userId == null)
+            return;
 
         followButton.setDisable(true);
 
-        if (isFollowing) {
-            isFollowing = false;
-            followersCount = Math.max(0, followersCount - 1);
-        } else {
-            isFollowing = true;
-            followersCount++;
-        }
+        boolean oldState = isFollowing;
+        long oldFollowersCount = followersCount;
+
+        isFollowing = !isFollowing;
+        followersCount += isFollowing ? 1 : -1;
+
+        if (followersCount < 0)
+            followersCount = 0;
+
         updateFollowersLabel();
         updateFollowButtonState();
 
@@ -105,28 +122,31 @@ public class UserProfileController {
         future.thenAccept(result -> Platform.runLater(() -> {
 
             followButton.setDisable(false);
-            if (!result.isSuccess()) {
-                revertFollowState();
+
+            if (result.isFailure()) {
+
+                isFollowing = oldState;
+                followersCount = oldFollowersCount;
+
+                updateFollowersLabel();
+                updateFollowButtonState();
             }
+
         })).exceptionally(error -> {
+
             Platform.runLater(() -> {
+
                 followButton.setDisable(false);
-                revertFollowState();
+
+                isFollowing = oldState;
+                followersCount = oldFollowersCount;
+
+                updateFollowersLabel();
+                updateFollowButtonState();
             });
+
             return null;
         });
-    }
-
-    private void revertFollowState() {
-        if (isFollowing) {
-            isFollowing = false;
-            followersCount = Math.max(0, followersCount - 1);
-        } else {
-            isFollowing = true;
-            followersCount++;
-        }
-        updateFollowersLabel();
-        updateFollowButtonState();
     }
 
     private void updateFollowersLabel() {
@@ -144,20 +164,31 @@ public class UserProfileController {
     }
 
     private void checkIfSelfProfile() {
+
         try {
+
             String currentUsername = context.getSnapshot().username();
-            if (currentUsername != null && currentUsername.equals(targetUsername)) {
-                followButton.setVisible(false);
-                followButton.setManaged(false);
-            }
-        } catch (Exception ignored) {}
+
+            boolean self =
+                    currentUsername != null &&
+                            currentUsername.equals(targetUsername);
+
+            followButton.setVisible(!self);
+            followButton.setManaged(!self);
+
+        } catch (Exception ignored) {
+        }
     }
 
     private void openUserList(String title, boolean isFollowers) {
-        if (context == null || context.navigation() == null) return;
+
+        if (context == null || context.navigation() == null)
+            return;
+
+        // TODO
     }
 
-    private String nullSafe(String val) {
-        return val == null ? "" : val;
+    private String nullSafe(String value) {
+        return value == null ? "" : value;
     }
 }

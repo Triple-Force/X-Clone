@@ -87,36 +87,73 @@ public class UserItemController
         updateFollowButton();
     }
 
-    private void toggleFollow()
-    {
+
+    private void loadFollowState() {
+
         if (user == null)
             return;
 
         followButton.setDisable(true);
 
-        var future =
-                isFollowing
-                        ? context.getRelationClientService().unfollow(user.userId())
-                        : context.getRelationClientService().follow(user.userId());
+        context.getUserClientService()
+                .isFollow(user.userId())
+                .thenAccept(result -> Platform.runLater(() -> {
 
-        future.thenAccept(result ->
-                Platform.runLater(() ->
-                {
                     followButton.setDisable(false);
 
-                    if (!result.isSuccess())
+                    if (result.isFailure())
                         return;
 
-                    isFollowing = !isFollowing;
-
+                    isFollowing = result.getData().following();
                     updateFollowButton();
-                })
-        ).exceptionally(ex ->
-        {
-            Platform.runLater(() ->
-                    followButton.setDisable(false));
 
-            ex.printStackTrace();
+                }))
+                .exceptionally(error -> {
+
+                    Platform.runLater(() ->
+                            followButton.setDisable(false));
+
+                    return null;
+                });
+    }
+
+    private void toggleFollow() {
+
+        if (user == null)
+            return;
+
+        followButton.setDisable(true);
+
+        boolean oldState = isFollowing;
+
+        isFollowing = !isFollowing;
+        updateFollowButton();
+
+        var future = isFollowing
+                ? context.getRelationClientService().follow(user.userId())
+                : context.getRelationClientService().unfollow(user.userId());
+
+        future.thenAccept(result ->
+                Platform.runLater(() -> {
+
+                    followButton.setDisable(false);
+
+                    if (result.isFailure()) {
+
+                        isFollowing = oldState;
+                        updateFollowButton();
+                    }
+
+                })
+        ).exceptionally(ex -> {
+
+            Platform.runLater(() -> {
+
+                followButton.setDisable(false);
+
+                isFollowing = oldState;
+                updateFollowButton();
+            });
 
             return null;
         });

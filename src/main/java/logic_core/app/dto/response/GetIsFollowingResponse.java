@@ -1,10 +1,12 @@
 package logic_core.app.dto.response;
 
+import lombok.Builder;
+
 import java.util.UUID;
 
-public record GetIsFollowingResponse (
-        UUID userId,
-        UUID targetId
-)
-{
-}
+@Builder
+public record GetIsFollowingResponse(
+
+        boolean following
+
+) {}

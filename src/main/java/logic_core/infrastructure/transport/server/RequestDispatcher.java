@@ -109,7 +109,9 @@ public class RequestDispatcher
                  USER_UPDATE_EMAIL,
                  USER_UPDATE_PASSWORD,
                  USER_DELETE_ACCOUNT,
-                 USER_UPDATE_COMPLETE_PROFILE ->
+                 USER_UPDATE_COMPLETE_PROFILE,
+                 USER_GET_IS_FOLLOW,
+                 USER_GET_IS_LIKE ->
 
                     dispatchUser(request);
 
@@ -392,6 +394,10 @@ public class RequestDispatcher
                         case USER_DELETE_ACCOUNT -> handleDeleteAccount(requestId, payload, facade);
 
                         case USER_UPDATE_COMPLETE_PROFILE -> handleUpdateCompleteProfile(requestId,payload,facade);
+
+                        case USER_GET_IS_FOLLOW -> handleIsFollow(requestId, payload, facade);
+
+                        case  USER_GET_IS_LIKE -> handleIsLike(requestId, payload, facade);
                         default ->
                                 throw new IllegalArgumentException(
                                         "Unsupported user request: " + request.type()
@@ -1601,6 +1607,61 @@ public class RequestDispatcher
         );
     }
 
+    private ResponseEnvelope handleIsFollow(
+            UUID requestId,
+            JsonElement payload,
+            UserFacade facade)
+    {
+        GetIsFollowingRequest request =
+                gson.fromJson(payload, GetIsFollowingRequest.class);
+
+        Result<GetIsFollowingResponse> result = facade.isFollow(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.USER_GET_IS_FOLLOW_RESPONSE,
+                    "GET_IS_FOLLOW_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.USER_GET_IS_FOLLOW_RESPONSE,
+                result.getData()
+        );
+    }
+
+    private ResponseEnvelope handleIsLike(
+            UUID requestId,
+            JsonElement payload,
+            UserFacade facade)
+    {
+        GetIsLikedRequest request =
+                gson.fromJson(payload, GetIsLikedRequest.class);
+
+        Result<GetIsLikedResponse> result =
+                facade.isLiked(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.USER_GET_IS_LIKE_RESPONSE,
+                    "GET_IS_LIKE_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.USER_GET_IS_LIKE_RESPONSE,
+                result.getData()
+        );
+    }
+
     private ResponseEnvelope successResponse(UUID requestId, ResponseType type, Object body)
     {
         return ResponseEnvelope.success(
@@ -1807,6 +1868,8 @@ public class RequestDispatcher
             case FOLLOW_GET_FOLLOWERS -> ResponseType.FOLLOW_GET_FOLLOWERS_RESPONSE;
             case MEDIA_DELETE -> ResponseType.MEDIA_DELETE_RESPONSE;
             case MEDIA_DOWNLOAD -> ResponseType.MEDIA_DOWNLOAD_RESPONSE;
+            case USER_GET_IS_FOLLOW -> ResponseType.USER_GET_IS_FOLLOW_RESPONSE;
+            case USER_GET_IS_LIKE -> ResponseType.USER_GET_IS_LIKE_RESPONSE;
         };
     }
 

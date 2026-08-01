@@ -927,6 +927,19 @@ public final class DependencyContainer
         );
 
 
+        GetIsLikedUseCase getIsLikedUseCase = new GetIsLikedUseCase(
+                relationshipRepository,
+                lockOrchestrator
+        );
+
+
+        GetIsFollowingUseCase getIsFollowingUseCase = new GetIsFollowingUseCase(
+                userRepository,
+                tweetRepository,
+                relationshipRepository,
+                lockOrchestrator
+        );
+
         return new UserFacade(
                 deleteAccountUseCase,
                 getProfileUseCase,
@@ -937,7 +950,9 @@ public final class DependencyContainer
                 updateEmailUseCase,
                 updatePasswordUseCase,
                 updateProfileUseCase,
-                updateCompleteProfileUseCase
+                updateCompleteProfileUseCase,
+                getIsFollowingUseCase,
+                getIsLikedUseCase
         );
     }
 

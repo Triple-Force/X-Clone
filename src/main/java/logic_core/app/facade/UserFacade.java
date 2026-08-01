@@ -22,6 +22,8 @@ public class UserFacade
     @NonNull private final UpdatePasswordUseCase updatePasswordUseCase;
     @NonNull private final UpdateProfileUseCase updateProfileUseCase;
     @NonNull private final UpdateCompleteProfileUseCase updateCompleteProfileUseCase;
+    @NonNull private final GetIsFollowingUseCase getIsFollowingUseCase;
+    @NonNull private final GetIsLikedUseCase getIsLikedUseCase;
 
 
     public Result<Void> deleteAccount(DeleteAccountRequest request)
@@ -74,4 +76,13 @@ public class UserFacade
         return updateCompleteProfileUseCase.execute(request);
     }
 
+    public Result<GetIsFollowingResponse> isFollow(GetIsFollowingRequest request)
+    {
+        return getIsFollowingUseCase.execute(request);
+    }
+
+    public Result<GetIsLikedResponse> isLiked(GetIsLikedRequest request)
+    {
+        return getIsLikedUseCase.execute(request);
+    }
 }

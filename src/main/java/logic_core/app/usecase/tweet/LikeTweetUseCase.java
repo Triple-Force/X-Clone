@@ -1,5 +1,6 @@
 package logic_core.app.usecase.tweet;
 
+import Shared.Models.Like.Like;
 import jakarta.transaction.Transactional;
 import logic_core.app.dto.request.LikeTweetRequest;
 import logic_core.app.dto.response.LikeResponse;
@@ -55,9 +56,19 @@ public class LikeTweetUseCase
 
             if (relationshipRepository.existsLikeRelation(currentUserId, tweet.getId()))
             {
-                return Result.failure("You have already liked this tweet.");
-            }
+                relationshipRepository.deleteLike(LikeRelation.create(tweet.getId(), currentUserId));
 
+                long count = relationshipRepository.countLikesByTweetId(tweet.getId());
+
+                return Result.success(
+                        new LikeResponse(
+                                currentUserId,
+                                tweet.getId(),
+                                false,
+                                count
+                        )
+                );
+            }
             relationshipRepository.saveLike(LikeRelation.create(tweet.getId(), currentUserId));
 
             long totalLikesCount = relationshipRepository.countLikesByTweetId(tweet.getId());

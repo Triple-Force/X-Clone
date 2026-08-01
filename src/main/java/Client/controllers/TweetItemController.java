@@ -86,10 +86,41 @@ public class TweetItemController {
 
         commentButton.setText("💬 " + tweet.replyCount());
         retweetButton.setText("🔁 " + tweet.retweetCount());
-        likeButton.setText("❤ " + tweet.likeCount());
-
+        updateLikeButton();
         setAvatar(tweet.avatarUrl());
         checkDeletePermission();
+    }
+
+
+    private void loadLikeState() {
+        likeButton.setDisable(true);
+        if (tweet == null)
+            return;
+
+        likeButton.setDisable(true);
+
+        context.getUserClientService()
+                .isLike(tweet.tweetId())
+                .thenAccept(result -> Platform.runLater(() -> {
+
+
+
+                    likeButton.setDisable(false);
+
+                    if (result.isFailure())
+                        return;
+
+                    liked = result.getData().liked();
+                    updateLikeButton();
+
+                }))
+                .exceptionally(error -> {
+
+                    Platform.runLater(() ->
+                            likeButton.setDisable(false));
+
+                    return null;
+                });
     }
 
     private void checkDeletePermission() {
@@ -109,13 +140,15 @@ public class TweetItemController {
         tweetTextLabel.setText("");
         commentButton.setText("💬 0");
         retweetButton.setText("🔁 0");
-        likeButton.setText("❤ 0");
 
         if (deleteButton != null) {
             deleteButton.setVisible(false);
             deleteButton.setManaged(false);
         }
 
+        liked = false;
+        currentLikeCount = 0;
+        updateLikeButton();
         setDefaultAvatar();
     }
 
@@ -175,29 +208,61 @@ public class TweetItemController {
     }
 
     private void handleLike() {
-        if (tweet == null) return;
+
+        if (tweet == null)
+            return;
 
         likeButton.setDisable(true);
 
-        context.getTweetService().likeTweet(tweet.tweetId())
+        boolean oldLiked = liked;
+        long oldLikeCount = currentLikeCount;
+
+        // Optimistic UI
+        liked = !liked;
+        currentLikeCount += liked ? 1 : -1;
+
+        if (currentLikeCount < 0)
+            currentLikeCount = 0;
+
+        updateLikeButton();
+
+        context.getTweetService()
+                .likeTweet(tweet.tweetId())
                 .thenAccept(result -> Platform.runLater(() -> {
-                    likeButton.setDisable(false);
 
-                    if (result.isFailure()) return;
+                    if (result.isFailure()) {
 
-                    if (result.getData().liked()) {
-                        currentLikeCount++;
-                    } else if (!result.getData().liked() && liked) {
-                        currentLikeCount--;
+                        likeButton.setDisable(false);
+
+                        liked = oldLiked;
+                        currentLikeCount = oldLikeCount;
+                        updateLikeButton();
+                        return;
                     }
 
-                    likeButton.setText("❤ " + currentLikeCount);
-                    liked = result.getData().liked();
+                    likeButton.setDisable(false);
+
                 }))
                 .exceptionally(error -> {
-                    Platform.runLater(() -> likeButton.setDisable(false));
+
+                    Platform.runLater(() -> {
+
+                        likeButton.setDisable(false);
+
+                        liked = oldLiked;
+                        currentLikeCount = oldLikeCount;
+
+                        updateLikeButton();
+                    });
+
                     return null;
                 });
+    }
+
+    private void updateLikeButton() {
+
+        likeButton.setText("❤ " + currentLikeCount);
+
     }
 
     private void handleRetweet() {

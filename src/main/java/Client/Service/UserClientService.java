@@ -168,6 +168,30 @@ public final class UserClientService
     }
 
 
+    public CompletableFuture<Result<GetIsFollowingResponse>> isFollow(UUID targetId)
+    {
+        GetIsFollowingRequest request = new GetIsFollowingRequest(session.getToken(),targetId);
+
+        return execute(
+                RequestType.USER_GET_IS_FOLLOW,
+                request,
+                GetIsFollowingResponse.class
+                );
+    }
+
+    public CompletableFuture<Result<GetIsLikedResponse>> isLike(UUID tweetId)
+    {
+
+        GetIsLikedRequest request = new GetIsLikedRequest(session.getToken(), tweetId);
+
+        return execute(
+                RequestType.USER_GET_IS_LIKE,
+                request,
+                GetIsLikedResponse.class
+        );
+    }
+
+
     private <T> CompletableFuture<Result<T>> execute(
             RequestType type,
             Object request,
