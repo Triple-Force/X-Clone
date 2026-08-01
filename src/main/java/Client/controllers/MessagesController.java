@@ -105,13 +105,37 @@ public class MessagesController {
         }
     }
 
-    public void openConversationWith(UUID userId) {
+    public void openConversationWith(List<UUID> recipientIds) {
 
-        if (userId == null) {
+        if (recipientIds == null || recipientIds.isEmpty()) {
             return;
         }
 
-        this.pendingRecipientId = userId;
+        context.getConversationClientService()
+                .createConversation(
+                        context.session().getCurrentUserId(),
+                        recipientIds
+                )
+                .thenAccept(result -> Platform.runLater(() -> {
+
+                    if (result == null || result.isFailure()) {
+                        log.warning("Failed to open conversation.");
+                        return;
+                    }
+
+                    pendingRecipientIds = null;
+
+                    loadUserConversations();
+
+                }))
+                .exceptionally(error -> {
+
+                    log.log(Level.SEVERE,
+                            "Failed to create conversation",
+                            error);
+
+                    return null;
+                });
     }
 
     // =========================================================

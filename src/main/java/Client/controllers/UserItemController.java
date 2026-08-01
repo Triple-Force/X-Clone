@@ -3,14 +3,19 @@ package Client.controllers;
 import Client.ClientApplicationContext;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
+import javafx.stage.Stage;
 import logic_core.app.dto.response.UserSummaryResponse;
 
 import java.net.URL;
+import java.util.List;
 import java.util.UUID;
 
 public class UserItemController
@@ -30,6 +35,9 @@ public class UserItemController
 
     @FXML
     private Button followButton;
+
+    @FXML
+    private Button messageButton;
 
     private static final String DEFAULT_AVATAR =
             "/Client/images/default-avatar.png";
@@ -54,6 +62,8 @@ public class UserItemController
         followButton.setOnAction(e -> toggleFollow());
 
         rootContainer.setStyle("-fx-cursor: hand;");
+
+        messageButton.setOnAction(e -> startConversation());
     }
 
     public void setUser(UserSummaryResponse user) {
@@ -216,6 +226,9 @@ public class UserItemController
         {
             followButton.setVisible(false);
             followButton.setManaged(false);
+
+            messageButton.setVisible(false);
+            messageButton.setManaged(false);
         }
     }
 
@@ -256,6 +269,45 @@ public class UserItemController
             avatarImageView.setImage(
                     new Image(url.toExternalForm())
             );
+        }
+    }
+
+    private void startConversation() {
+
+        if (user == null)
+            return;
+
+        try {
+
+            FXMLLoader loader =
+                    new FXMLLoader(getClass().getResource("/Client/fxml/Messages.fxml"));
+
+            loader.setControllerFactory(type -> {
+
+                if (type == MessagesController.class) {
+                    return new MessagesController(context);
+                }
+
+                try {
+                    return type.getDeclaredConstructor().newInstance();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
+            Parent root = loader.load();
+
+            MessagesController controller = loader.getController();
+
+            controller.openConversationWith(List.of(user.userId()));
+
+            Stage stage = new Stage();
+            stage.setTitle("Messages");
+            stage.setScene(new Scene(root));
+            stage.show();
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }
