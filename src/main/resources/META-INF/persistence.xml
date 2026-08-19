@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<persistence xmlns="https://jakarta.ee/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence https://jakarta.ee/xml/ns/persistence/persistence_3_2.xsd"
+             version="3.2">
+
+    <persistence-unit name="X-Clone-PU" transaction-type="RESOURCE_LOCAL">
+        <class>Shared.Models.Block.Block</class>
+        <class>Shared.Models.Conversation.Conversation</class>
+        <class>Shared.Models.ConversationMember.ConversationMember</class>
+        <class>Shared.Models.DirectMessage.DirectMessage</class>
+        <class>Shared.Models.Follow.Follow</class>
+        <class>Shared.Models.Hashtag.Hashtag</class>
+        <class>Shared.Models.HashtagFollow.HashtagFollow</class>
+        <class>Shared.Models.Like.Like</class>
+        <class>Shared.Models.Media.Media</class>
+        <class>Shared.Models.Mute.Mute</class>
+        <class>Shared.Models.Notification.Notification</class>
+        <class>Shared.Models.Poll.Poll</class>
+        <class>Shared.Models.PollOption.PollOption</class>
+        <class>Shared.Models.PollVote.PollVote</class>
+        <class>Shared.Models.Session.Session</class>
+        <class>Shared.Models.Tweet.Tweet</class>
+        <class>Shared.Models.TweetEdit.TweetEdit</class>
+        <class>Shared.Models.TweetHashtag.TweetHashtag</class>
+        <class>Shared.Models.TweetMention.TweetMention</class>
+        <class>Shared.Models.User.User</class>
+        <exclude-unlisted-classes>true</exclude-unlisted-classes>
+
+        <properties>
+            <!-- JDBC Connection -->
+            <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://localhost:5432/xclonedb"/>
+            <property name="jakarta.persistence.jdbc.user" value="postgres"/>
+            <property name="jakarta.persistence.jdbc.password" value="FinalProjectDev"/>
+
+            <!-- Hibernate Core -->
+            <property name="hibernate.hbm2ddl.auto" value="update"/>
+            <property name="hibernate.default_schema" value="public"/>
+            <property name="hibernate.enable_lazy_load_no_trans" value="true"/>
+
+            <!-- HikariCP Connection Pool -->
+            <property name="hibernate.connection.provider_class"
+                      value="org.hibernate.hikaricp.internal.HikariCPConnectionProvider"/>
+            <property name="hibernate.hikari.minimumIdle" value="5"/>
+            <property name="hibernate.hikari.maximumPoolSize" value="20"/>
+            <property name="hibernate.hikari.connectionTimeout" value="20000"/>
+            <property name="hibernate.hikari.idleTimeout" value="30000"/>
+            <property name="hibernate.hikari.keepaliveTime" value="30000"/>
+            <property name="hibernate.hikari.maxLifetime" value="1800000"/>
+
+            <!-- Batch / Performance -->
+            <property name="hibernate.jdbc.batch_size" value="20"/>
+            <property name="hibernate.jdbc.fetch_size" value="50"/>
+            <property name="hibernate.order_inserts" value="true"/>
+            <property name="hibernate.order_updates" value="true"/>
+            <property name="hibernate.batch_versioned_data" value="true"/>
+
+            <!-- SQL Logging -->
+            <property name="hibernate.show_sql" value="false"/>
+            <property name="hibernate.format_sql" value="false"/>
+            <property name="hibernate.use_sql_comments" value="false"/>
+        </properties>
+    </persistence-unit>
+
+    <persistence-unit name="X-Clone-Client-Cache-PU" transaction-type="RESOURCE_LOCAL">
+        <class>Shared.Models.Block.Block</class>
+        <class>Shared.Models.Conversation.Conversation</class>
+        <class>Shared.Models.ConversationMember.ConversationMember</class>
+        <class>Shared.Models.DirectMessage.DirectMessage</class>
+        <class>Shared.Models.Follow.Follow</class>
+        <class>Shared.Models.Hashtag.Hashtag</class>
+        <class>Shared.Models.HashtagFollow.HashtagFollow</class>
+        <class>Shared.Models.Like.Like</class>
+        <class>Shared.Models.Media.Media</class>
+        <class>Shared.Models.Mute.Mute</class>
+        <class>Shared.Models.Notification.Notification</class>
+        <class>Shared.Models.Poll.Poll</class>
+        <class>Shared.Models.PollOption.PollOption</class>
+        <class>Shared.Models.PollVote.PollVote</class>
+        <class>Shared.Models.Session.Session</class>
+        <class>Shared.Models.Tweet.Tweet</class>
+        <class>Shared.Models.TweetEdit.TweetEdit</class>
+        <class>Shared.Models.TweetHashtag.TweetHashtag</class>
+        <class>Shared.Models.TweetMention.TweetMention</class>
+        <class>Shared.Models.User.User</class>
+        <exclude-unlisted-classes>true</exclude-unlisted-classes>
+
+        <properties>
+            <!-- JDBC Connection -->
+            <property name="jakarta.persistence.jdbc.driver" value="org.sqlite.JDBC"/>
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:sqlite:client-cache.db"/>
+
+            <!-- Hibernate Core -->
+            <property name="hibernate.dialect" value="org.hibernate.community.dialect.SQLiteDialect"/>
+            <property name="hibernate.hbm2ddl.auto" value="update"/>
+
+            <!-- Rules / Performance -->
+            <property name="hibernate.connection.pool_size" value="1"/>
+            <property name="hibernate.connection.init_sql" value="PRAGMA journal_mode=WAL; PRAGMA foreign_keys=OFF;"/>
+        </properties>
+    </persistence-unit>
+</persistence>
