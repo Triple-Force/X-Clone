@@ -2,6 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.tripleforce</groupId>
@@ -17,70 +18,88 @@
         <maven.compiler.plugin.version>3.13.0</maven.compiler.plugin.version>
         <javafx.maven.plugin.version>0.0.8</javafx.maven.plugin.version>
 
-        <!-- Dependencies -->
-        <postgresql.version>42.7.11</postgresql.version>
-        <hikaricp.version>7.0.2</hikaricp.version>
+        <!-- Spring Boot -->
+        <spring-boot.version>3.5.7</spring-boot.version>
 
-        <hibernate.version>7.4.2.Final</hibernate.version>
-
+        <!-- Explicitly managed project dependencies -->
         <sqlite-jdbc.version>3.53.2.0</sqlite-jdbc.version>
-
         <javafx.version>26.0.1</javafx.version>
-
         <gson.version>2.14.0</gson.version>
-
-        <junit.version>5.13.4</junit.version>
-
         <lombok.version>1.18.46</lombok.version>
-
         <jbcrypt.version>0.4</jbcrypt.version>
-
-        <slf4j.version>2.0.17</slf4j.version>
     </properties>
 
+    <dependencyManagement>
+        <dependencies>
+
+            <!-- Spring Boot BOM -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
+
+        <!-- ==================== Spring Boot ==================== -->
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- ==================== Database / Migration ==================== -->
+
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <version>${postgresql.version}</version>
             <scope>runtime</scope>
         </dependency>
 
-        <dependency>
-            <groupId>com.zaxxer</groupId>
-            <artifactId>HikariCP</artifactId>
-            <version>${hikaricp.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.hibernate.orm</groupId>
-            <artifactId>hibernate-hikaricp</artifactId>
-            <version>${hibernate.version}</version>
-        </dependency>
-
+        <!-- Keep only if production code actually uses SQLite -->
         <dependency>
             <groupId>org.xerial</groupId>
             <artifactId>sqlite-jdbc</artifactId>
             <version>${sqlite-jdbc.version}</version>
         </dependency>
 
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-            <version>${slf4j.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.hibernate.orm</groupId>
-            <artifactId>hibernate-core</artifactId>
-            <version>${hibernate.version}</version>
-        </dependency>
-
+        <!-- Keep only if production code actually uses Hibernate community dialects -->
         <dependency>
             <groupId>org.hibernate.orm</groupId>
             <artifactId>hibernate-community-dialects</artifactId>
-            <version>${hibernate.version}</version>
         </dependency>
+
+        <!-- ==================== Other Project Dependencies ==================== -->
 
         <dependency>
             <groupId>org.openjfx</groupId>
@@ -107,13 +126,6 @@
         </dependency>
 
         <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <version>${junit.version}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>${lombok.version}</version>
@@ -126,31 +138,31 @@
             <version>${jbcrypt.version}</version>
         </dependency>
 
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <version>5.12.0</version>
-            <scope>test</scope>
-        </dependency>
+        <!-- ==================== Testing ==================== -->
 
         <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-junit-jupiter</artifactId>
-            <version>5.12.0</version>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
 
     </dependencies>
 
     <build>
+
         <plugins>
+
+            <!-- ==================== Maven Compiler ==================== -->
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${maven.compiler.plugin.version}</version>
+
                 <configuration>
                     <source>${maven.compiler.source}</source>
                     <target>${maven.compiler.target}</target>
+
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>
@@ -161,14 +173,33 @@
                 </configuration>
             </plugin>
 
+            <!-- ==================== Spring Boot ==================== -->
+
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>${spring-boot.version}</version>
+
+                <configuration>
+                    <mainClass>com.xclone.Application</mainClass>
+                </configuration>
+            </plugin>
+
+
+            <!-- ==================== JavaFX ==================== -->
+
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>${javafx.maven.plugin.version}</version>
+
                 <configuration>
                     <mainClass>Client.MainApp</mainClass>
                 </configuration>
             </plugin>
+
         </plugins>
+
     </build>
+
 </project>
