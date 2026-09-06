@@ -42,6 +42,7 @@ class VerifyPasswordResetCodeUseCaseTest
         );
 
         assertTrue(result.isSuccess());
+        // useCase trims email before calling verify, so mock receives trimmed email
         verify(otpService, times(1)).verify("user@example.com", "123456");
     }
 
