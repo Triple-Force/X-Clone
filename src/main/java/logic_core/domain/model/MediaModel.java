@@ -1,6 +1,6 @@
 package logic_core.domain.model;
 
-import Shared.Models.Media.MediaType;
+import logic_core.domain.model.media.MediaType;
 import lombok.*;
 
 import java.util.UUID;
