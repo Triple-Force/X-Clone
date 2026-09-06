@@ -323,15 +323,15 @@ Repeat this command in additional terminals to simulate multiple concurrent user
 
 The original V1 project was developed by:
 
-* [**Alireza Heydari**](https://github.com/AlirezaHeydari-Dev)
 * [**Mohammadreza Ashrafian**](https://github.com/mohammadrezaashrafian)
+* [**Alireza Heydari**](https://github.com/AlirezaHeydari-Dev)
 * [**Amir Mohammad Talaei**](https://github.com/amirmt86)
 
 ### V2 — Current Development
 
 V2 is currently developed and maintained independently by:
 
-* [**Alireza Heydari**](https://github.com/AlirezaHeydari-Dev)
+* [**Mohammadreza Ashrafian**](https://github.com/mohammadrezaashrafian)
 
 V2 represents the ongoing architectural modernization and independent development of the
 original V1 codebase.
