@@ -1,7 +1,5 @@
 package logic_core.app.usecase.auth;
 
-import Shared.Models.Session.Session;
-import jakarta.transaction.Transactional;
 import logic_core.app.dto.request.ResetPasswordRequest;
 import logic_core.app.dto.response.ResetPasswordResponse;
 import logic_core.app.dto.validator.EmailValidator;
@@ -12,18 +10,19 @@ import logic_core.common.exception.ValidationException;
 import logic_core.common.result.Result;
 import logic_core.common.security.PasswordHasher;
 import logic_core.common.util.TimeProvider;
-import logic_core.domain.event.EventPublisher;
-import logic_core.domain.event.authentication.PasswordResetCompletedEvent;
+import logic_core.domain.model.SessionModel;
 import logic_core.domain.model.UserModel;
 import logic_core.domain.repository.UserRepository;
 import logic_core.session.SessionManager;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
+@Service
 @RequiredArgsConstructor
 public class ResetPasswordUseCase
 {
@@ -31,8 +30,8 @@ public class ResetPasswordUseCase
     @NonNull private final PasswordResetOtpService otpService;
     @NonNull private final PasswordHasher passwordHasher;
     @NonNull private final SessionManager sessionManager;
-    @NonNull private final TimeProvider timeProvider;
-    @NonNull private final EventPublisher eventPublisher;
+    @NonNull private final EmailValidator emailValidator;
+    @NonNull private final PasswordValidator passwordValidator;
 
     @Transactional
     public Result<ResetPasswordResponse> execute(ResetPasswordRequest request)
@@ -42,14 +41,14 @@ public class ResetPasswordUseCase
             return Result.failure("Invalid request.");
         }
 
-        final String email = request.email();
+        final String email = request.email().trim();
         final String code = request.code();
         final String newPassword = request.newPassword();
 
         try
         {
-            EmailValidator.validate(email);
-            PasswordValidator.validate(newPassword);
+            emailValidator.validate(email);
+            passwordValidator.validate(newPassword);
             validateCode(code);
         }
         catch (ValidationException | IllegalArgumentException ex)
@@ -142,27 +141,11 @@ public class ResetPasswordUseCase
         }
     }
 
-    private String normalizeEmail(String email)
-    {
-        if (email == null)
-        {
-            return null;
-        }
-
-        return email.trim().toLowerCase(Locale.ROOT);
-    }
-
     private ResetPasswordResponse authenticate(UserModel user)
     {
-        eventPublisher.publish(
-                new PasswordResetCompletedEvent(
-                        user.getId(),
-                        user.getEmail(),
-                        timeProvider.now()
-                )
-        );
 
-        Session session = sessionManager.startSession(user.getId());
+
+        SessionModel session = sessionManager.startSession(user.getId());
 
         return new ResetPasswordResponse(true);
     }

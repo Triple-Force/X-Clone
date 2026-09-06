@@ -15,10 +15,12 @@ import logic_core.domain.repository.UserRepository;
 import logic_core.domain.service.MediaStorageService;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
 
+@Service
 @RequiredArgsConstructor
 public class UpdateCompleteProfileUseCase
 {

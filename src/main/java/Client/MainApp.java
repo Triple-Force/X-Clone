@@ -11,7 +11,7 @@ public class MainApp extends Application
     @Override
     public void start(Stage primaryStage)
     {
-        ServerConfig config = new ServerConfig("localhost", 8080, 0);
+        ServerConfig config = ServerConfig.defaultLocal();
         this.context = new ClientApplicationContext(config);
         NavigationManager navigationManager = new NavigationManager(primaryStage, context);
         context.setNavigationManager(navigationManager);

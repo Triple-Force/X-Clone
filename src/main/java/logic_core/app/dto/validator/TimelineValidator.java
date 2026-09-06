@@ -5,6 +5,9 @@ import logic_core.domain.repository.TimelineType;
 
 import java.util.UUID;
 
+import org.springframework.stereotype.Component;
+
+@Component
 public class TimelineValidator
 {
     public void validate(TimelineType timelineType, UUID actorId, int page, int pageSize, UUID targetUserId)

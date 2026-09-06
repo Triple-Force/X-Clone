@@ -8,12 +8,14 @@ import logic_core.app.usecase.media.DownloadMediaUseCase;
 import logic_core.common.result.Result;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
+@Service
 @RequiredArgsConstructor
 public class MediaFacade
 {
-    @NonNull private final DeleteMediaUseCase deleteMediaUseCase;
-    @NonNull private final DownloadMediaUseCase downloadMediaUseCase;
+    private final DeleteMediaUseCase deleteMediaUseCase;
+    private final DownloadMediaUseCase downloadMediaUseCase;
 
     public Result<Void> deleteMedia(DeleteMediaRequest request)
     {

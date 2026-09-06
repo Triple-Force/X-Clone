@@ -1,6 +1,5 @@
 package logic_core.domain.repository;
 
-import Shared.Models.User.User;
 import logic_core.domain.model.UserModel;
 
 import java.util.List;
@@ -33,11 +32,9 @@ public interface UserRepository
 
     boolean isActive(UserModel user);
 
-    Optional<UserModel> findAuthorByTweetId(UUID tweetId);
-
 //    Optional<UserModel> findAuthorByMediaId(UUID mediaId);
 
 Optional<UserModel> findByUsernameForUpdate(String username);
 
-    List<UserModel> searchUsers(UUID actorId, String page, int limit, int pageSize);
+    List<UserModel> searchUsers(UUID actorId, String query, int limit, int pageSize);
 }

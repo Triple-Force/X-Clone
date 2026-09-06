@@ -6,27 +6,25 @@ import logic_core.app.dto.response.FollowResponse;
 import logic_core.app.dto.validator.FollowValidator;
 import logic_core.app.mapper.FollowMapper;
 import logic_core.app.security.AuthLockOrchestrator;
-import logic_core.app.security.CurrentAuthContext;
 import logic_core.app.security.SessionUserContext;
 import logic_core.common.exception.AppException;
 import logic_core.common.result.Result;
 import logic_core.common.util.TimeProvider;
-import logic_core.domain.event.EventPublisher;
-import logic_core.domain.event.Relationship.UserUnfollowedEvent;
 import logic_core.domain.policy.FollowPolicy;
 import logic_core.domain.repository.RelationshipRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
+@Service
 @RequiredArgsConstructor
 public class UnfollowUserUseCase
 {
     @NonNull private final FollowValidator validator;
     @NonNull private final FollowPolicy policy;
     @NonNull private final RelationshipRepository relationshipRepository;
-    @NonNull private final EventPublisher eventPublisher;
     @NonNull private final TimeProvider timeProvider;
     @NonNull private final AuthLockOrchestrator lockOrchestrator;
 
@@ -55,11 +53,6 @@ public class UnfollowUserUseCase
 
             long followersCount = relationshipRepository.countFollowers(unfollowedId);
 
-            eventPublisher.publish(new UserUnfollowedEvent(
-                    unfollowerId,
-                    unfollowedId,
-                    timeProvider.now()
-            ));
 
             return Result.success(FollowMapper.toResponse(false, followersCount));
         }

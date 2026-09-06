@@ -5,22 +5,21 @@ import logic_core.app.dto.request.AddConversationMemberRequest;
 import logic_core.app.dto.response.ConversationInfoResponse;
 import logic_core.app.dto.validator.ConversationValidator;
 import logic_core.app.security.AuthLockOrchestrator;
-import logic_core.app.security.CurrentAuthContext;
 import logic_core.app.security.SessionUserContext;
 import logic_core.common.exception.*;
 import logic_core.common.result.Result;
 import logic_core.common.util.TimeProvider;
-import logic_core.domain.event.EventPublisher;
-import logic_core.domain.event.conversation.MemberAddedToConversationEvent;
 import logic_core.domain.model.ConversationModel;
 import logic_core.domain.policy.ConversationPolicy;
 import logic_core.domain.repository.ConversationRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+@Service
 @RequiredArgsConstructor
 public class AddMemberToConversationUseCase
 {
@@ -28,7 +27,6 @@ public class AddMemberToConversationUseCase
     @NonNull private final ConversationPolicy policy;
     @NonNull private final ConversationRepository repository;
     @NonNull private final TimeProvider timeProvider;
-    @NonNull private final EventPublisher eventPublisher;
     @NonNull private final AuthLockOrchestrator lockOrchestrator;
 
     @Transactional
@@ -54,12 +52,6 @@ public class AddMemberToConversationUseCase
             repository.update(conversationModel);
             OffsetDateTime now = timeProvider.now();
 
-            eventPublisher.publish(new MemberAddedToConversationEvent(
-                    conversationModel.getConversationId(),
-                    request.memberId(),
-                    actorId,
-                    now
-            ));
 
             return Result.success(new ConversationInfoResponse(
                     conversationModel.getConversationId(),

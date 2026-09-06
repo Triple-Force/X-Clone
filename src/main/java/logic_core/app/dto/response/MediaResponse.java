@@ -1,6 +1,6 @@
 package logic_core.app.dto.response;
 
-import Shared.Models.Media.MediaType;
+import logic_core.domain.model.media.MediaType;
 import lombok.Builder;
 
 import java.util.UUID;

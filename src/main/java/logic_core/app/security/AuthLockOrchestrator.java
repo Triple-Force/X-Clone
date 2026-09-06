@@ -4,13 +4,15 @@ import logic_core.common.exception.UnauthorizedException;
 import logic_core.domain.model.UserModel;
 import logic_core.domain.repository.UserRepository;
 import logic_core.session.SessionManager;
-import Shared.Models.Session.Session;
+import logic_core.domain.model.SessionModel;
 import logic_core.common.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.NonNull;
-import jakarta.transaction.Transactional;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
 
+@Component
 @RequiredArgsConstructor
 public class AuthLockOrchestrator
 {
@@ -20,44 +22,20 @@ public class AuthLockOrchestrator
     @Transactional
     public SessionUserContext lockAndGetContextByToken(String sessionToken)
     {
-        Session bootstrap = sessionManager.findByToken(sessionToken)
-                .orElseThrow(() -> new NotFoundException("Session not found."));
+        SessionModel session = sessionManager.findValidSession(sessionToken)
+                .orElseThrow(() -> new NotFoundException("Session not found or invalid."));
 
-        UUID userId = resolveUserId(bootstrap);
+        UUID userId = session.getUserId();
 
-        UserModel userHint = userRepository.findUserBySessionId(bootstrap.getId())
-                .orElseThrow(() -> new NotFoundException("User not found for session."));
-
-
-        UserModel lockedUser = userRepository.findByIdForUpdate(userHint.getId())
+        UserModel lockedUser = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new NotFoundException("User not found during locking."));
 
-
-        Session session = sessionManager.findValidSession(sessionToken)
-                .orElseThrow(() -> new UnauthorizedException("Session invalid or expired."));
-
-        UUID sessionUserId = session.getUser() != null
-                ? session.getUser().getId()
-                : userRepository.findUserBySessionId(session.getId())
-                .orElseThrow(() -> new NotFoundException("User not found for session."))
-                .getId();
-
-        if (!lockedUser.getId().equals(sessionUserId))
+        if (!lockedUser.getId().equals(session.getUserId()))
         {
             throw new UnauthorizedException("Session does not belong to locked user.");
         }
 
         return new SessionUserContext(lockedUser, session);
-    }
-
-
-    private UUID resolveUserId(Session bootstrap)
-    {
-        if (bootstrap.getUser() != null && bootstrap.getUser().getId() != null)
-        {
-            return bootstrap.getUser().getId();
-        }
-        throw new NotFoundException("Session has no user.");
     }
 
     @Transactional

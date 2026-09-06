@@ -22,4 +22,10 @@ public interface MediaRepository
 
     void delete(UUID mediaId);
 
+    /**
+     * Hard-deletes all media records belonging to a tweet.
+     * Used during tweet deletion to cascade-delete related media.
+     */
+    void deleteByTweetId(UUID tweetId);
+
 }

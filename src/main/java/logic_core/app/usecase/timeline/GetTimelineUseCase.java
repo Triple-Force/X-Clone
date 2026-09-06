@@ -13,34 +13,47 @@ import logic_core.common.exception.ValidationException;
 import logic_core.common.result.Result;
 
 import logic_core.common.util.TimeProvider;
-import logic_core.domain.event.EventPublisher;
+import logic_core.app.security.AuthLockOrchestrator;
+import logic_core.app.security.SessionUserContext;
 
-import logic_core.domain.event.TimelineViewedEvent;
 import logic_core.domain.policy.TimelinePolicy;
 import logic_core.domain.repository.TweetRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.UUID;
 
+@Service
 @RequiredArgsConstructor
 public class GetTimelineUseCase
 {
     @NonNull private final TweetRepository tweetRepository;
     @NonNull private final TimelineValidator validator;
     @NonNull private final TimelinePolicy policy;
-    @NonNull private final EventPublisher eventPublisher;
     @NonNull private final TimeProvider timeProvider;
+    @NonNull private final AuthLockOrchestrator lockOrchestrator;
 
     public Result<GetTimelineResponse> execute(GetTimelineRequest request)
     {
         try
         {
-            validator.validate(request.timelineType(), request.actorId(), request.page(), request.pageSize(), request.targetUserId());
+            // The actor must be the authenticated session user; the caller-supplied
+            // actorId field is intentionally not trusted (prevents reading another
+            // user's HOME/FOLLOWING timeline by spoofing their id).
+            SessionUserContext context =
+                    lockOrchestrator.lockAndGetContextByToken(
+                            request.sessionToken()
+                    );
+
+            UUID actorId = context.lockedUser().getId();
+
+            validator.validate(request.timelineType(), actorId, request.page(), request.pageSize(), request.targetUserId());
 
             policy.validateTimeline(
                     request.timelineType(),
-                    request.actorId(),
+                    actorId,
                     request.targetUserId()
             );
 
@@ -50,7 +63,7 @@ public class GetTimelineUseCase
             List<TimelineTweet> tweets =
                     tweetRepository.getTimeline(
                             request.timelineType(),
-                            request.actorId(),
+                            actorId,
                             request.targetUserId(),
                             request.pageSize(),
                             offset
@@ -59,7 +72,7 @@ public class GetTimelineUseCase
             long totalItems =
                     tweetRepository.countTimeline(
                             request.timelineType(),
-                            request.actorId(),
+                            actorId,
                             request.targetUserId()
                     );
 
@@ -75,14 +88,6 @@ public class GetTimelineUseCase
                             .hasNext(hasNext)
                             .build();
 
-            eventPublisher.publish(new TimelineViewedEvent(
-                            request.actorId(),
-                            request.targetUserId(),
-                            request.timelineType(),
-                            tweets.size(),
-                            timeProvider.now()
-                    )
-            );
 
             return Result.success(response);
         }

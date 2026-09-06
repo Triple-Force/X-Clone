@@ -1,10 +1,12 @@
 package logic_core.app.dto.validator;
 
 import logic_core.common.exception.ValidationException;
+import org.springframework.stereotype.Component;
 
 import java.util.Objects;
 import java.util.UUID;
 
+@Component
 public class MuteValidator
 {
     public void validate(UUID muterId, UUID mutedId)

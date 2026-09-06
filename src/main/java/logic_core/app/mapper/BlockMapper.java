@@ -1,7 +1,6 @@
 package logic_core.app.mapper;
 
 import logic_core.app.dto.response.BlockActionResponse;
-import logic_core.app.dto.response.BlockStatusResponse;
 import logic_core.domain.model.BlockRelation;
 
 import java.time.OffsetDateTime;
@@ -12,16 +11,6 @@ public final class BlockMapper
 {
     private BlockMapper()
     {
-    }
-
-    public static BlockStatusResponse toStatusResponse(boolean blocked)
-    {
-        return new BlockStatusResponse(blocked);
-    }
-
-    public static BlockStatusResponse toStatusResponse(BlockRelation relation)
-    {
-        return new BlockStatusResponse(relation != null);
     }
 
     public static BlockActionResponse toBlockedResponse(BlockRelation relation)

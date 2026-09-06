@@ -14,10 +14,11 @@ import logic_core.domain.service.MediaStorageService;
 
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
 
-
+@Service
 @RequiredArgsConstructor
 public class UpdateBannerUseCase
 {

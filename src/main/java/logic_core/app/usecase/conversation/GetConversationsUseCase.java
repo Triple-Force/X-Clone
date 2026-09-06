@@ -1,19 +1,18 @@
 package logic_core.app.usecase.conversation;
 
-import Shared.Models.DirectMessage.DirectMessage;
 import jakarta.transaction.Transactional;
 import logic_core.app.dto.request.GetConversationsRequest;
 import logic_core.app.dto.response.ConversationSummaryResponse;
 import logic_core.app.dto.response.GetConversationsResponse;
 import logic_core.common.util.TimeProvider;
-import logic_core.domain.event.conversation.ConversationsGivenEvent;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 import logic_core.app.security.AuthLockOrchestrator;
 import logic_core.app.security.SessionUserContext;
 import logic_core.common.result.Result;
-import logic_core.domain.event.EventPublisher;
 import logic_core.domain.model.ConversationModel;
+import logic_core.domain.model.MessageModel;
 import logic_core.domain.model.UserModel;
 import logic_core.domain.policy.ConversationPolicy;
 import logic_core.domain.repository.ConversationRepository;
@@ -22,8 +21,10 @@ import logic_core.domain.repository.UserRepository;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
+@Service
 @RequiredArgsConstructor
 public class GetConversationsUseCase
 {
@@ -32,8 +33,6 @@ public class GetConversationsUseCase
     @NonNull private final DirectMessageRepository directMessageRepository;
     @NonNull private final UserRepository userRepository;
     @NonNull private final AuthLockOrchestrator lockOrchestrator;
-    @NonNull private final EventPublisher eventPublisher;
-    @NonNull private final TimeProvider timeProvider;
 
     @Transactional
     public Result<GetConversationsResponse> execute(GetConversationsRequest request)
@@ -76,20 +75,18 @@ public class GetConversationsUseCase
                     }
                 }
 
-                DirectMessage lastMessage =
+                Optional<MessageModel> lastMessage =
                         directMessageRepository.findLastMessage(
                                 conversation.getConversationId()
                         );
 
                 String lastMessageText =
-                        lastMessage != null
-                                ? lastMessage.getContent()
-                                : "";
+                        lastMessage.map(MessageModel::getContent)
+                                .orElse("");
 
                 var lastMessageTime =
-                        lastMessage != null
-                                ? lastMessage.getCreatedAt()
-                                : conversation.getUpdatedAt();
+                        lastMessage.map(MessageModel::getCreatedAt)
+                                .orElse(conversation.getUpdatedAt());
 
                 int unread =
                         (int) directMessageRepository.countUnreadMessages(
@@ -110,13 +107,6 @@ public class GetConversationsUseCase
 
             boolean hasNext = (long) request.page() * request.pageSize() < totalItems;
 
-            eventPublisher.publish(new ConversationsGivenEvent(
-                    currentUserId,
-                    summaries.size(),
-                    request.page(),
-                    request.pageSize(),
-                    timeProvider.now())
-            );
 
             return Result.success(
                     GetConversationsResponse.builder()

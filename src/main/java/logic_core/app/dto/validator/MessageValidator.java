@@ -1,9 +1,11 @@
 package logic_core.app.dto.validator;
 
 import logic_core.common.exception.ValidationException;
+import org.springframework.stereotype.Component;
 
 import java.util.UUID;
 
+@Component
 public class MessageValidator
 {
     private static final int MAX_MESSAGE_LENGTH = 1000;
@@ -69,7 +71,6 @@ public class MessageValidator
             throw new ValidationException("message.offset.invalid");
         }
     }
-
 
     private void validateText(String text)
     {

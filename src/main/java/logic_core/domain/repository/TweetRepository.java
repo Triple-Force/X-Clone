@@ -1,6 +1,5 @@
 package logic_core.domain.repository;
 
-import Shared.Models.TweetEdit.TweetEdit;
 import logic_core.app.dto.timeline.TimelineTweet;
 import logic_core.domain.model.TweetModel;
 
@@ -30,7 +29,8 @@ public interface TweetRepository
     void update(TweetModel tweet);
 
     /**
-     * Soft-delete tweet by id (sets deleted flag + entity redact/onSoftDelete cascade).
+     * Soft-delete tweet by id (sets deleted flag + redacts content).
+     * Related entity cleanup is handled by the calling UseCase.
      * Hard delete is intentionally not exposed.
      */
     void softDelete(UUID tweetId);
@@ -129,13 +129,17 @@ public interface TweetRepository
 
     long countTweetsById(UUID authorId);
 
-    TweetEdit appendEditHistory(UUID tweetId, String previousContent);
-
-    List<TweetEdit> findEditHistoryByTweetId(UUID tweetId);
-
     List<TimelineTweet> getTimeline(TimelineType type, UUID actorId, UUID targetUserId, int limit, int offset);
 
     long countTimeline(TimelineType type, UUID actorId, UUID targetUserId);
+
+    /**
+     * Direct replies of a single tweet in timeline shape (author + interaction
+     * counts), oldest first. Replies whose author is blocked either way by
+     * {@code actorId} are excluded, mirroring the timeline block semantics.
+     * Used by the TWEET_GET_REPLIES transport route.
+     */
+    List<TimelineTweet> getRepliesOfTweet(UUID actorId, UUID tweetId);
 
     Optional<TweetModel> findActiveByIdForUpdate(UUID tweetId);
 }

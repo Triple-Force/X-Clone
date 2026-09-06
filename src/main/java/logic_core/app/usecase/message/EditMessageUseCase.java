@@ -6,13 +6,10 @@ import logic_core.app.dto.response.ConversationInfoResponse;
 import logic_core.app.dto.response.ConversationStateResponse;
 import logic_core.app.dto.validator.MessageValidator;
 import logic_core.app.security.AuthLockOrchestrator;
-import logic_core.app.security.CurrentAuthContext;
 import logic_core.app.security.SessionUserContext;
 import logic_core.common.exception.*;
 import logic_core.common.result.Result;
 import logic_core.common.util.TimeProvider;
-import logic_core.domain.event.EventPublisher;
-import logic_core.domain.event.message.MessageEditedEvent;
 import logic_core.domain.model.ConversationModel;
 import logic_core.domain.model.MessageModel;
 import logic_core.domain.policy.DirectMessagePolicy;
@@ -20,10 +17,12 @@ import logic_core.domain.repository.ConversationRepository;
 import logic_core.domain.repository.DirectMessageRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
 
+@Service
 @RequiredArgsConstructor
 public class EditMessageUseCase
 {
@@ -32,7 +31,6 @@ public class EditMessageUseCase
     @NonNull private final DirectMessageRepository messageRepository;
     @NonNull private final ConversationRepository conversationRepository;
     @NonNull private final AuthLockOrchestrator lockOrchestrator;
-    @NonNull private final EventPublisher eventPublisher;
     @NonNull private final TimeProvider timeProvider;
 
     @Transactional
@@ -93,14 +91,6 @@ public class EditMessageUseCase
 
             messageRepository.update(editedMessage);
 
-            eventPublisher.publish(new MessageEditedEvent(
-                    editedMessage.getMessageId(),
-                    editedMessage.getConversationId(),
-                    currentUserId,
-                    previousContent,
-                    newContent,
-                    timeProvider.now()
-            ));
 
             return Result.success(buildResponse(request.conversationId(), currentUserId));
         }

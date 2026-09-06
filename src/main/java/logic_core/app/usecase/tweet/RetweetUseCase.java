@@ -13,19 +13,20 @@ import logic_core.common.exception.DatabaseException;
 import logic_core.common.exception.NotFoundException;
 import logic_core.common.result.Result;
 import logic_core.common.util.TimeProvider;
-import logic_core.domain.event.EventPublisher;
-import logic_core.domain.event.tweetEvent.TweetRetweetedEvent;
 import logic_core.domain.model.TweetModel;
 import logic_core.domain.policy.InteractionPolicy;
+import logic_core.domain.repository.RelationshipRepository;
 import logic_core.domain.repository.TweetRepository;
 import logic_core.domain.repository.UserRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
+@Service
 @RequiredArgsConstructor
 public class RetweetUseCase
 {
@@ -39,7 +40,7 @@ public class RetweetUseCase
     private final UserRepository userRepository;
 
     @NonNull
-    private final EventPublisher eventPublisher;
+    private final RelationshipRepository relationshipRepository;
 
     @NonNull
     private final TimeProvider timeProvider;
@@ -112,14 +113,6 @@ public class RetweetUseCase
 
             tweetRepository.update(updatedOriginal);
 
-            eventPublisher.publish(
-                    new TweetRetweetedEvent(
-                            originalTweet.getId(),
-                            savedRetweet.getId(),
-                            currentUserId,
-                            now
-                    )
-            );
 
             return Result.success(
                     toResponse(savedRetweet)
@@ -149,17 +142,19 @@ public class RetweetUseCase
                         .map(UserSummaryResponseMapper::toResponse)
                         .orElse(null);
 
+        TweetModel enrichedTweet = enrichWithCounts(tweet);
+
         TweetResponse retweetedTweet =
                 tweet.getRetweetedTweetId() != null
                         ?
                         tweetRepository.findById(tweet.getRetweetedTweetId())
-                                .map(this::toShallowResponse)
+                                .map(this::toShallowResponseWithCounts)
                                 .orElse(null)
                         :
                         null;
 
         return TweetMapper.toResponse(
-                tweet,
+                enrichedTweet,
                 authorSummary,
                 null,
                 retweetedTweet,
@@ -169,12 +164,22 @@ public class RetweetUseCase
     }
 
 
-    private TweetResponse toShallowResponse(
+    private TweetModel enrichWithCounts(TweetModel tweet)
+    {
+        return tweet.toBuilder()
+                .likeCount(relationshipRepository.countLikesByTweetId(tweet.getId()))
+                .replyCount(tweetRepository.countRepliesByTweetId(tweet.getId()))
+                .retweetCount(tweetRepository.countRetweetsByTweetId(tweet.getId()))
+                .build();
+    }
+
+
+    private TweetResponse toShallowResponseWithCounts(
             TweetModel tweet
     )
     {
         return TweetMapper.toResponse(
-                tweet,
+                enrichWithCounts(tweet),
                 null,
                 null,
                 null,

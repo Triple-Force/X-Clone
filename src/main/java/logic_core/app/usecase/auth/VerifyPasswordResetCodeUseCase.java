@@ -1,18 +1,22 @@
 package logic_core.app.usecase.auth;
 
-import jakarta.transaction.Transactional;
 import logic_core.app.dto.request.VerifyPasswordResetCodeRequest;
 import logic_core.app.dto.response.VerifyPasswordResetCodeResponse;
 import logic_core.app.service.passwordReset.OtpVerifyStatus;
 import logic_core.app.service.passwordReset.PasswordResetOtpService;
 import logic_core.common.result.Result;
-import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-
-@RequiredArgsConstructor
-public final class VerifyPasswordResetCodeUseCase
+@Service
+public class VerifyPasswordResetCodeUseCase
 {
     private final PasswordResetOtpService otpService;
+
+    public VerifyPasswordResetCodeUseCase(PasswordResetOtpService otpService)
+    {
+        this.otpService = otpService;
+    }
 
     @Transactional
     public Result<VerifyPasswordResetCodeResponse> execute(VerifyPasswordResetCodeRequest request)
@@ -22,9 +26,9 @@ public final class VerifyPasswordResetCodeUseCase
             return Result.failure("Invalid request.");
         }
 
-        final String email = request.email();
+        final String email = request.email().trim();
 
-        if (email == null || email.isBlank() || request.code() == null || request.code().isBlank())
+        if (email.isEmpty() || request.code() == null || request.code().isBlank())
         {
             return Result.failure("Invalid or expired code.");
 

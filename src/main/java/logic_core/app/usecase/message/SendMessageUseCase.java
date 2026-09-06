@@ -5,30 +5,28 @@ import logic_core.app.dto.request.SendMessageRequest;
 import logic_core.app.dto.response.ConversationInfoResponse;
 import logic_core.app.dto.response.ConversationStateResponse;
 import logic_core.app.security.AuthLockOrchestrator;
-import logic_core.app.security.CurrentAuthContext;
 import logic_core.app.security.SessionUserContext;
 import logic_core.common.exception.*;
 import logic_core.common.result.Result;
 import logic_core.common.util.TimeProvider;
-import logic_core.domain.event.EventPublisher;
-import logic_core.domain.event.message.MessageSentEvent;
 import logic_core.domain.model.ConversationModel;
 import logic_core.domain.model.MessageModel;
 import logic_core.domain.repository.ConversationRepository;
 import logic_core.domain.repository.DirectMessageRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+@Service
 @RequiredArgsConstructor
 public class SendMessageUseCase
 {
     @NonNull private final DirectMessageRepository directMessageRepository;
     @NonNull private final ConversationRepository conversationRepository;
     @NonNull private final AuthLockOrchestrator lockOrchestrator;
-    @NonNull private final EventPublisher eventPublisher;
     @NonNull private final TimeProvider timeProvider;
 
     @Transactional
@@ -70,13 +68,6 @@ public class SendMessageUseCase
 
             MessageModel savedMessage = directMessageRepository.save(message);
 
-            eventPublisher.publish(new MessageSentEvent(
-                    savedMessage.getMessageId(),
-                    savedMessage.getConversationId(),
-                    savedMessage.getSenderId(),
-                    content,
-                    now
-            ));
 
             long unreadCount = directMessageRepository.countUnreadMessages(
                     conversation.getConversationId(),

@@ -1,55 +1,55 @@
 package logic_core.session;
 
-import Shared.Models.Session.Session;
-import Shared.Models.User.User;
-import jakarta.persistence.EntityManager;
 import logic_core.common.util.TimeProvider;
-import logic_core.domain.model.UserModel;
+import logic_core.domain.model.SessionModel;
 import logic_core.domain.repository.SessionRepository;
 import logic_core.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.UUID;
 
+@Service
 @RequiredArgsConstructor
 public class SessionManager
 {
     private final SessionRepository sessionRepository;
     private final UserRepository userRepository;
     private final SessionFactory sessionFactory;
-    private final EntityManager entityManager;
+    private final TimeProvider timeProvider;
 
-    public Session startSession(UUID userId)
+    @Transactional
+    public SessionModel startSession(UUID userId)
     {
-        UserModel managedUser = userRepository.findByIdForUpdate(userId)
+        userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new IllegalArgumentException("user not found"));
 
-        Session newSession = sessionFactory.create(managedUser, entityManager);
+        SessionModel newSession = sessionFactory.create(userId);
+
         return sessionRepository.replaceUserSession(userId, newSession);
     }
 
-    public boolean hasActiveSession(UUID userId)
-    {
-        return !sessionRepository.findActiveSessionsByUserId(userId).isEmpty();
-    }
-
-    public void invalidateSession(Session session)
+    @Transactional
+    public void invalidateSession(SessionModel session)
     {
         if (session == null || session.getId() == null)
         {
             throw new IllegalArgumentException("session.id_is_required");
         }
 
-        sessionRepository.revoke(session);
+        sessionRepository.revokeById(session.getId());
     }
 
+    @Transactional
     public void invalidateSessionByToken(String token)
     {
         sessionRepository.findByToken(token)
-                .ifPresent(sessionRepository::revoke);
+                .ifPresent(s -> sessionRepository.revokeById(s.getId()));
     }
 
+    @Transactional
     public void revokeAllForUser(UUID userId)
     {
         if (userId == null)
@@ -60,11 +60,13 @@ public class SessionManager
         sessionRepository.revokeAllByUserId(userId);
     }
 
-    public Optional<Session> findValidSession(String token)
+    public Optional<SessionModel> findValidSession(String token)
     {
-        return sessionRepository.findByToken(token);}
+        return sessionRepository.findByToken(token)
+            .filter(s -> s.getExpiresAt().isAfter(timeProvider.now()));
+    }
 
-    public Optional<Session> findByToken(String token)
+    public Optional<SessionModel> findByToken(String token)
     {
         return sessionRepository.findByToken(token);
     }

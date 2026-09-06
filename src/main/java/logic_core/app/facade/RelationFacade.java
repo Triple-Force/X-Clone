@@ -8,16 +8,18 @@ import logic_core.app.usecase.relation.*;
 import logic_core.common.result.Result;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
+@Service
 @RequiredArgsConstructor
 public class RelationFacade
 {
-    @NonNull private final BlockUserUseCase blockUserUseCase;
-    @NonNull private final FollowUserUseCase followUserUseCase;
-    @NonNull private final MuteUserUseCase muteUserUseCase;
-    @NonNull private final UnblockUserUseCase unblockUserUseCase;
-    @NonNull private final UnfollowUserUseCase unfollowUserUseCase;
-    @NonNull private final UnmuteUserUseCase unmuteUserUseCase;
+    private final BlockUserUseCase blockUserUseCase;
+    private final FollowUserUseCase followUserUseCase;
+    private final MuteUserUseCase muteUserUseCase;
+    private final UnblockUserUseCase unblockUserUseCase;
+    private final UnfollowUserUseCase unfollowUserUseCase;
+    private final UnmuteUserUseCase unmuteUserUseCase;
 
     public Result<BlockActionResponse> block(BlockUserRequest request)
     {

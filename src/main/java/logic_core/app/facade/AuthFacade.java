@@ -4,19 +4,20 @@ import logic_core.app.dto.request.*;
 import logic_core.app.dto.response.*;
 import logic_core.app.usecase.auth.*;
 import logic_core.common.result.Result;
-import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
+@Service
 @RequiredArgsConstructor
 public class AuthFacade
 {
-    @NonNull private final RegisterUserUseCase registerUserUseCase;
-    @NonNull private final LoginUserUseCase loginUserUseCase;
-    @NonNull private final LogoutUserUseCase logoutUserUseCase;
-    @NonNull private final RefreshSessionUseCase refreshSessionUseCase;
-    @NonNull private final RequestPasswordResetUseCase requestPasswordResetUseCase;
-    @NonNull private final VerifyPasswordResetCodeUseCase verifyPasswordResetCodeUseCase;
-    @NonNull private final ResetPasswordUseCase resetPasswordUseCase;
+    private final RegisterUserUseCase registerUserUseCase;
+    private final LoginUserUseCase loginUserUseCase;
+    private final LogoutUserUseCase logoutUserUseCase;
+    private final RefreshSessionUseCase refreshSessionUseCase;
+    private final RequestPasswordResetUseCase requestPasswordResetUseCase;
+    private final VerifyPasswordResetCodeUseCase verifyPasswordResetCodeUseCase;
+    private final ResetPasswordUseCase resetPasswordUseCase;
 
     public Result<AuthResponse> register(RegisterRequest request)
     {
@@ -38,17 +39,23 @@ public class AuthFacade
         return refreshSessionUseCase.execute(request);
     }
 
-    public Result<RequestPasswordResetResponse> requestPasswordReset(RequestPasswordResetRequest request)
+    public Result<RequestPasswordResetResponse> requestPasswordReset(
+            RequestPasswordResetRequest request
+    )
     {
         return requestPasswordResetUseCase.execute(request);
     }
 
-    public Result<VerifyPasswordResetCodeResponse> verifyPasswordResetCode(VerifyPasswordResetCodeRequest request)
+    public Result<VerifyPasswordResetCodeResponse> verifyPasswordResetCode(
+            VerifyPasswordResetCodeRequest request
+    )
     {
         return verifyPasswordResetCodeUseCase.execute(request);
     }
 
-    public Result<ResetPasswordResponse> resetPassword(ResetPasswordRequest request)
+    public Result<ResetPasswordResponse> resetPassword(
+            ResetPasswordRequest request
+    )
     {
         return resetPasswordUseCase.execute(request);
     }

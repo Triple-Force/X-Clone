@@ -6,11 +6,13 @@ import logic_core.app.usecase.timeline.GetTimelineUseCase;
 import logic_core.common.result.Result;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
+@Service
 @RequiredArgsConstructor
 public class TimelineFacade
 {
-    @NonNull private final GetTimelineUseCase getTimelineUseCase;
+    private final GetTimelineUseCase getTimelineUseCase;
 
     public Result<GetTimelineResponse> getTimeline(GetTimelineRequest request)
     {

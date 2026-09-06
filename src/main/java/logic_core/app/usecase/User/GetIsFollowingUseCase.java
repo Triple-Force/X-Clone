@@ -11,16 +11,14 @@ import logic_core.domain.repository.TweetRepository;
 import logic_core.domain.repository.UserRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
-
-
+@Service
 @RequiredArgsConstructor
 public class GetIsFollowingUseCase {
 
     @NonNull
     private final UserRepository userRepository;
-    @NonNull
-    private final TweetRepository tweetRepository;
     @NonNull
     private final RelationshipRepository relationshipRepository;
     @NonNull

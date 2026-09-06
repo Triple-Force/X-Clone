@@ -88,11 +88,6 @@ public class UserItemController
 
         hideButtonIfCurrentUser();
 
-        /*
-            اگر بعداً following به DTO اضافه شد:
-
-            isFollowing = user.following();
-         */
 
         updateFollowButton();
     }
@@ -205,15 +200,6 @@ public class UserItemController
         if (user == null)
             return;
 
-        /*
-            وقتی Navigation کامل شد:
-
-            context.navigation().showProfile(user.userId());
-
-            یا
-
-            context.navigation().showProfile(user.username());
-         */
     }
 
     private void hideButtonIfCurrentUser()

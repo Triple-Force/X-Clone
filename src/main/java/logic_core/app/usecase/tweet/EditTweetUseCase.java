@@ -9,36 +9,33 @@ import logic_core.app.dto.validator.TweetValidator;
 import logic_core.app.mapper.TweetMapper;
 import logic_core.app.mapper.UserSummaryResponseMapper;
 import logic_core.app.security.AuthLockOrchestrator;
-import logic_core.app.security.CurrentAuthContext;
 import logic_core.app.security.SessionUserContext;
 import logic_core.common.exception.*;
 import logic_core.common.result.Result;
 import logic_core.common.util.TimeProvider;
-import logic_core.domain.event.EventPublisher;
-import logic_core.domain.event.tweetEvent.TweetEditedEvent;
 import logic_core.domain.model.TweetModel;
 import logic_core.domain.model.UserModel;
 import logic_core.domain.policy.InteractionPolicy;
-import logic_core.domain.repository.MediaRepository;
-import logic_core.domain.repository.TweetRepository;
-import logic_core.domain.repository.UserRepository;
+import logic_core.domain.repository.*;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
 
+@Service
 @RequiredArgsConstructor
 public class EditTweetUseCase
 {
     @NonNull private final TweetValidator validator;
     @NonNull private final InteractionPolicy interactionPolicy;
     @NonNull private final TweetRepository tweetRepository;
+    @NonNull private final TweetEditRepository tweetEditRepository;
     @NonNull private final UserRepository userRepository;
-    @NonNull private final EventPublisher eventPublisher;
-    @NonNull private final TimeProvider timeProvider;
     @NonNull private final AuthLockOrchestrator lockOrchestrator;
     @NonNull private final MediaRepository mediaRepository;
+    @NonNull private final RelationshipRepository relationshipRepository;
 
     @Transactional
     public Result<TweetResponse> execute(EditTweetRequest request)
@@ -71,14 +68,11 @@ public class EditTweetUseCase
             }
 
             tweetRepository.update(tweet.toBuilder().content(newContent).isEdited(true).build());
-            tweetRepository.appendEditHistory(tweet.getId(), tweet.getContent());
+            tweetEditRepository.appendEditHistory(tweet.getId(), tweet.getContent());
 
             TweetModel savedTweet = tweetRepository.findById(tweet.getId())
                     .orElseThrow(() -> new RuntimeException("Failed to reload edited tweet."));
 
-            eventPublisher.publish(new TweetEditedEvent(
-                    savedTweet.getId(), savedTweet.getAuthorId(), tweet.getContent(), newContent, timeProvider.now()
-            ));
 
             return Result.success(buildTweetResponse(savedTweet));
         }
@@ -104,7 +98,7 @@ public class EditTweetUseCase
         if (tweet.getRepliedToTweetId() != null)
         {
             repliedTweetResponse = tweetRepository.findById(tweet.getRepliedToTweetId())
-                    .map(parent -> TweetMapper.toResponse(parent, null, null, null, null, null))
+                    .map(this::toShallowResponseWithCounts)
                     .orElse(null);
         }
 
@@ -112,7 +106,7 @@ public class EditTweetUseCase
         if (tweet.getQuotedTweetId() != null)
         {
             quotedTweetResponse = tweetRepository.findById(tweet.getQuotedTweetId())
-                    .map(quote -> TweetMapper.toResponse(quote, null, null,null, null, null))
+                    .map(this::toShallowResponseWithCounts)
                     .orElse(null);
         }
 
@@ -120,7 +114,7 @@ public class EditTweetUseCase
         if (tweet.getRetweetedTweetId() != null)
         {
             retweetedTweetResponse = tweetRepository.findById(tweet.getRetweetedTweetId())
-                    .map(retweet -> TweetMapper.toResponse(retweet, null, null,null, null, null))
+                    .map(this::toShallowResponseWithCounts)
                     .orElse(null);
         }
 
@@ -139,13 +133,40 @@ public class EditTweetUseCase
                         )
                         .toList();
 
+        TweetModel enrichedTweet = enrichWithCounts(tweet);
+
         return TweetMapper.toResponse(
-                tweet,
+                enrichedTweet,
                 authorSummary,
                 repliedTweetResponse,
                 retweetedTweetResponse,
                 mediaResponses,
                 quotedTweetResponse
+        );
+    }
+
+
+    private TweetModel enrichWithCounts(TweetModel tweet)
+    {
+        return tweet.toBuilder()
+                .likeCount(relationshipRepository.countLikesByTweetId(tweet.getId()))
+                .replyCount(tweetRepository.countRepliesByTweetId(tweet.getId()))
+                .retweetCount(tweetRepository.countRetweetsByTweetId(tweet.getId()))
+                .build();
+    }
+
+
+    private TweetResponse toShallowResponseWithCounts(
+            TweetModel tweet
+    )
+    {
+        return TweetMapper.toResponse(
+                enrichWithCounts(tweet),
+                null,
+                null,
+                null,
+                null,
+                null
         );
     }
 }

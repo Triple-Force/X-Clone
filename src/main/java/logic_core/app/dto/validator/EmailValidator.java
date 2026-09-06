@@ -1,16 +1,18 @@
 package logic_core.app.dto.validator;
 
 import logic_core.common.exception.ValidationException;
+import org.springframework.stereotype.Component;
 
 import java.util.regex.Pattern;
 
+@Component
 public class EmailValidator
 {
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
             "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$"
     );
 
-    public static void validate(String email)
+    public void validate(String email)
     {
         if (email == null || email.isBlank())
         {

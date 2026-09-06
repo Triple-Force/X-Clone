@@ -1,6 +1,5 @@
 package logic_core.domain.repository;
 
-import Shared.Models.Conversation.Conversation;
 import logic_core.domain.model.ConversationModel;
 
 import java.util.List;

@@ -5,29 +5,26 @@ import logic_core.app.dto.request.DeleteConversationRequest;
 import logic_core.app.dto.response.DeleteConversationResponse;
 import logic_core.app.dto.validator.ConversationValidator;
 import logic_core.app.security.AuthLockOrchestrator;
-import logic_core.app.security.CurrentAuthContext;
 import logic_core.app.security.SessionUserContext;
 import logic_core.common.exception.*;
 import logic_core.common.result.Result;
 import logic_core.common.util.TimeProvider;
-import logic_core.domain.event.EventPublisher;
-import logic_core.domain.event.conversation.ConversationDeletedEvent;
 import logic_core.domain.model.ConversationModel;
 import logic_core.domain.policy.ConversationPolicy;
 import logic_core.domain.repository.ConversationRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
+@Service
 @RequiredArgsConstructor
 public class DeleteConversationUseCase
 {
     @NonNull private final ConversationValidator validator;
     @NonNull private final ConversationPolicy policy;
     @NonNull private final ConversationRepository repository;
-    @NonNull private final EventPublisher eventPublisher;
-    @NonNull private final TimeProvider timeProvider;
     @NonNull private final AuthLockOrchestrator lockOrchestrator;
 
     @Transactional
@@ -51,12 +48,6 @@ public class DeleteConversationUseCase
 
             repository.deleteById(conversationModel.getConversationId());
 
-            eventPublisher.publish(new ConversationDeletedEvent(
-                    conversationModel.getConversationId(),
-                    actorId,
-                    conversationModel.getParticipantIds(),
-                    timeProvider.now()
-            ));
 
             return Result.success(new DeleteConversationResponse(conversationModel.getConversationId()));
         }

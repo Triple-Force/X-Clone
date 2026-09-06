@@ -6,19 +6,19 @@ import logic_core.app.dto.response.CreateConversationResponse;
 import logic_core.app.dto.response.DeleteConversationResponse;
 import logic_core.app.dto.response.GetConversationsResponse;
 import logic_core.app.usecase.conversation.*;
-import logic_core.app.usecase.message.GetConversationMessagesUseCase;
 import logic_core.common.result.Result;
-import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
+@Service
 @RequiredArgsConstructor
 public class ConversationFacade
 {
-    @NonNull private final AddMemberToConversationUseCase addMemberToConversationUseCase;
-    @NonNull private final CreateConversationUseCase createConversationUseCase;
-    @NonNull private final DeleteConversationUseCase deleteConversationUseCase;
-    @NonNull private final DeleteMemberFromConversationUseCase deleteMemberFromConversationUseCase;
-    @NonNull private final GetConversationsUseCase getConversationsUseCase;
+    private final AddMemberToConversationUseCase addMemberToConversationUseCase;
+    private final CreateConversationUseCase createConversationUseCase;
+    private final DeleteConversationUseCase deleteConversationUseCase;
+    private final DeleteMemberFromConversationUseCase deleteMemberFromConversationUseCase;
+    private final GetConversationsUseCase getConversationsUseCase;
 
     public Result<ConversationInfoResponse> addMember(AddConversationMemberRequest request)
     {

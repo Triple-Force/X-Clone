@@ -10,21 +10,23 @@ import logic_core.domain.repository.RelationshipRepository;
 import logic_core.domain.repository.UserRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+@Component
 @RequiredArgsConstructor
 public class ConversationPolicy
 {
     private static final int MIN_MEMBERS = 2;
     private static final int MAX_MEMBERS = 50;
 
-    @NonNull private final UserRepository userRepository;
-    @NonNull private final RelationshipRepository relationshipRepository;
-    @NonNull private final ConversationRepository conversationRepository;
+    private final UserRepository userRepository;
+    private final RelationshipRepository relationshipRepository;
+    private final ConversationRepository conversationRepository;
 
     public void validateCreate(UUID creatorId, List<UUID> participantIds)
     {

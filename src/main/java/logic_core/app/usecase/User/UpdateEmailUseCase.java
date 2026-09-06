@@ -11,16 +11,17 @@ import logic_core.domain.model.UserModel;
 import logic_core.domain.repository.UserRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
 
-
+@Service
 @RequiredArgsConstructor
 public class UpdateEmailUseCase
 {
     @NonNull private final UserRepository repository;
     @NonNull private final AuthLockOrchestrator lockOrchestrator;
-
+    @NonNull private final EmailValidator emailValidator;
 
     @Transactional
     public Result<Void> execute(UpdateEmailRequest request)
@@ -34,7 +35,7 @@ public class UpdateEmailUseCase
                 return Result.failure("cannot update another user's email");
             }
 
-            EmailValidator.validate(request.email());
+            emailValidator.validate(request.email());
 
 
             UserModel user = repository.findById(request.userId())

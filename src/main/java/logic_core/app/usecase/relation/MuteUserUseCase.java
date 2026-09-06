@@ -6,28 +6,26 @@ import logic_core.app.dto.response.MuteResponse;
 import logic_core.app.dto.validator.MuteValidator;
 import logic_core.app.mapper.MuteActionMapper;
 import logic_core.app.security.AuthLockOrchestrator;
-import logic_core.app.security.CurrentAuthContext;
 import logic_core.app.security.SessionUserContext;
 import logic_core.common.exception.*;
 import logic_core.common.result.Result;
 import logic_core.common.util.TimeProvider;
-import logic_core.domain.event.EventPublisher;
-import logic_core.domain.event.Relationship.UserMutedEvent;
 import logic_core.domain.model.MuteRelation;
 import logic_core.domain.policy.MutePolicy;
 import logic_core.domain.repository.RelationshipRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
+@Service
 @RequiredArgsConstructor
 public class MuteUserUseCase
 {
     @NonNull private final MuteValidator validator;
     @NonNull private final MutePolicy policy;
     @NonNull private final RelationshipRepository relationshipRepository;
-    @NonNull private final EventPublisher eventPublisher;
     @NonNull private final TimeProvider timeProvider;
     @NonNull private final AuthLockOrchestrator lockOrchestrator;
 
@@ -54,11 +52,6 @@ public class MuteUserUseCase
             MuteRelation muteRelation = MuteRelation.create(muterId, mutedId, timeProvider.now());
             relationshipRepository.saveMute(muteRelation);
 
-            eventPublisher.publish(new UserMutedEvent(
-                    muterId,
-                    mutedId,
-                    timeProvider.now()
-            ));
 
             return Result.success(MuteActionMapper.toResponse(true));
         }

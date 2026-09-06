@@ -1,6 +1,5 @@
 package logic_core.domain.repository;
 
-import Shared.Models.DirectMessage.DirectMessage;
 import logic_core.domain.model.MessageModel;
 
 import java.util.List;
@@ -29,5 +28,5 @@ public interface DirectMessageRepository
 
     List<MessageModel> findByConversationId(UUID conversationId, int limit, int offset);
 
-    DirectMessage findLastMessage(UUID conversationId);
+    Optional<MessageModel> findLastMessage(UUID conversationId);
 }

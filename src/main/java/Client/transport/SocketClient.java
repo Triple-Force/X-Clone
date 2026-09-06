@@ -75,20 +75,7 @@ public final class SocketClient implements AutoCloseable
             RequestEnvelope effectiveRequest = attachSessionTokenIfNeeded(request);
             String payload = gson.toJson(effectiveRequest);
 
-            ResponseEnvelope response = sendOnce(payload);
-            if (response != null)
-            {
-                return response;
-            }
-
-            reconnect();
-            response = sendOnce(payload);
-            if (response != null)
-            {
-                return response;
-            }
-
-            throw new IllegalStateException("Server returned no response after retry.");
+            return sendOnce(payload);
         }
         finally
         {
@@ -100,17 +87,14 @@ public final class SocketClient implements AutoCloseable
     {
         try
         {
-            System.out.println(1);
             out.write(payload);
-            System.out.println(2);
             out.newLine();
-            System.out.println(3);
             out.flush();
-            System.out.println(4);
+
             String rawResponse = in.readLine();
             if (rawResponse == null || rawResponse.isBlank())
             {
-                return null;
+                throw new IllegalStateException("Server closed the connection without returning a response.");
             }
 
             ResponseEnvelope response = gson.fromJson(rawResponse, ResponseEnvelope.class);
@@ -123,27 +107,25 @@ public final class SocketClient implements AutoCloseable
         }
         catch (SocketTimeoutException ex)
         {
+            closeInternal();
             throw new IllegalStateException("Request timed out.", ex);
         }
         catch (SocketException ex)
         {
-            if (isRetryable(ex))
-            {
-                return null;
-            }
+            closeInternal();
+
             throw new IllegalStateException("Socket error while sending request.", ex);
         }
         catch (IOException ex)
         {
-            if (isRetryable(ex))
-            {
-                return null;
-            }
+            closeInternal();
+
             throw new UncheckedIOException("I/O error while sending request.", ex);
         }
     }
 
-    private RequestEnvelope attachSessionTokenIfNeeded(RequestEnvelope request)
+    private RequestEnvelope attachSessionTokenIfNeeded(
+            RequestEnvelope request)
     {
         if (request.hasToken())
         {
@@ -176,27 +158,6 @@ public final class SocketClient implements AutoCloseable
                 && !socket.isOutputShutdown()
                 && in != null
                 && out != null;
-    }
-
-    private void reconnect()
-    {
-        closeInternal();
-        connect();
-    }
-
-    private boolean isRetryable(Throwable throwable)
-    {
-        String message = throwable.getMessage();
-        if (message == null)
-        {
-            return false;
-        }
-
-        return message.contains("Connection reset")
-                || message.contains("Broken pipe")
-                || message.contains("Connection refused")
-                || message.contains("Read timed out")
-                || message.contains("Socket closed");
     }
 
     private void closeInternal()
