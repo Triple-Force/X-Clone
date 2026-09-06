@@ -1,8 +1,6 @@
 package logic_core.app.mapper;
 
 import logic_core.app.dto.response.MessageInfoResponse;
-import logic_core.app.dto.response.MessageResponse;
-import logic_core.app.dto.response.UserResponse;
 import logic_core.domain.model.MessageModel;
 
 public final class MessageMapper

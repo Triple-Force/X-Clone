@@ -3,21 +3,28 @@ package logic_core.app.facade;
 import logic_core.app.dto.request.*;
 import logic_core.app.dto.response.LikeResponse;
 import logic_core.app.dto.response.TweetResponse;
+import logic_core.app.dto.timeline.TimelineTweet;
+import logic_core.app.usecase.follow.GetRepliesUseCase;
 import logic_core.app.usecase.tweet.*;
+
+import java.util.List;
 import logic_core.common.result.Result;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
+@Service
 @RequiredArgsConstructor
 public class TweetFacade
 {
-    @NonNull private final CreateTweetUseCase createTweetUseCase;
-    @NonNull private final DeleteTweetUseCase deleteTweetUseCase;
-    @NonNull private final EditTweetUseCase editTweetUseCase;
-    @NonNull private final LikeTweetUseCase likeTweetUseCase;
-    @NonNull private final ReplyTweetUseCase replyTweetUseCase;
-    @NonNull private final RetweetUseCase retweetUseCase;
-    @NonNull private final UnlikeTweetUseCase unlikeTweetUseCase;
+    private final CreateTweetUseCase createTweetUseCase;
+    private final DeleteTweetUseCase deleteTweetUseCase;
+    private final EditTweetUseCase editTweetUseCase;
+    private final LikeTweetUseCase likeTweetUseCase;
+    private final ReplyTweetUseCase replyTweetUseCase;
+    private final RetweetUseCase retweetUseCase;
+    private final UnlikeTweetUseCase unlikeTweetUseCase;
+    private final GetRepliesUseCase getRepliesUseCase;
 
     public Result<TweetResponse> createTweet(CreateTweetRequest request)
     {
@@ -52,5 +59,10 @@ public class TweetFacade
     public Result<LikeResponse> unlikeTweet(UnlikeTweetRequest request)
     {
         return unlikeTweetUseCase.execute(request);
+    }
+
+    public Result<List<TimelineTweet>> getReplies(GetRepliesRequest request)
+    {
+        return getRepliesUseCase.execute(request);
     }
 }

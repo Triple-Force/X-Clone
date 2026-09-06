@@ -1,5 +1,6 @@
 package logic_core.domain.policy;
 
+import org.springframework.stereotype.Component;
 import logic_core.common.exception.ConflictException;
 import logic_core.domain.repository.UserRepository;
 import lombok.NonNull;
@@ -7,10 +8,10 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.Objects;
 
+@Component
 @RequiredArgsConstructor
 public class RegistrationPolicy
 {
-    @NonNull
     private final UserRepository userRepository;
 
     public void validate(String username, String email)

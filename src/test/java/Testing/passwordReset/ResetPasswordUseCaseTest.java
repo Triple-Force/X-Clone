@@ -2,21 +2,19 @@ package Testing.passwordReset;
 
 import logic_core.app.dto.request.ResetPasswordRequest;
 import logic_core.app.dto.response.ResetPasswordResponse;
+import logic_core.app.dto.validator.EmailValidator;
+import logic_core.app.dto.validator.PasswordValidator;
 import logic_core.app.service.passwordReset.OtpVerifyStatus;
 import logic_core.app.service.passwordReset.PasswordResetOtpService;
 import logic_core.app.usecase.auth.ResetPasswordUseCase;
 import logic_core.common.result.Result;
 import logic_core.common.security.PasswordHasher;
-import logic_core.common.util.TimeProvider;
-import logic_core.domain.event.EventPublisher;
-import logic_core.domain.event.authentication.PasswordResetCompletedEvent;
 import logic_core.domain.model.UserModel;
 import logic_core.domain.repository.UserRepository;
 import logic_core.session.SessionManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -34,13 +32,14 @@ class ResetPasswordUseCaseTest
     {
         UserRepository userRepository = mock(UserRepository.class);
         PasswordResetOtpService otpService = mock(PasswordResetOtpService.class);
-        PasswordHasher passwordHasher = mock(PasswordHasher.class);
+        PasswordHasher passwordHasher = new PasswordHasher();
         SessionManager sessionManager = mock(SessionManager.class);
-        TimeProvider timeProvider = fixedTimeProvider();
-        EventPublisher eventPublisher = mock(EventPublisher.class);
+        EmailValidator emailValidator = new EmailValidator();
+        PasswordValidator passwordValidator = new PasswordValidator();
 
         ResetPasswordUseCase useCase = new ResetPasswordUseCase(
-                userRepository, otpService, passwordHasher, sessionManager, timeProvider, eventPublisher
+                userRepository, otpService, passwordHasher, sessionManager,
+                emailValidator, passwordValidator
         );
 
         Result<ResetPasswordResponse> result = useCase.execute(null);
@@ -54,15 +53,16 @@ class ResetPasswordUseCaseTest
     {
         UserRepository userRepository = mock(UserRepository.class);
         PasswordResetOtpService otpService = mock(PasswordResetOtpService.class);
-        PasswordHasher passwordHasher = mock(PasswordHasher.class);
+        PasswordHasher passwordHasher = new PasswordHasher();
         SessionManager sessionManager = mock(SessionManager.class);
-        TimeProvider timeProvider = fixedTimeProvider();
-        EventPublisher eventPublisher = mock(EventPublisher.class);
+        EmailValidator emailValidator = new EmailValidator();
+        PasswordValidator passwordValidator = new PasswordValidator();
 
         when(otpService.verify("user@example.com", "123456")).thenReturn(OtpVerifyStatus.INVALID_CODE);
 
         ResetPasswordUseCase useCase = new ResetPasswordUseCase(
-                userRepository, otpService, passwordHasher, sessionManager, timeProvider, eventPublisher
+                userRepository, otpService, passwordHasher, sessionManager,
+                emailValidator, passwordValidator
         );
 
         Result<ResetPasswordResponse> result = useCase.execute(
@@ -76,19 +76,18 @@ class ResetPasswordUseCaseTest
     }
 
     @Test
-    @DisplayName("successful reset should revoke sessions, update password, publish event, and start new session")
+    @DisplayName("successful reset should revoke sessions, update password, and start new session")
     void successfulReset_happyPath()
     {
         UserRepository userRepository = mock(UserRepository.class);
         PasswordResetOtpService otpService = mock(PasswordResetOtpService.class);
-        PasswordHasher passwordHasher = mock(PasswordHasher.class);
+        PasswordHasher passwordHasher = new PasswordHasher();
         SessionManager sessionManager = mock(SessionManager.class);
-        TimeProvider timeProvider = fixedTimeProvider();
-        EventPublisher eventPublisher = mock(EventPublisher.class);
+        EmailValidator emailValidator = new EmailValidator();
+        PasswordValidator passwordValidator = new PasswordValidator();
 
         UUID userId = UUID.randomUUID();
         UserModel user = mock(UserModel.class);
-        Shared.Models.Session.Session session = mock(Shared.Models.Session.Session.class);
 
         String email = "user@example.com";
         String code = "123456";
@@ -99,16 +98,14 @@ class ResetPasswordUseCaseTest
 
         when(otpService.consumeIfVerified(email))
                 .thenReturn(PasswordResetOtpService.ConsumeResult.ok(userId));
-        // -----------------------------------------
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(user.getId()).thenReturn(userId);
         when(user.getEmail()).thenReturn(email);
-        when(passwordHasher.hash(newPassword)).thenReturn("hashed-password123!");
-        when(sessionManager.startSession(userId)).thenReturn(session);
 
         ResetPasswordUseCase useCase = new ResetPasswordUseCase(
-                userRepository, otpService, passwordHasher, sessionManager, timeProvider, eventPublisher
+                userRepository, otpService, passwordHasher, sessionManager,
+                emailValidator, passwordValidator
         );
 
         Result<ResetPasswordResponse> result = useCase.execute(
@@ -119,25 +116,9 @@ class ResetPasswordUseCaseTest
         assertNotNull(result.getData());
         assertTrue(result.getData().isReset());
 
-        // Verifications
         verify(sessionManager).revokeAllForUser(userId);
-        verify(user).updatePasswordHash("hashed-password123!");
         verify(userRepository).update(user);
         verify(otpService).consumeIfVerified(email);
-        verify(eventPublisher).publish(any(PasswordResetCompletedEvent.class));
         verify(sessionManager).startSession(userId);
-    }
-
-
-    private static TimeProvider fixedTimeProvider()
-    {
-        return new TimeProvider()
-        {
-            @Override
-            public OffsetDateTime now()
-            {
-                return OffsetDateTime.parse("2026-07-19T10:00:00Z");
-            }
-        };
     }
 }

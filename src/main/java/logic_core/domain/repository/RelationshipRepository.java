@@ -43,4 +43,11 @@ public interface RelationshipRepository
     List<LikeRelation> findLikesByTweetId(UUID tweetId);
     boolean hasLiked(UUID userId, UUID tweetId);
     long countLikesByTweetId(UUID tweetId);
+
+    // Cascade
+    /**
+     * Hard-deletes all like records belonging to a tweet.
+     * Used during tweet deletion to cascade-delete related likes.
+     */
+    void deleteLikesByTweetId(UUID tweetId);
 }

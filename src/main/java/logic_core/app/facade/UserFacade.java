@@ -6,24 +6,26 @@ import logic_core.app.usecase.User.*;
 import logic_core.common.result.Result;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Service
 @RequiredArgsConstructor
 public class UserFacade
 {
-    @NonNull private final DeleteAccountUseCase deleteAccountUseCase;
-    @NonNull private final GetProfileUseCase getProfileUseCase;
-    @NonNull private final SearchUsersUseCase searchUsersUseCase;
-    @NonNull private final UpdateAvatarUseCase updateAvatarUseCase;
-    @NonNull private final UpdateBannerUseCase updateBannerUseCase;
-    @NonNull private final UpdateBioUseCase updateBioUseCase;
-    @NonNull private final UpdateEmailUseCase updateEmailUseCase;
-    @NonNull private final UpdatePasswordUseCase updatePasswordUseCase;
-    @NonNull private final UpdateProfileUseCase updateProfileUseCase;
-    @NonNull private final UpdateCompleteProfileUseCase updateCompleteProfileUseCase;
-    @NonNull private final GetIsFollowingUseCase getIsFollowingUseCase;
-    @NonNull private final GetIsLikedUseCase getIsLikedUseCase;
+    private final DeleteAccountUseCase deleteAccountUseCase;
+    private final GetProfileUseCase getProfileUseCase;
+    private final SearchUsersUseCase searchUsersUseCase;
+    private final UpdateAvatarUseCase updateAvatarUseCase;
+    private final UpdateBannerUseCase updateBannerUseCase;
+    private final UpdateBioUseCase updateBioUseCase;
+    private final UpdateEmailUseCase updateEmailUseCase;
+    private final UpdatePasswordUseCase updatePasswordUseCase;
+    private final UpdateProfileUseCase updateProfileUseCase;
+    private final UpdateCompleteProfileUseCase updateCompleteProfileUseCase;
+    private final GetIsFollowingUseCase getIsFollowingUseCase;
+    private final GetIsLikedUseCase getIsLikedUseCase;
 
 
     public Result<Void> deleteAccount(DeleteAccountRequest request)

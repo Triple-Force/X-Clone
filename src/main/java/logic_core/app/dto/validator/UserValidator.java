@@ -4,12 +4,18 @@ import logic_core.app.dto.media.UploadFile;
 import logic_core.app.dto.request.UpdateCompleteProfileRequest;
 import logic_core.common.exception.NotFoundException;
 
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
 public class UserValidator
 {
+    private final UsernameValidator usernameValidator;
 
     public void validateAllProfile(UpdateCompleteProfileRequest request)
     {
-        UsernameValidator.validate(request.username());
+        usernameValidator.validate(request.username());
         validateBio(request.bio());
 
         if (request.avatar() != null)

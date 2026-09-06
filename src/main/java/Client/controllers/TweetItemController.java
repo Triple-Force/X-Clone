@@ -13,6 +13,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import logic_core.app.dto.response.LikeResponse;
 import logic_core.app.dto.timeline.TimelineTweet;
 
 import java.io.File;
@@ -89,6 +90,8 @@ public class TweetItemController {
         updateLikeButton();
         setAvatar(tweet.avatarUrl());
         checkDeletePermission();
+
+        loadLikeState();
     }
 
 
@@ -103,8 +106,6 @@ public class TweetItemController {
                 .isLike(tweet.tweetId())
                 .thenAccept(result -> Platform.runLater(() -> {
 
-
-
                     likeButton.setDisable(false);
 
                     if (result.isFailure())
@@ -116,8 +117,9 @@ public class TweetItemController {
                 }))
                 .exceptionally(error -> {
 
-                    Platform.runLater(() ->
-                            likeButton.setDisable(false));
+                    Platform.runLater(() -> {
+                        likeButton.setDisable(false);
+                    });
 
                     return null;
                 });
@@ -217,15 +219,6 @@ public class TweetItemController {
         boolean oldLiked = liked;
         long oldLikeCount = currentLikeCount;
 
-        // Optimistic UI
-        liked = !liked;
-        currentLikeCount += liked ? 1 : -1;
-
-        if (currentLikeCount < 0)
-            currentLikeCount = 0;
-
-        updateLikeButton();
-
         context.getTweetService()
                 .likeTweet(tweet.tweetId())
                 .thenAccept(result -> Platform.runLater(() -> {
@@ -240,7 +233,14 @@ public class TweetItemController {
                         return;
                     }
 
+
+                    LikeResponse response = result.getData();
+                    if (response != null) {
+                        liked = response.liked();
+                        currentLikeCount = response.totalLikesCount();
+                    }
                     likeButton.setDisable(false);
+                    updateLikeButton();
 
                 }))
                 .exceptionally(error -> {

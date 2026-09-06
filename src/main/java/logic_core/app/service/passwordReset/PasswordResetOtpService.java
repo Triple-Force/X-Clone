@@ -2,6 +2,8 @@ package logic_core.app.service.passwordReset;
 
 import logic_core.common.security.PasswordHasher;
 import logic_core.common.util.TimeProvider;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -21,6 +23,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * Thread-safe. Survives client reconnects within the same JVM.
  * Does NOT survive process restart.
  */
+@Component
 public final class PasswordResetOtpService implements AutoCloseable
 {
     public static final int OTP_LENGTH = 6;
@@ -38,6 +41,7 @@ public final class PasswordResetOtpService implements AutoCloseable
     private final ScheduledExecutorService cleanupExecutor;
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
+    @Autowired
     public PasswordResetOtpService(TimeProvider timeProvider, PasswordHasher passwordHasher)
     {
         this(timeProvider, passwordHasher, DEFAULT_TTL, MAX_ATTEMPTS, true);
@@ -118,14 +122,15 @@ public final class PasswordResetOtpService implements AutoCloseable
     public OtpVerifyStatus verify(String email, String rawCode)
     {
         ensureOpen();
-        if (email.isEmpty() || rawCode == null || rawCode.isBlank())
+        String key = normalizeEmail(email);
+        if (key.isEmpty() || rawCode == null || rawCode.isBlank())
         {
             return OtpVerifyStatus.INVALID_CODE;
         }
 
         final OtpVerifyStatus[] status = {OtpVerifyStatus.NOT_FOUND};
 
-        store.computeIfPresent(email, (k, current) ->
+        store.computeIfPresent(key, (k, current) ->
         {
             OffsetDateTime now = timeProvider.now();
 
@@ -223,7 +228,6 @@ public final class PasswordResetOtpService implements AutoCloseable
     {
         ensureOpen();
 
-        System.out.println("consumeIfVerified");
         String key = normalizeEmail(email);
         if (key.isEmpty())
         {

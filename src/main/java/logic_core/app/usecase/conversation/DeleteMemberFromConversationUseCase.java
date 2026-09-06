@@ -5,28 +5,26 @@ import logic_core.app.dto.request.RemoveConversationMemberRequest;
 import logic_core.app.dto.response.ConversationInfoResponse;
 import logic_core.app.dto.validator.ConversationValidator;
 import logic_core.app.security.AuthLockOrchestrator;
-import logic_core.app.security.CurrentAuthContext;
 import logic_core.app.security.SessionUserContext;
 import logic_core.common.exception.*;
 import logic_core.common.result.Result;
 import logic_core.common.util.TimeProvider;
-import logic_core.domain.event.EventPublisher;
-import logic_core.domain.event.conversation.MemberDeletedFormConversationEvent;
 import logic_core.domain.model.ConversationModel;
 import logic_core.domain.policy.ConversationPolicy;
 import logic_core.domain.repository.ConversationRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
+@Service
 @RequiredArgsConstructor
 public class DeleteMemberFromConversationUseCase
 {
     @NonNull private final ConversationValidator validator;
     @NonNull private final ConversationPolicy policy;
     @NonNull private final ConversationRepository repository;
-    @NonNull private final EventPublisher eventPublisher;
     @NonNull private final TimeProvider timeProvider;
     @NonNull private final AuthLockOrchestrator lockOrchestrator;
 
@@ -50,12 +48,6 @@ public class DeleteMemberFromConversationUseCase
 
             repository.deleteMember(conversation.getConversationId(), request.memberId());
 
-            eventPublisher.publish(new MemberDeletedFormConversationEvent(
-                    conversation.getConversationId(),
-                    request.memberId(),
-                    actorId,
-                    timeProvider.now()
-            ));
 
             return Result.success(new ConversationInfoResponse(
                     conversation.getConversationId(),

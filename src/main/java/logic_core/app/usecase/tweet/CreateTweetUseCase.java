@@ -16,8 +16,6 @@ import logic_core.common.exception.NotFoundException;
 import logic_core.common.exception.ValidationException;
 import logic_core.common.result.Result;
 import logic_core.common.util.TimeProvider;
-import logic_core.domain.event.EventPublisher;
-import logic_core.domain.event.tweetEvent.TweetCreatedEvent;
 import logic_core.domain.model.MediaModel;
 import logic_core.domain.model.TweetModel;
 import logic_core.domain.model.UserModel;
@@ -27,12 +25,14 @@ import logic_core.domain.repository.TweetRepository;
 import logic_core.domain.repository.UserRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+@Service
 @RequiredArgsConstructor
 public class CreateTweetUseCase
 {
@@ -40,7 +40,6 @@ public class CreateTweetUseCase
     @NonNull private final InteractionPolicy interactionPolicy;
     @NonNull private final TweetRepository tweetRepository;
     @NonNull private final UserRepository userRepository;
-    @NonNull private final EventPublisher eventPublisher;
     @NonNull private final TimeProvider timeProvider;
     @NonNull private final AuthLockOrchestrator lockOrchestrator;
     @NonNull private final MediaRepository mediaRepository;
@@ -93,16 +92,6 @@ public class CreateTweetUseCase
 
             TweetResponse response = buildTweetResponse(savedTweet, mediaModels);
 
-            eventPublisher.publish(
-                    new TweetCreatedEvent(
-                            savedTweet.getId(),
-                            savedTweet.getAuthorId(),
-                            savedTweet.getContent(),
-                            savedTweet.getRepliedToTweetId(),
-                            savedTweet.getQuotedTweetId(),
-                            timeProvider.now()
-                    )
-            );
 
 
             try

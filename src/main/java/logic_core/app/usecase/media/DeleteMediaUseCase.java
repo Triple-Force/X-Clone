@@ -13,10 +13,11 @@ import logic_core.domain.repository.MediaRepository;
 import logic_core.domain.repository.TweetRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
-
+@Service
 @RequiredArgsConstructor
 public class DeleteMediaUseCase
 {

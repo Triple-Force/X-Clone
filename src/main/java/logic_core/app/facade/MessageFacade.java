@@ -8,15 +8,17 @@ import logic_core.app.usecase.message.*;
 import logic_core.common.result.Result;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
+@Service
 @RequiredArgsConstructor
 public class MessageFacade
 {
-    @NonNull private final DeleteMessageUseCase deleteMessageUseCase;
-    @NonNull private final EditMessageUseCase editMessageUseCase;
-    @NonNull private final GetConversationMessagesUseCase getConversationMessagesUseCase;
-    @NonNull private final GetMessageUseCase getMessageUseCase;
-    @NonNull private final SendMessageUseCase sendMessageUseCase;
+    private final DeleteMessageUseCase deleteMessageUseCase;
+    private final EditMessageUseCase editMessageUseCase;
+    private final GetConversationMessagesUseCase getConversationMessagesUseCase;
+    private final GetMessageUseCase getMessageUseCase;
+    private final SendMessageUseCase sendMessageUseCase;
 
     public Result<ConversationStateResponse> deleteMessage(DeleteMessageRequest request)
     {

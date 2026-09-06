@@ -11,17 +11,19 @@ import logic_core.domain.repository.RelationshipRepository;
 import logic_core.domain.repository.UserRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 import java.util.Objects;
 import java.util.UUID;
 
+@Component
 @RequiredArgsConstructor
 public class DirectMessagePolicy
 {
-    @NonNull private final UserRepository userRepository;
-    @NonNull private final RelationshipRepository relationshipRepository;
-    @NonNull private final ConversationRepository conversationRepository;
-    @NonNull private final DirectMessageRepository messageRepository;
+    private final UserRepository userRepository;
+    private final RelationshipRepository relationshipRepository;
+    private final ConversationRepository conversationRepository;
+    private final DirectMessageRepository messageRepository;
 
     public void validateSend(UUID senderId, UUID receiverId)
     {

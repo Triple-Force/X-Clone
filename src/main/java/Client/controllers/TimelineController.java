@@ -98,7 +98,6 @@ public class TimelineController {
     }
 
     private void loadCurrentUserProfile() {
-        // بعداً Avatar از Cache یا ProfileService خوانده می‌شود.
     }
 
 

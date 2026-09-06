@@ -132,7 +132,6 @@ public class MainLayoutController {
                     contentArea.getChildren().clear();
                     contentArea.getChildren().add(view);
 
-                    // تنظیم اندازه صفحه لودشده با اندازه contentArea
                     if (view instanceof Pane paneView) {
                         paneView.prefWidthProperty().bind(contentArea.widthProperty());
                         paneView.prefHeightProperty().bind(contentArea.heightProperty());

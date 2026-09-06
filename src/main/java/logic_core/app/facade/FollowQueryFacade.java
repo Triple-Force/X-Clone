@@ -9,12 +9,14 @@ import logic_core.app.usecase.follow.GetFollowingsUseCase;
 import logic_core.common.result.Result;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
+@Service
 @RequiredArgsConstructor
 public class FollowQueryFacade
 {
-    @NonNull private final GetFollowingsUseCase getFollowingsUseCase;
-    @NonNull private final GetFollowersUseCase getFollowersUseCase;
+    private final GetFollowingsUseCase getFollowingsUseCase;
+    private final GetFollowersUseCase getFollowersUseCase;
 
     public Result<FollowingsResponse> getFollowings(GetFollowingsRequest request)
     {

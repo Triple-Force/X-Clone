@@ -1,7 +1,9 @@
 package logic_core.common.security;
 
 import org.mindrot.jbcrypt.BCrypt;
+import org.springframework.stereotype.Component;
 
+@Component
 public final class PasswordHasher
 {
     private static final int SALT_ROUNDS = 12;

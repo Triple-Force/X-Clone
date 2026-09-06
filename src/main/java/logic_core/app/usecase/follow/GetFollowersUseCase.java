@@ -13,10 +13,12 @@ import logic_core.domain.repository.RelationshipRepository;
 import logic_core.domain.repository.UserRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
 
+@Service
 @RequiredArgsConstructor
 public class GetFollowersUseCase
 {

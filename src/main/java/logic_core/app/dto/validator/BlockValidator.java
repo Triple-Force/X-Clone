@@ -5,6 +5,9 @@ import logic_core.common.exception.ValidationException;
 import java.util.Objects;
 import java.util.UUID;
 
+import org.springframework.stereotype.Component;
+
+@Component
 public class BlockValidator
 {
     public void validate(UUID blockerId, UUID blockedId)

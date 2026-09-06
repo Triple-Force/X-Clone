@@ -6,6 +6,9 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.stereotype.Component;
+
+@Component
 public class TweetValidator
 {
     private static final int MAX_TWEET_LENGTH = 280;

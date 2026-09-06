@@ -199,6 +199,80 @@ class PasswordResetOtpServiceTest
         assertEquals(OtpVerifyStatus.NOT_FOUND, service.verify("user@example.com", "123456"));
     }
 
+    @Test
+    @DisplayName("verify() with mixed-case email should return correct status")
+    void verify_mixedCaseEmail_returnsCorrectStatus()
+    {
+        TimeProvider timeProvider = new FixedTimeProvider(OffsetDateTime.parse("2026-07-19T10:00:00Z"));
+        PasswordHasher passwordHasher = new PasswordHasher();
+
+        service = new PasswordResetOtpService(
+                timeProvider,
+                passwordHasher,
+                Duration.ofMinutes(10),
+                5,
+                false
+        );
+
+        UUID userId = UUID.randomUUID();
+        String otp = service.issue("User@Example.com", userId);
+
+        // Verify with different casing — should still find the entry
+        OtpVerifyStatus status = service.verify("user@example.com", otp);
+        assertEquals(OtpVerifyStatus.OK, status);
+        assertEquals(Optional.of(userId), service.getVerifiedUserId("USER@EXAMPLE.COM"));
+    }
+
+    @Test
+    @DisplayName("verify() with untrimmed email should return correct status")
+    void verify_untrimmedEmail_returnsCorrectStatus()
+    {
+        TimeProvider timeProvider = new FixedTimeProvider(OffsetDateTime.parse("2026-07-19T10:00:00Z"));
+        PasswordHasher passwordHasher = new PasswordHasher();
+
+        service = new PasswordResetOtpService(
+                timeProvider,
+                passwordHasher,
+                Duration.ofMinutes(10),
+                5,
+                false
+        );
+
+        UUID userId = UUID.randomUUID();
+        String otp = service.issue("  user@example.com  ", userId);
+
+        // Verify with surrounding whitespace — should still find the entry
+        OtpVerifyStatus status = service.verify(" user@example.com ", otp);
+        assertEquals(OtpVerifyStatus.OK, status);
+    }
+
+    @Test
+    @DisplayName("verify() expired OTP with mixed-case email should return EXPIRED")
+    void verify_expiredMixedCaseEmail_returnsExpired()
+    {
+        OffsetDateTime issuedAt = OffsetDateTime.parse("2026-07-19T10:00:00Z");
+        OffsetDateTime expiredAt = issuedAt.plusMinutes(11);
+
+        FixedTimeProvider timeProvider = new FixedTimeProvider(issuedAt);
+        PasswordHasher passwordHasher = new PasswordHasher();
+
+        service = new PasswordResetOtpService(
+                timeProvider,
+                passwordHasher,
+                Duration.ofMinutes(10),
+                5,
+                false
+        );
+
+        service.issue("User@Email.com", UUID.randomUUID());
+
+        timeProvider.setNow(expiredAt);
+
+        // Verify with different casing — should find entry and return EXPIRED
+        OtpVerifyStatus status = service.verify("user@EMAIL.com", "000000");
+        assertEquals(OtpVerifyStatus.EXPIRED, status);
+    }
+
     private static final class FixedTimeProvider extends TimeProvider
     {
         private OffsetDateTime now;

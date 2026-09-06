@@ -6,7 +6,6 @@ import logic_core.app.dto.response.ConversationInfoResponse;
 import logic_core.app.dto.response.ConversationStateResponse;
 import logic_core.app.dto.validator.MessageValidator;
 import logic_core.app.security.AuthLockOrchestrator; // Import AuthLockOrchestrator
-import logic_core.app.security.CurrentAuthContext;
 import logic_core.app.security.SessionUserContext; // Import SessionUserContext
 // import logic_core.common.exception.ConflictException; // Consider migrating to AppException
 // import logic_core.common.exception.ForbiddenException; // Consider migrating to AppException
@@ -18,25 +17,24 @@ import logic_core.common.exception.ForbiddenException;
 import logic_core.common.exception.NotFoundException;
 import logic_core.common.result.Result;
 import logic_core.common.util.TimeProvider;
-import logic_core.domain.event.EventPublisher;
-import logic_core.domain.event.message.MessageDeletedEvent;
 import logic_core.domain.model.ConversationModel;
 import logic_core.domain.model.MessageModel;
 import logic_core.domain.repository.ConversationRepository;
 import logic_core.domain.repository.DirectMessageRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
 
+@Service
 @RequiredArgsConstructor
 public class DeleteMessageUseCase
 {
     @NonNull private final DirectMessageRepository directMessageRepository;
     @NonNull private final MessageValidator validator;
     @NonNull private final ConversationRepository conversationRepository;
-    @NonNull private final EventPublisher eventPublisher;
     @NonNull private final TimeProvider timeProvider;
     @NonNull private final AuthLockOrchestrator lockOrchestrator;
 
@@ -87,14 +85,6 @@ public class DeleteMessageUseCase
 
             // 4. Perform the soft delete
             directMessageRepository.softDelete(message.getMessageId());
-
-            // 5. Publish event
-            eventPublisher.publish(new MessageDeletedEvent(
-                    message.getMessageId(),
-                    message.getConversationId(),
-                    currentUserId,
-                    timeProvider.now()
-            ));
 
             // 6. Recalculate conversation state under lock
             // Fetch latest messages and unread count after deletion

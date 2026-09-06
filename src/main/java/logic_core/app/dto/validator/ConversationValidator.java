@@ -1,10 +1,12 @@
 package logic_core.app.dto.validator;
 
 import logic_core.common.exception.ValidationException;
+import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Component
 public class ConversationValidator
 {
     private static final int MIN_PARTICIPANTS = 1;

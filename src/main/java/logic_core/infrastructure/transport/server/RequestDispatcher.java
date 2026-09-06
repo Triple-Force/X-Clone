@@ -1,13 +1,12 @@
 package logic_core.infrastructure.transport.server;
 
-import Shared.Database.EntityManagerContext;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityTransaction;
-import logic_core.app.DependencyContainer;
 import logic_core.app.dto.request.*;
 import logic_core.app.dto.response.*;
+import logic_core.app.dto.timeline.TimelineTweet;
 import logic_core.app.facade.*;
 import logic_core.common.exception.AppException;
 import logic_core.common.result.Result;
@@ -15,21 +14,28 @@ import logic_core.infrastructure.transport.RequestEnvelope;
 import logic_core.infrastructure.transport.RequestType;
 import logic_core.infrastructure.transport.ResponseEnvelope;
 import logic_core.infrastructure.transport.ResponseType;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 
+@RequiredArgsConstructor
+@Component
 public class RequestDispatcher
 {
     private final Gson gson;
-
-    public RequestDispatcher(Gson gson)
-    {
-        this.gson = Objects.requireNonNull(gson, "gson must not be null");
-    }
+    private final AuthFacade authFacade;
+    private final ConversationFacade conversationFacade;
+    private final FollowQueryFacade followQueryFacade;
+    private final MediaFacade mediaFacade;
+    private final MessageFacade messageFacade;
+    private final RelationFacade relationFacade;
+    private final TimelineFacade timelineFacade;
+    private final TweetFacade tweetFacade;
+    private final UserFacade userFacade;
 
     public ResponseEnvelope dispatch(RequestEnvelope request)
     {
@@ -135,43 +141,24 @@ public class RequestDispatcher
 
 
     private <F> ResponseEnvelope execute(
-            RequestEnvelope requestEnvelope,
-            Function<EntityManager, F> facadeFactory,
+            RequestEnvelope request,
+            F facade,
             BiFunction<F, JsonElement, ResponseEnvelope> handler)
     {
-        Objects.requireNonNull(requestEnvelope, "requestEnvelope must not be null");
-        Objects.requireNonNull(facadeFactory, "facadeFactory must not be null");
+        Objects.requireNonNull(request, "request must not be null");
+        Objects.requireNonNull(facade, "facade must not be null");
         Objects.requireNonNull(handler, "handler must not be null");
 
-        UUID requestId = requestEnvelope.requestId();
-        RequestType requestType = requestEnvelope.type();
-        JsonElement payload = requestEnvelope.payload();
-
-        EntityManager em = null;
-        EntityTransaction tx = null;
+        UUID requestId = request.requestId();
+        RequestType requestType = request.type();
+        JsonElement payload = request.payload();
 
         try
         {
-            em = DependencyContainer.createEntityManager();
-            EntityManagerContext.set(em);
-            tx = em.getTransaction();
-
-            System.out.println(1);
-            tx.begin();
-            System.out.println(1);
-            F facade = facadeFactory.apply(em);
-            System.out.println(1);
-            ResponseEnvelope response = handler.apply(facade, payload);
-            System.out.println(1);
-            tx.commit();
-            System.out.println(1);
-            return response;
-
+            return handler.apply(facade, payload);
         }
         catch (AppException e)
         {
-            rollbackQuietly(tx);
-
             return failureResponse(
                     requestId,
                     responseTypeFor(requestType),
@@ -181,8 +168,6 @@ public class RequestDispatcher
         }
         catch (Exception e)
         {
-            rollbackQuietly(tx);
-
             return failureResponse(
                     requestId,
                     ResponseType.BAD_REQUEST,
@@ -192,21 +177,14 @@ public class RequestDispatcher
                             : "Unexpected server error"
             );
         }
-        finally
-        {
-            EntityManagerContext.clear();
-
-            closeQuietly(em);
-        }
     }
-
 
 
     public ResponseEnvelope dispatchAuth(RequestEnvelope request)
     {
         return execute(
                 request,
-                DependencyContainer::createAuthFacade,
+                authFacade,
                 (facade, payload) ->
                 {
                     UUID requestId = request.requestId();
@@ -236,7 +214,7 @@ public class RequestDispatcher
     {
         return execute(
                 request,
-                DependencyContainer::createConversationFacade,
+                conversationFacade,
                 (facade, payload) ->
                 {
                     UUID requestId = request.requestId();
@@ -263,7 +241,7 @@ public class RequestDispatcher
     {
         return execute(
                 request,
-                DependencyContainer::createMessageFacade,
+                messageFacade,
                 (facade, payload) ->
                 {
                     UUID requestId = request.requestId();
@@ -290,7 +268,7 @@ public class RequestDispatcher
     {
         return execute(
                 request,
-                DependencyContainer::createRelationFacade,
+                relationFacade,
                 (facade, payload) ->
                 {
                     UUID requestId = request.requestId();
@@ -319,7 +297,7 @@ public class RequestDispatcher
     {
         return execute(
                 request,
-                DependencyContainer::createTimelineFacade,
+                timelineFacade,
                 (facade, payload) ->
                 {
                     UUID requestId = request.requestId();
@@ -338,7 +316,7 @@ public class RequestDispatcher
     {
         return execute(
                 request,
-                DependencyContainer::createTweetFacade,
+                tweetFacade,
                 (facade, payload) ->
                 {
                     UUID requestId = request.requestId();
@@ -368,7 +346,7 @@ public class RequestDispatcher
     {
         return execute(
                 request,
-                DependencyContainer::createUserFacade,
+                userFacade,
                 (facade, payload) ->
                 {
                     UUID requestId = request.requestId();
@@ -411,7 +389,7 @@ public class RequestDispatcher
     {
         return execute(
                 request,
-                DependencyContainer::createFollowQueryFacade,
+                followQueryFacade,
                 (facade, payload) ->
                 {
                     UUID requestId = request.requestId();
@@ -437,7 +415,7 @@ public class RequestDispatcher
     {
         return execute(
                 request,
-                DependencyContainer::createMediaFacade,
+                mediaFacade,
                 (facade, payload) ->
                 {
                     UUID requestId = request.requestId();
@@ -462,7 +440,35 @@ public class RequestDispatcher
 
     public ResponseEnvelope dispatchReply(RequestEnvelope request)
     {
-        return null;
+        return execute(
+                request,
+                tweetFacade,
+                (facade, payload) ->
+                {
+                    UUID requestId = request.requestId();
+
+                    GetRepliesRequest repliesRequest =
+                            gson.fromJson(payload, GetRepliesRequest.class);
+
+                    Result<List<TimelineTweet>> result =
+                            facade.getReplies(repliesRequest);
+
+                    if (result.isFailure())
+                    {
+                        return failureResponse(
+                                requestId,
+                                responseTypeFor(request.type()),
+                                "GET_REPLIES_FAILED",
+                                result.getError()
+                        );
+                    }
+
+                    return successResponse(
+                            requestId,
+                            responseTypeFor(request.type()),
+                            result.getData()
+                    );
+                });
     }
 
     //===============================================================
@@ -591,6 +597,16 @@ public class RequestDispatcher
 
         Result<RequestPasswordResetResponse> result = authFacade.requestPasswordReset(request);
 
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.AUTH_REQUEST_PASSWORD_RESET_RESPONSE,
+                    "AUTH_REQUEST_PASSWORD_RESET_FAILED",
+                    result.getError()
+            );
+        }
+
         return successResponse(
                 requestId,
                 ResponseType.AUTH_REQUEST_PASSWORD_RESET_RESPONSE,
@@ -609,6 +625,16 @@ public class RequestDispatcher
 
         Result<VerifyPasswordResetCodeResponse> result = authFacade.verifyPasswordResetCode(request);
 
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.AUTH_VERIFY_PASSWORD_RESET_CODE_RESPONSE,
+                    "AUTH_VERIFY_PASSWORD_RESET_CODE_FAILED",
+                    result.getError()
+            );
+        }
+
         return successResponse(
                 requestId,
                 ResponseType.AUTH_VERIFY_PASSWORD_RESET_CODE_RESPONSE,
@@ -626,6 +652,16 @@ public class RequestDispatcher
                 gson.fromJson(payload, ResetPasswordRequest.class);
 
         Result<ResetPasswordResponse> result = authFacade.resetPassword(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.AUTH_RESET_PASSWORD_RESPONSE,
+                    "AUTH_RESET_PASSWORD_FAILED",
+                    result.getError()
+            );
+        }
 
         return successResponse(
                 requestId,

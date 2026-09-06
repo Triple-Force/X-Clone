@@ -11,18 +11,20 @@ import logic_core.domain.repository.TweetRepository;
 import logic_core.domain.repository.UserRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+@Component
 @RequiredArgsConstructor
 public class InteractionPolicy
 {
-    @NonNull private final UserRepository userRepository;
-    @NonNull private final RelationshipRepository relationshipRepository;
-    @NonNull private final TweetRepository tweetRepository;
+    private final UserRepository userRepository;
+    private final RelationshipRepository relationshipRepository;
+    private final TweetRepository tweetRepository;
 
     public void validateCreate(String content,
                                UUID replyToId,
@@ -115,6 +117,21 @@ public class InteractionPolicy
         {
             throw new ConflictException("Like relation already exists.");
         }
+    }
+
+    /**
+     * Validates that a like/unlike TOGGLE operation is allowed.
+     * Performs the same base interaction checks as {@link #validateLike}
+     * (user active, author active, block barrier) but does NOT reject an
+     * already-existing like — the toggle caller decides insert vs. delete.
+     */
+    public void validateLikeToggle(UUID userId, UUID tweetId, UUID tweetAuthorId)
+    {
+        requireNonNullId(userId, "userId");
+        requireNonNullId(tweetId, "tweetId");
+        requireNonNullId(tweetAuthorId, "tweetAuthorId");
+
+        validateBaseInteraction(userId, tweetAuthorId);
     }
 
     public void validateUnlike(UUID userId, UUID tweetId, UUID tweetAuthorId)

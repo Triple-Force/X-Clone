@@ -6,7 +6,6 @@ import logic_core.app.dto.response.MessageInfoResponse;
 import logic_core.app.dto.validator.MessageValidator;
 import logic_core.app.mapper.MessageMapper;
 import logic_core.app.security.AuthLockOrchestrator;
-import logic_core.app.security.CurrentAuthContext;
 import logic_core.app.security.SessionUserContext;
 import logic_core.common.exception.*;
 import logic_core.common.result.Result;
@@ -15,9 +14,11 @@ import logic_core.domain.policy.DirectMessagePolicy;
 import logic_core.domain.repository.DirectMessageRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
+@Service
 @RequiredArgsConstructor
 public class GetMessageUseCase
 {

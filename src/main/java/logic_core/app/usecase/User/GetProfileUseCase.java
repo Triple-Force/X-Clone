@@ -12,7 +12,9 @@ import logic_core.domain.repository.TweetRepository;
 import logic_core.domain.repository.UserRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
+@Service
 @RequiredArgsConstructor
 public class GetProfileUseCase
 {

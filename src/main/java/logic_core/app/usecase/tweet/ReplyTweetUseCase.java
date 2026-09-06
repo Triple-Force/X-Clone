@@ -13,22 +13,22 @@ import logic_core.app.security.SessionUserContext;
 import logic_core.common.exception.*;
 import logic_core.common.result.Result;
 import logic_core.common.util.TimeProvider;
-import logic_core.domain.event.EventPublisher;
-import logic_core.domain.event.tweetEvent.TweetRepliedEvent;
 import logic_core.domain.model.MediaModel;
 import logic_core.domain.model.TweetModel;
 import logic_core.domain.policy.InteractionPolicy;
 import logic_core.domain.repository.MediaRepository;
+import logic_core.domain.repository.RelationshipRepository;
 import logic_core.domain.repository.TweetRepository;
 import logic_core.domain.repository.UserRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
-
+@Service
 @RequiredArgsConstructor
 public class ReplyTweetUseCase
 {
@@ -37,10 +37,10 @@ public class ReplyTweetUseCase
     @NonNull private final TweetRepository tweetRepository;
     @NonNull private final UserRepository userRepository;
     @NonNull private final TweetValidator tweetValidator;
-    @NonNull private final EventPublisher eventPublisher;
     @NonNull private final TimeProvider timeProvider;
     @NonNull private final AuthLockOrchestrator lockOrchestrator;
     @NonNull private final MediaRepository mediaRepository;
+    @NonNull private final RelationshipRepository relationshipRepository;
 
 
     @Transactional
@@ -139,18 +139,6 @@ public class ReplyTweetUseCase
 
 
 
-            eventPublisher.publish(
-                    new TweetRepliedEvent(
-                            savedReply.getId(),
-                            parentTweet.getId(),
-                            currentUserId,
-                            parentTweet.getAuthorId(),
-                            request.text(),
-                            now
-                    )
-            );
-
-
             return Result.success(
                     toResponse(
                             savedReply,
@@ -192,7 +180,7 @@ public class ReplyTweetUseCase
                         tweetRepository.findActiveById(
                                         tweet.getRepliedToTweetId()
                                 )
-                                .map(this::toShallowResponse)
+                                .map(this::toShallowResponseWithCounts)
                                 .orElse(null)
                         :
                         null;
@@ -227,12 +215,18 @@ public class ReplyTweetUseCase
 
 
 
-    private TweetResponse toShallowResponse(
+    private TweetResponse toShallowResponseWithCounts(
             TweetModel tweet
     )
     {
+        TweetModel enriched = tweet.toBuilder()
+                .likeCount(relationshipRepository.countLikesByTweetId(tweet.getId()))
+                .replyCount(tweetRepository.countRepliesByTweetId(tweet.getId()))
+                .retweetCount(tweetRepository.countRetweetsByTweetId(tweet.getId()))
+                .build();
+
         return TweetMapper.toResponse(
-                tweet,
+                enriched,
                 null,
                 null,
                 null,

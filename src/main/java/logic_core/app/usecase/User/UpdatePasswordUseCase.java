@@ -12,15 +12,17 @@ import logic_core.domain.repository.UserRepository;
 
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
 
-
+@Service
 @RequiredArgsConstructor
 public class UpdatePasswordUseCase
 {
     @NonNull private final UserRepository repository;
     @NonNull private final AuthLockOrchestrator lockOrchestrator;
+    @NonNull private final PasswordValidator passwordValidator;
 
     @Transactional
     public Result<Void> execute(UpdatePasswordRequest request)
@@ -37,7 +39,7 @@ public class UpdatePasswordUseCase
             }
 
 
-            PasswordValidator.validate(request.newPassword());
+            passwordValidator.validate(request.newPassword());
 
 
             UserModel user = repository.findById(request.userId())

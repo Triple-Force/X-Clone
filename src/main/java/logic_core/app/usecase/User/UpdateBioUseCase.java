@@ -13,10 +13,11 @@ import logic_core.domain.repository.UserRepository;
 
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
 
-
+@Service
 @RequiredArgsConstructor
 public class UpdateBioUseCase
 {

@@ -1,19 +1,19 @@
 package logic_core.app.dto.validator;
 
 import logic_core.common.exception.ValidationException;
+import org.springframework.stereotype.Component;
 
-import java.awt.*;
-
+@Component
 public class PasswordValidator
 {
     private static final int MIN_LENGTH = 8;
     private static final int MAX_LENGTH = 64;
 
-    public static void validate(String password)
+    public void validate(String password)
     {
         if (password == null || password.isEmpty())
         {
-            throw  new ValidationException("Password cannot be empty.");
+            throw new ValidationException("Password cannot be empty.");
         }
 
         if (password.length() < MIN_LENGTH || password.length() > MAX_LENGTH)
@@ -29,9 +29,18 @@ public class PasswordValidator
 
         for (char c : password.toCharArray())
         {
-            if (Character.isUpperCase(c)) hasUppercase = true;
-            else if (Character.isLowerCase(c)) hasLowercase = true;
-            else if (Character.isDigit(c)) hasDigit = true;
+            if (Character.isUpperCase(c))
+            {
+                hasUppercase = true;
+            }
+            else if (Character.isLowerCase(c))
+            {
+                hasLowercase = true;
+            }
+            else if (Character.isDigit(c))
+            {
+                hasDigit = true;
+            }
         }
 
         if (!hasUppercase || !hasLowercase || !hasDigit)

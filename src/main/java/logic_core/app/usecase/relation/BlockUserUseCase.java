@@ -10,23 +10,22 @@ import logic_core.app.security.SessionUserContext;
 import logic_core.common.exception.*;
 import logic_core.common.result.Result;
 import logic_core.common.util.TimeProvider;
-import logic_core.domain.event.EventPublisher;
-import logic_core.domain.event.Relationship.UserBlockedEvent;
 import logic_core.domain.model.BlockRelation;
 import logic_core.domain.policy.BlockPolicy;
 import logic_core.domain.repository.RelationshipRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
+@Service
 @RequiredArgsConstructor
 public class BlockUserUseCase
 {
     @NonNull private final BlockValidator validator;
     @NonNull private final BlockPolicy policy;
     @NonNull private final RelationshipRepository relationshipRepository;
-    @NonNull private final EventPublisher eventPublisher;
     @NonNull private final TimeProvider timeProvider;
     @NonNull private final AuthLockOrchestrator lockOrchestrator;
 
@@ -56,11 +55,6 @@ public class BlockUserUseCase
             removeFollowRelationIfExists(blockerId, blockedId);
             removeFollowRelationIfExists(blockedId, blockerId);
 
-            eventPublisher.publish(new UserBlockedEvent(
-                    blockerId,
-                    blockedId,
-                    timeProvider.now()
-            ));
 
             return Result.success(BlockMapper.toBlockedResponse(blockRelation));
         }

@@ -1,5 +1,8 @@
 package logic_core.app.dto.validator;
 
+import org.springframework.stereotype.Component;
+
+@Component
 public class RefreshSessionValidator
 {
     public void validate(String refreshToken)

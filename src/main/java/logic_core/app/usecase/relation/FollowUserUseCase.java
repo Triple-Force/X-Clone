@@ -10,23 +10,22 @@ import logic_core.app.security.SessionUserContext;
 import logic_core.common.exception.*;
 import logic_core.common.result.Result;
 import logic_core.common.util.TimeProvider;
-import logic_core.domain.event.EventPublisher;
-import logic_core.domain.event.Relationship.UserFollowedEvent;
 import logic_core.domain.model.FollowRelation;
 import logic_core.domain.policy.FollowPolicy;
 import logic_core.domain.repository.RelationshipRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
+@Service
 @RequiredArgsConstructor
 public class FollowUserUseCase
 {
     @NonNull private final FollowValidator validator;
     @NonNull private final FollowPolicy policy;
     @NonNull private final RelationshipRepository relationshipRepository;
-    @NonNull private final EventPublisher eventPublisher;
     @NonNull private final TimeProvider timeProvider;
     @NonNull private final AuthLockOrchestrator lockOrchestrator;
 
@@ -60,11 +59,6 @@ public class FollowUserUseCase
 
             long followersCount = relationshipRepository.countFollowers(followingId);
 
-            eventPublisher.publish(new UserFollowedEvent(
-                    followerId,
-                    followingId,
-                    timeProvider.now()
-            ));
 
             return Result.success(FollowMapper.toResponse(true, followersCount));
         }

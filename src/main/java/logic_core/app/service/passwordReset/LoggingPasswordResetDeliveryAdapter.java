@@ -2,8 +2,10 @@ package logic_core.app.service.passwordReset;
 
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 @RequiredArgsConstructor
+@Component
 public class LoggingPasswordResetDeliveryAdapter implements PasswordResetDeliveryPort
 {
     @Override

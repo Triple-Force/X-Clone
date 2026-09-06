@@ -8,17 +8,16 @@ import logic_core.domain.repository.RelationshipRepository;
 import logic_core.domain.repository.UserRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 import java.util.Objects;
 import java.util.UUID;
 
+@Component
 @RequiredArgsConstructor
 public class MutePolicy
 {
-    @NonNull
     private final UserRepository userRepository;
-
-    @NonNull
     private final RelationshipRepository relationshipRepository;
 
     public void validateMute(UUID muterId, UUID mutedId)

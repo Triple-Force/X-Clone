@@ -1,17 +1,16 @@
 package logic_core.app.mapper;
 
-import Shared.Models.Session.Session;
 import logic_core.app.dto.response.AuthResponse;
+import logic_core.domain.model.SessionModel;
 import logic_core.domain.model.UserModel;
 
 public final class AuthMapper
 {
-
     private AuthMapper()
     {
     }
 
-    public static AuthResponse toResponse(UserModel user, Session session)
+    public static AuthResponse toResponse(UserModel user, SessionModel session)
     {
         return AuthResponse.builder()
                 .userId(user.getId())

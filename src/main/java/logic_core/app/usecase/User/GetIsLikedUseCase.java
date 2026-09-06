@@ -1,6 +1,5 @@
 package logic_core.app.usecase.User;
 
-import Shared.Models.User.User;
 import jakarta.transaction.Transactional;
 import logic_core.app.dto.request.GetIsLikedRequest;
 import logic_core.app.dto.response.GetIsLikedResponse;
@@ -10,7 +9,9 @@ import logic_core.domain.model.UserModel;
 import logic_core.domain.repository.RelationshipRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
+@Service
 @RequiredArgsConstructor
 public class GetIsLikedUseCase {
 

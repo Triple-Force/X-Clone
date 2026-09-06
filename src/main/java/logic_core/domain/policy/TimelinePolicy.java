@@ -7,14 +7,15 @@ import logic_core.domain.repository.TimelineType;
 import logic_core.domain.repository.UserRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 import java.util.Objects;
 import java.util.UUID;
 
+@Component
 @RequiredArgsConstructor
 public class TimelinePolicy
 {
-    @NonNull
     private final UserRepository userRepository;
 
     public void validateTimeline(
