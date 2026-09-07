@@ -149,6 +149,11 @@ public class TweetRepositoryAdapter implements TweetRepository {
     }
 
     @Override
+    public int deleteActiveRetweetByUser(UUID tweetId, UUID userId) {
+        return tweetJpaRepository.deleteActiveRetweetByUser(tweetId, userId);
+    }
+
+    @Override
     public long countRepliesByTweetId(UUID tweetId) {
         return tweetJpaRepository.countByReplyToIdAndIsDeletedFalse(tweetId);
     }

@@ -117,6 +117,18 @@ public interface TweetRepository
      */
     boolean isRetweetedByUser(UUID tweetId, UUID userId);
 
+    /**
+     * Removes the user's active retweet marker row for the original tweet.
+     * Hard-deletes only the marker row belonging to {@code userId} for
+     * {@code tweetId}; never touches the original tweet or other users'
+     * retweets. Retweet counts are derived from active retweet rows, so
+     * removing the row is the count update.
+     *
+     * @return number of rows actually removed (0 when the user has no active
+     *         retweet for that tweet)
+     */
+    int deleteActiveRetweetByUser(UUID tweetId, UUID userId);
+
     // -------------------------------------------------------------------------
     // Counts (optional but useful for TweetModel counter sync / responses)
     // -------------------------------------------------------------------------

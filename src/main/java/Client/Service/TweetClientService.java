@@ -111,6 +111,18 @@ public final class TweetClientService
         );
     }
 
+    public CompletableFuture<Result<TweetResponse>> unretweet(
+            UUID tweetId)
+    {
+        UnretweetRequest request = new UnretweetRequest(tweetId, session.getToken());
+
+        return execute(
+                RequestType.TWEET_UNRETWEET,
+                request,
+                TweetResponse.class
+        );
+    }
+
     public CompletableFuture<Result<LikeResponse>> likeTweet(
             UUID tweetId)
     {

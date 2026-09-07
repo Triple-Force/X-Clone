@@ -24,6 +24,7 @@ public class TweetFacade
     private final LikeTweetUseCase likeTweetUseCase;
     private final ReplyTweetUseCase replyTweetUseCase;
     private final RetweetUseCase retweetUseCase;
+    private final UnretweetUseCase unretweetUseCase;
     private final UnlikeTweetUseCase unlikeTweetUseCase;
     private final GetRepliesUseCase getRepliesUseCase;
 
@@ -60,6 +61,11 @@ public class TweetFacade
     public Result<TweetResponse> retweet(RetweetRequest request)
     {
         return retweetUseCase.execute(request);
+    }
+
+    public Result<TweetResponse> unretweet(UnretweetRequest request)
+    {
+        return unretweetUseCase.execute(request);
     }
 
     public Result<LikeResponse> unlikeTweet(UnlikeTweetRequest request)

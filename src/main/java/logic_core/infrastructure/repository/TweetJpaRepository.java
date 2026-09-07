@@ -4,6 +4,7 @@ import logic_core.infrastructure.persistence.entity.tweet.TweetEntity;
 import logic_core.infrastructure.projection.TimelineTweetProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -79,6 +80,29 @@ public interface TweetJpaRepository extends JpaRepository<TweetEntity, UUID> {
           AND t.isDeleted = false
         """)
     boolean isRetweetedByUser(@Param("tweetId") UUID tweetId, @Param("userId") UUID userId);
+
+    /**
+     * Hard-deletes exactly the retweet marker rows created by {@code userId}
+     * for the original tweet {@code tweetId} that are still active (not
+     * soft-deleted). Returns the number of removed rows (0 or 1).
+     *
+     * <p>Only the marker row itself is removed — the original tweet, other
+     * users' retweets, and unrelated retweets are never touched. Retweet
+     * counts are derived from the active retweet rows, so no separate counter
+     * update is needed: removing the row atomically decrements the derived
+     * count by exactly one.
+     */
+    @Modifying
+    @Query("""
+        DELETE FROM TweetEntity t
+        WHERE t.retweetOf.id = :tweetId
+          AND t.author.id = :userId
+          AND t.isDeleted = false
+        """)
+    int deleteActiveRetweetByUser(
+            @Param("tweetId") UUID tweetId,
+            @Param("userId") UUID userId
+    );
 
     // -------------------------------------------------------------------------
     // User activity

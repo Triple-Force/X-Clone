@@ -62,6 +62,7 @@ public class RequestDispatcher
                  TWEET_DELETE,
                  TWEET_REPLY,
                  TWEET_RETWEET,
+                 TWEET_UNRETWEET,
                  TWEET_LIKE,
                  TWEET_UNLIKE,
                  TWEET_GET ->
@@ -337,6 +338,8 @@ public class RequestDispatcher
                         case TWEET_REPLY -> handleReplyTweet(requestId, payload, facade);
 
                         case TWEET_RETWEET -> handleRetweet(requestId, payload, facade);
+
+                        case TWEET_UNRETWEET -> handleUnretweet(requestId, payload, facade);
 
                         case TWEET_GET -> handleGetTweet(requestId, payload, facade);
 
@@ -1358,6 +1361,33 @@ public class RequestDispatcher
         );
     }
 
+
+    private ResponseEnvelope handleUnretweet(
+            UUID requestId,
+            JsonElement payload,
+            TweetFacade facade)
+    {
+        UnretweetRequest request = gson.fromJson(payload, UnretweetRequest.class);
+
+        Result<TweetResponse> result = facade.unretweet(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.TWEET_UNRETWEET_RESPONSE,
+                    "TWEET_UNRETWEET_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.TWEET_UNRETWEET_RESPONSE,
+                result.getData()
+        );
+    }
+
     //===============================================================
     //                     DISPATCH USER
     //===============================================================
@@ -1919,6 +1949,7 @@ public class RequestDispatcher
             case TWEET_UNLIKE -> ResponseType.TWEET_UNLIKE_RESPONSE;
             case TWEET_REPLY -> ResponseType.TWEET_REPLY_RESPONSE;
             case TWEET_RETWEET -> ResponseType.TWEET_RETWEET_RESPONSE;
+            case TWEET_UNRETWEET -> ResponseType.TWEET_UNRETWEET_RESPONSE;
             case TWEET_GET -> ResponseType.TWEET_GET_RESPONSE;
             case TWEET_GET_REPLIES -> ResponseType.TWEET_GET_REPLY_RESPONSE;
             case USER_GET_PROFILE -> ResponseType.USER_GET_PROFILE_RESPONSE;
