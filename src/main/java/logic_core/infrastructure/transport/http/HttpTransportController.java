@@ -3,6 +3,7 @@ package logic_core.infrastructure.transport.http;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonSyntaxException;
 import jakarta.servlet.http.HttpServletResponse;
 import logic_core.app.security.AuthContext;
 import logic_core.app.security.SessionPrincipalResolver;
@@ -10,6 +11,7 @@ import logic_core.common.security.AuthPrincipal;
 import logic_core.infrastructure.transport.RequestEnvelope;
 import logic_core.infrastructure.transport.RequestType;
 import logic_core.infrastructure.transport.ResponseEnvelope;
+import logic_core.infrastructure.transport.ResponseType;
 import logic_core.infrastructure.transport.server.RequestDispatcher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -98,7 +100,7 @@ public class HttpTransportController
     {
         try
         {
-            RequestEnvelope request = gson.fromJson(rawBody, RequestEnvelope.class);
+            RequestEnvelope request = parseRequest(rawBody);
 
             if (requiresAuthentication(request.type()))
             {
@@ -120,22 +122,146 @@ public class HttpTransportController
             }
 
             ResponseEnvelope response = dispatcher.dispatch(request);
+
+            // Map the standardized error codes onto HTTP statuses; route-specific
+            // business failures (and all successes) remain HTTP 200.
+            servletResponse.setStatus(ErrorStatusMapper.statusFor(response.errorCode()));
+
             return gson.toJson(response);
+        }
+        catch (MalformedRequestException e)
+        {
+            servletResponse.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+
+            return gson.toJson(ResponseEnvelope.failure(
+                    null,
+                    ResponseType.BAD_REQUEST.toWire(),
+                    "MALFORMED_JSON",
+                    e.getMessage()
+            ));
+        }
+        catch (UnknownRequestTypeException e)
+        {
+            servletResponse.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+
+            return gson.toJson(ResponseEnvelope.failure(
+                    null,
+                    ResponseType.UNKNOWN_REQUEST.toWire(),
+                    "UNKNOWN_REQUEST",
+                    e.getMessage()
+            ));
         }
         catch (Exception e)
         {
-            // Mirrors the socket transport's malformed-input failure envelope and
-            // preserves the original response contract for unparseable payloads.
+            // Server-side failures - including infrastructure/session-resolver
+            // exceptions raised while authenticating - are HTTP 500, never
+            // reported as MALFORMED_JSON.
+            servletResponse.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+
             return gson.toJson(ResponseEnvelope.failure(
                     null,
-                    "BAD_REQUEST",
-                    "MALFORMED_JSON",
-                    "Invalid payload format: " + e.getMessage()
+                    ResponseType.BAD_REQUEST.toWire(),
+                    "UNEXPECTED_ERROR",
+                    e.getMessage() != null
+                            ? e.getMessage()
+                            : "Unexpected server error"
             ));
         }
         finally
         {
             AuthContext.clear();
+        }
+    }
+
+    /**
+     * Parses and validates the raw request body into a {@link RequestEnvelope}.
+     *
+     * <p>Malformed JSON and unknown request types are deliberately distinguished:
+     * a syntactically invalid body is reported as {@code MALFORMED_JSON}, while a
+     * well-formed body carrying an unrecognized {@code type} is reported as
+     * {@code UNKNOWN_REQUEST}.
+     */
+    private RequestEnvelope parseRequest(String rawBody)
+    {
+        JsonObject root;
+
+        try
+        {
+            root = gson.fromJson(rawBody, JsonObject.class);
+        }
+        catch (JsonSyntaxException e)
+        {
+            throw new MalformedRequestException(
+                    "Invalid payload format: " + e.getMessage()
+            );
+        }
+
+        if (root == null)
+        {
+            throw new MalformedRequestException(
+                    "Invalid payload format: request body is missing."
+            );
+        }
+
+        JsonElement typeElement = root.get("type");
+
+        if (typeElement == null
+                || !typeElement.isJsonPrimitive()
+                || !typeElement.getAsJsonPrimitive().isString())
+        {
+            throw new MalformedRequestException(
+                    "Invalid payload format: request type is missing."
+            );
+        }
+
+        String typeValue = typeElement.getAsString();
+
+        if (typeValue.isBlank())
+        {
+            throw new MalformedRequestException(
+                    "Invalid payload format: request type is blank."
+            );
+        }
+
+        if (RequestType.fromWire(typeValue) == null)
+        {
+            throw new UnknownRequestTypeException(
+                    "Unknown request type: " + typeValue
+            );
+        }
+
+        try
+        {
+            return gson.fromJson(rawBody, RequestEnvelope.class);
+        }
+        catch (JsonSyntaxException e)
+        {
+            throw new MalformedRequestException(
+                    "Invalid payload format: " + e.getMessage()
+            );
+        }
+    }
+
+    /**
+     * Signals a syntactically invalid request body ({@code MALFORMED_JSON}).
+     */
+    private static final class MalformedRequestException extends RuntimeException
+    {
+        private MalformedRequestException(String message)
+        {
+            super(message);
+        }
+    }
+
+    /**
+     * Signals a well-formed body carrying an unrecognized request type
+     * ({@code UNKNOWN_REQUEST}).
+     */
+    private static final class UnknownRequestTypeException extends RuntimeException
+    {
+        private UnknownRequestTypeException(String message)
+        {
+            super(message);
         }
     }
 

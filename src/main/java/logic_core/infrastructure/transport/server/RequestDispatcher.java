@@ -173,7 +173,9 @@ public class RequestDispatcher
             return failureResponse(
                     requestId,
                     responseTypeFor(requestType),
-                    "APP_ERROR",
+                    e.getErrorCode() != null
+                            ? e.getErrorCode()
+                            : "APP_ERROR",
                     e.getMessage()
             );
         }
