@@ -32,6 +32,7 @@ public class RequestDispatcher
     private final FollowQueryFacade followQueryFacade;
     private final MediaFacade mediaFacade;
     private final MessageFacade messageFacade;
+    private final NotificationFacade notificationFacade;
     private final RelationFacade relationFacade;
     private final TimelineFacade timelineFacade;
     private final TweetFacade tweetFacade;
@@ -138,6 +139,14 @@ public class RequestDispatcher
 
             case TWEET_GET_REPLIES ->
                 dispatchReply(request);
+
+            // ---------------- NOTIFICATION ----------------
+
+            case NOTIFICATION_GET,
+                 NOTIFICATION_READ,
+                 NOTIFICATION_READ_ALL ->
+
+                    dispatchNotification(request);
         };
     }
 
@@ -474,6 +483,32 @@ public class RequestDispatcher
                             responseTypeFor(request.type()),
                             result.getData()
                     );
+                });
+    }
+
+    public ResponseEnvelope dispatchNotification(RequestEnvelope request)
+    {
+        return execute(
+                request,
+                notificationFacade,
+                (facade, payload) ->
+                {
+                    UUID requestId = request.requestId();
+
+                    return switch (request.type())
+                    {
+                        case NOTIFICATION_GET ->
+                                handleGetNotifications(requestId, payload, facade);
+
+                        case NOTIFICATION_READ ->
+                                handleReadNotification(requestId, payload, facade);
+
+                        case NOTIFICATION_READ_ALL ->
+                                handleReadAllNotifications(requestId, payload, facade);
+
+                        default -> throw new IllegalArgumentException(
+                                "Unsupported notification request: " + request.type());
+                    };
                 });
     }
 
@@ -1388,6 +1423,90 @@ public class RequestDispatcher
         );
     }
 
+    private ResponseEnvelope handleGetNotifications(
+            UUID requestId,
+            JsonElement payload,
+            NotificationFacade facade)
+    {
+        GetNotificationsRequest request =
+                gson.fromJson(payload, GetNotificationsRequest.class);
+
+        Result<List<NotificationResponse>> result =
+                facade.getNotifications(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.NOTIFICATION_GET_RESPONSE,
+                    "NOTIFICATION_GET_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.NOTIFICATION_GET_RESPONSE,
+                result.getData()
+        );
+    }
+
+    private ResponseEnvelope handleReadNotification(
+            UUID requestId,
+            JsonElement payload,
+            NotificationFacade facade)
+    {
+        ReadNotificationRequest request =
+                gson.fromJson(payload, ReadNotificationRequest.class);
+
+        Result<NotificationResponse> result =
+                facade.readNotification(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.NOTIFICATION_READ_RESPONSE,
+                    "NOTIFICATION_READ_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.NOTIFICATION_READ_RESPONSE,
+                result.getData()
+        );
+    }
+
+    private ResponseEnvelope handleReadAllNotifications(
+            UUID requestId,
+            JsonElement payload,
+            NotificationFacade facade)
+    {
+        ReadAllNotificationsRequest request =
+                gson.fromJson(payload, ReadAllNotificationsRequest.class);
+
+        Result<Integer> result =
+                facade.readAllNotifications(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.NOTIFICATION_READ_ALL_RESPONSE,
+                    "NOTIFICATION_READ_ALL_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.NOTIFICATION_READ_ALL_RESPONSE,
+                result.getData()
+        );
+    }
+
     //===============================================================
     //                     DISPATCH USER
     //===============================================================
@@ -1952,6 +2071,9 @@ public class RequestDispatcher
             case TWEET_UNRETWEET -> ResponseType.TWEET_UNRETWEET_RESPONSE;
             case TWEET_GET -> ResponseType.TWEET_GET_RESPONSE;
             case TWEET_GET_REPLIES -> ResponseType.TWEET_GET_REPLY_RESPONSE;
+            case NOTIFICATION_GET -> ResponseType.NOTIFICATION_GET_RESPONSE;
+            case NOTIFICATION_READ -> ResponseType.NOTIFICATION_READ_RESPONSE;
+            case NOTIFICATION_READ_ALL -> ResponseType.NOTIFICATION_READ_ALL_RESPONSE;
             case USER_GET_PROFILE -> ResponseType.USER_GET_PROFILE_RESPONSE;
             case USER_SEARCH -> ResponseType.USER_SEARCH_RESPONSE;
             case USER_UPDATE_PROFILE -> ResponseType.USER_UPDATE_PROFILE_RESPONSE;

@@ -5,16 +5,23 @@ import com.google.gson.reflect.TypeToken;
 import logic_core.app.dto.request.BlockUserRequest;
 import logic_core.app.dto.request.CreateTweetRequest;
 import logic_core.app.dto.request.DeleteTweetRequest;
+import logic_core.app.dto.request.FollowUserRequest;
+import logic_core.app.dto.request.GetNotificationsRequest;
 import logic_core.app.dto.request.GetRepliesRequest;
 import logic_core.app.dto.request.GetTweetRequest;
 import logic_core.app.dto.request.LikeTweetRequest;
+import logic_core.app.dto.request.ReadAllNotificationsRequest;
+import logic_core.app.dto.request.ReadNotificationRequest;
 import logic_core.app.dto.request.RegisterRequest;
 import logic_core.app.dto.request.ReplyTweetRequest;
 import logic_core.app.dto.request.RetweetRequest;
+import logic_core.app.dto.request.UnlikeTweetRequest;
 import logic_core.app.dto.request.UnretweetRequest;
 import logic_core.app.dto.response.AuthResponse;
+import logic_core.app.dto.response.NotificationResponse;
 import logic_core.app.dto.response.TweetResponse;
 import logic_core.app.dto.timeline.TimelineTweet;
+import logic_core.domain.model.notification.NotificationType;
 import logic_core.infrastructure.transport.RequestEnvelope;
 import logic_core.infrastructure.transport.RequestType;
 import logic_core.infrastructure.transport.ResponseEnvelope;
@@ -111,6 +118,16 @@ class TweetRepliesRouteIntegrationTest {
                             "DELETE FROM blocks WHERE blocker_id IN (" + placeholders + ")" +
                                     " OR blocked_id IN (" + placeholders + ")",
                             doubleArgs);
+                } catch (Exception ignored) {
+                    // Best-effort only; user deletion below remains authoritative.
+                }
+
+                // Notifications normally cascade with the recipient user rows
+                // (FK ON DELETE CASCADE); explicit cleanup is belt-and-braces.
+                try {
+                    jdbcTemplate.update(
+                            "DELETE FROM notifications WHERE recipient_id IN (" + placeholders + ")",
+                            userArgs);
                 } catch (Exception ignored) {
                     // Best-effort only; user deletion below remains authoritative.
                 }
@@ -491,6 +508,238 @@ class TweetRepliesRouteIntegrationTest {
     }
 
     // ========================================================================
+    // NOTIFICATION_* – notification foundation
+    // ========================================================================
+
+    @Test
+    void notifications_like_createsNotificationForAuthor() throws Exception {
+        AuthResponse author = registerUser("ntfa");
+        AuthResponse liker = registerUser("ntfb");
+
+        TweetResponse tweet = createTweet(author, "notif-like-1");
+        like(liker, tweet.id());
+
+        List<NotificationResponse> notifications = getNotifications(author.token());
+        assertThat(notifications).hasSize(1);
+        NotificationResponse n = notifications.get(0);
+        assertThat(n.type()).isEqualTo(NotificationType.LIKE);
+        assertThat(n.actor()).isNotNull();
+        assertThat(n.actor().userId()).isEqualTo(liker.userId());
+        assertThat(n.tweetId()).isEqualTo(tweet.id());
+        assertThat(n.read()).isFalse();
+        assertThat(n.createdAt()).isNotNull();
+    }
+
+    @Test
+    void notifications_unlike_doesNotCreateAdditionalNotification() throws Exception {
+        AuthResponse author = registerUser("ntfc");
+        AuthResponse liker = registerUser("ntfd");
+
+        TweetResponse tweet = createTweet(author, "notif-like-2");
+        like(liker, tweet.id());
+        unlike(liker, tweet.id());
+
+        // The original like notification remains; unlike adds none.
+        List<NotificationResponse> notifications = getNotifications(author.token());
+        assertThat(notifications).hasSize(1);
+        assertThat(notifications.get(0).type()).isEqualTo(NotificationType.LIKE);
+    }
+
+    @Test
+    void notifications_reply_createsNotificationForParentAuthor() throws Exception {
+        AuthResponse parentAuthor = registerUser("ntfe");
+        AuthResponse replier = registerUser("ntff");
+
+        TweetResponse parent = createTweet(parentAuthor, "notif-reply-1");
+        reply(replier, parent.id(), "notif-reply-text");
+
+        List<NotificationResponse> notifications = getNotifications(parentAuthor.token());
+        assertThat(notifications).hasSize(1);
+        NotificationResponse n = notifications.get(0);
+        assertThat(n.type()).isEqualTo(NotificationType.REPLY);
+        assertThat(n.actor().userId()).isEqualTo(replier.userId());
+        assertThat(n.tweetId()).isEqualTo(parent.id());
+    }
+
+    @Test
+    void notifications_retweet_createsNotificationForOriginalAuthor() throws Exception {
+        AuthResponse author = registerUser("ntfg");
+        AuthResponse retweeter = registerUser("ntfh");
+
+        TweetResponse tweet = createTweet(author, "notif-retweet-1");
+        retweet(retweeter, tweet.id());
+
+        List<NotificationResponse> notifications = getNotifications(author.token());
+        assertThat(notifications).hasSize(1);
+        NotificationResponse n = notifications.get(0);
+        assertThat(n.type()).isEqualTo(NotificationType.RETWEET);
+        assertThat(n.actor().userId()).isEqualTo(retweeter.userId());
+        assertThat(n.tweetId()).isEqualTo(tweet.id());
+    }
+
+    @Test
+    void notifications_quote_createsNotificationForQuotedAuthor() throws Exception {
+        AuthResponse author = registerUser("ntfi");
+        AuthResponse quoter = registerUser("ntfj");
+
+        TweetResponse quoted = createTweet(author, "notif-quote-1");
+        quote(quoter, quoted.id(), "notif-quote-text");
+
+        List<NotificationResponse> notifications = getNotifications(author.token());
+        assertThat(notifications).hasSize(1);
+        NotificationResponse n = notifications.get(0);
+        assertThat(n.type()).isEqualTo(NotificationType.QUOTE);
+        assertThat(n.actor().userId()).isEqualTo(quoter.userId());
+        assertThat(n.tweetId()).isEqualTo(quoted.id());
+    }
+
+    @Test
+    void notifications_follow_createsNotificationForFollowedUser() throws Exception {
+        AuthResponse followed = registerUser("ntfk");
+        AuthResponse follower = registerUser("ntfl");
+
+        follow(follower, followed.userId());
+
+        List<NotificationResponse> notifications = getNotifications(followed.token());
+        assertThat(notifications).hasSize(1);
+        NotificationResponse n = notifications.get(0);
+        assertThat(n.type()).isEqualTo(NotificationType.FOLLOW);
+        assertThat(n.actor().userId()).isEqualTo(follower.userId());
+        assertThat(n.tweetId()).isNull();
+    }
+
+    @Test
+    void notifications_selfInteraction_doesNotNotifySelf() throws Exception {
+        AuthResponse user = registerUser("ntfm");
+
+        TweetResponse tweet = createTweet(user, "notif-self-1");
+        like(user, tweet.id());
+
+        assertThat(getNotifications(user.token())).isEmpty();
+        assertThat(countNotificationRows(user.userId())).isZero();
+    }
+
+    @Test
+    void notifications_retrieval_newestFirst_withUnreadState() throws Exception {
+        AuthResponse author = registerUser("ntfn");
+        AuthResponse actorA = registerUser("ntfo");
+        AuthResponse actorB = registerUser("ntfp");
+
+        TweetResponse tweet = createTweet(author, "notif-order-1");
+        like(actorA, tweet.id());
+        reply(actorB, tweet.id(), "notif-order-reply");
+
+        List<NotificationResponse> notifications = getNotifications(author.token());
+        assertThat(notifications).hasSize(2);
+        // All delivered unread.
+        assertThat(notifications).allSatisfy(n -> assertThat(n.read()).isFalse());
+        // Newest first (the reply happened after the like).
+        assertThat(notifications.get(0).type()).isEqualTo(NotificationType.REPLY);
+        assertThat(notifications.get(1).type()).isEqualTo(NotificationType.LIKE);
+        // created_at is monotonically non-increasing.
+        assertThat(notifications.get(0).createdAt())
+                .isAfterOrEqualTo(notifications.get(1).createdAt());
+    }
+
+    @Test
+    void notifications_read_marksSingleNotificationRead() throws Exception {
+        AuthResponse author = registerUser("ntfq");
+        AuthResponse actorA = registerUser("ntfr");
+        AuthResponse actorB = registerUser("ntfs");
+
+        TweetResponse tweet = createTweet(author, "notif-read-1");
+        like(actorA, tweet.id());
+        reply(actorB, tweet.id(), "notif-read-reply");
+
+        List<NotificationResponse> before = getNotifications(author.token());
+        assertThat(before).hasSize(2);
+
+        NotificationResponse read = readNotification(author.token(), before.get(0).id());
+        assertThat(read.id()).isEqualTo(before.get(0).id());
+        assertThat(read.read()).isTrue();
+
+        List<NotificationResponse> after = getNotifications(author.token());
+        assertThat(after).filteredOn(n -> n.read())
+                .extracting(NotificationResponse::id)
+                .containsExactly(before.get(0).id());
+        assertThat(after).filteredOn(n -> !n.read()).hasSize(1);
+    }
+
+    @Test
+    void notifications_readAll_marksAllReadAndReturnsCount() throws Exception {
+        AuthResponse author = registerUser("ntft");
+        AuthResponse actorA = registerUser("ntfu");
+        AuthResponse actorB = registerUser("ntfv");
+
+        TweetResponse tweet = createTweet(author, "notif-readall-1");
+        like(actorA, tweet.id());
+        reply(actorB, tweet.id(), "notif-readall-reply");
+
+        int updated = readAllNotifications(author.token());
+        assertThat(updated).isEqualTo(2);
+
+        List<NotificationResponse> after = getNotifications(author.token());
+        assertThat(after).allSatisfy(n -> assertThat(n.read()).isTrue());
+    }
+
+    @Test
+    void notifications_read_otherUsersNotification_forbidden() throws Exception {
+        AuthResponse author = registerUser("ntfw");
+        AuthResponse other = registerUser("ntfx");
+
+        TweetResponse tweet = createTweet(author, "notif-owner-1");
+        like(other, tweet.id());
+
+        List<NotificationResponse> notifications = getNotifications(author.token());
+        assertThat(notifications).hasSize(1);
+
+        ResponseEnvelope envelope =
+                sendReadNotification(other.token(), notifications.get(0).id());
+        assertThat(envelope.isSuccess()).isFalse();
+        assertThat(envelope.errorCode()).isEqualTo("NOTIFICATION_READ_FAILED");
+
+        // The notification is still unread for its owner.
+        List<NotificationResponse> after = getNotifications(author.token());
+        assertThat(after.get(0).read()).isFalse();
+    }
+
+    @Test
+    void notifications_blockedInteraction_doesNotProduceNotification() throws Exception {
+        AuthResponse author = registerUser("ntfy");
+        AuthResponse blocked = registerUser("ntfz");
+
+        TweetResponse tweet = createTweet(author, "notif-block-1");
+        block(author, blocked.userId());
+
+        // The blocked like is rejected at interaction time...
+        LikeTweetRequest likeRequest = new LikeTweetRequest(tweet.id(), blocked.token());
+        ResponseEnvelope likeEnvelope = send(new RequestEnvelope(
+                UUID.randomUUID(),
+                RequestType.TWEET_LIKE,
+                gson.toJsonTree(likeRequest),
+                null));
+        assertThat(likeEnvelope.isSuccess()).isFalse();
+
+        // ...and no notification row is created.
+        assertThat(countNotificationRows(author.userId())).isZero();
+    }
+
+    @Test
+    void notifications_unauthenticated_rejectedWithUnauthorized() throws Exception {
+        ResponseEnvelope envelope = sendUnauthorized(
+                new RequestEnvelope(
+                        UUID.randomUUID(),
+                        RequestType.NOTIFICATION_GET,
+                        gson.toJsonTree(new GetNotificationsRequest(null)),
+                        null));
+        assertThat(envelope)
+                .as("route must return a failure envelope, not null")
+                .isNotNull();
+        assertThat(envelope.isSuccess()).isFalse();
+        assertThat(envelope.errorCode()).isEqualTo("AUTH_REQUIRED");
+    }
+
+    // ========================================================================
     // Helpers
     // ========================================================================
 
@@ -582,6 +831,97 @@ class TweetRepliesRouteIntegrationTest {
                 RequestType.TWEET_UNRETWEET,
                 gson.toJsonTree(unretweetRequest),
                 null));
+    }
+
+    private TweetResponse quote(AuthResponse author, UUID quotedTweetId, String content) throws Exception {
+        CreateTweetRequest createRequest =
+                new CreateTweetRequest(content, null, quotedTweetId, null, author.token(), null);
+        ResponseEnvelope envelope = send(new RequestEnvelope(
+                UUID.randomUUID(),
+                RequestType.TWEET_CREATE,
+                gson.toJsonTree(createRequest),
+                null));
+        assertSuccess(envelope, "quote tweet " + quotedTweetId);
+
+        TweetResponse tweet = gson.fromJson(envelope.getData(), TweetResponse.class);
+        createdTweetIds.add(tweet.id());
+        return tweet;
+    }
+
+    private void follow(AuthResponse follower, UUID followingId) throws Exception {
+        FollowUserRequest followRequest = new FollowUserRequest(followingId, follower.token());
+        ResponseEnvelope envelope = send(new RequestEnvelope(
+                UUID.randomUUID(),
+                RequestType.RELATION_FOLLOW,
+                gson.toJsonTree(followRequest),
+                null));
+        assertSuccess(envelope, "follow user " + followingId);
+    }
+
+    private void unlike(AuthResponse liker, UUID tweetId) throws Exception {
+        UnlikeTweetRequest unlikeRequest = new UnlikeTweetRequest(tweetId, liker.token());
+        ResponseEnvelope envelope = send(new RequestEnvelope(
+                UUID.randomUUID(),
+                RequestType.TWEET_UNLIKE,
+                gson.toJsonTree(unlikeRequest),
+                null));
+        assertSuccess(envelope, "unlike tweet " + tweetId);
+    }
+
+    private List<NotificationResponse> getNotifications(String token) throws Exception {
+        GetNotificationsRequest request = new GetNotificationsRequest(token);
+        ResponseEnvelope envelope = send(new RequestEnvelope(
+                UUID.randomUUID(),
+                RequestType.NOTIFICATION_GET,
+                gson.toJsonTree(request),
+                null));
+        assertSuccess(envelope, "GET notifications");
+
+        return gson.fromJson(
+                envelope.getData(),
+                TypeToken.getParameterized(List.class, NotificationResponse.class).getType());
+    }
+
+    private NotificationResponse readNotification(String token, UUID notificationId) throws Exception {
+        ReadNotificationRequest request = new ReadNotificationRequest(notificationId, token);
+        ResponseEnvelope envelope = send(new RequestEnvelope(
+                UUID.randomUUID(),
+                RequestType.NOTIFICATION_READ,
+                gson.toJsonTree(request),
+                null));
+        assertSuccess(envelope, "READ notification " + notificationId);
+
+        return gson.fromJson(envelope.getData(), NotificationResponse.class);
+    }
+
+    private ResponseEnvelope sendReadNotification(String token, UUID notificationId) throws Exception {
+        ReadNotificationRequest request = new ReadNotificationRequest(notificationId, token);
+        return send(new RequestEnvelope(
+                UUID.randomUUID(),
+                RequestType.NOTIFICATION_READ,
+                gson.toJsonTree(request),
+                null));
+    }
+
+    private int readAllNotifications(String token) throws Exception {
+        ReadAllNotificationsRequest request = new ReadAllNotificationsRequest(token);
+        ResponseEnvelope envelope = send(new RequestEnvelope(
+                UUID.randomUUID(),
+                RequestType.NOTIFICATION_READ_ALL,
+                gson.toJsonTree(request),
+                null));
+        assertSuccess(envelope, "READ_ALL notifications");
+
+        Integer updated = gson.fromJson(envelope.getData(), Integer.class);
+        return updated == null ? 0 : updated;
+    }
+
+    private long countNotificationRows(UUID recipientId) {
+        Long count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM notifications WHERE recipient_id = ?",
+                Long.class,
+                recipientId);
+        return count == null ? 0L : count;
     }
 
     private long countActiveRetweetRows(UUID originalTweetId, UUID userId) {
