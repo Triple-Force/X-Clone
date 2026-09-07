@@ -155,16 +155,23 @@ class TweetRepliesRouteIntegrationTest {
     }
 
     @Test
-    void replies_unauthenticated_rejectedWithFailureEnvelope() throws Exception {
+    void replies_unauthenticated_rejectedWithUnauthorized() throws Exception {
         AuthResponse userA = registerUser("repf");
         TweetResponse parent = createTweet(userA, "reply-parent-3");
 
-        ResponseEnvelope envelope = sendReplies(parent.id(), null);
+        // Missing credentials on a protected route are now rejected by the HTTP
+        // authentication layer with 401 Unauthorized and a failure envelope.
+        ResponseEnvelope envelope = sendUnauthorized(
+                new RequestEnvelope(
+                        UUID.randomUUID(),
+                        RequestType.TWEET_GET_REPLIES,
+                        gson.toJsonTree(new GetRepliesRequest(parent.id(), null)),
+                        null));
         assertThat(envelope)
                 .as("route must return a failure envelope, not null")
                 .isNotNull();
         assertThat(envelope.isSuccess()).isFalse();
-        assertThat(envelope.errorCode()).isNotBlank();
+        assertThat(envelope.errorCode()).isEqualTo("AUTH_REQUIRED");
     }
 
     @Test
@@ -248,6 +255,19 @@ class TweetRepliesRouteIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(gson.toJson(request)))
                 .andExpect(status().isOk())
+                .andReturn()
+                .getResponse();
+
+        ResponseEnvelope envelope = gson.fromJson(response.getContentAsString(), ResponseEnvelope.class);
+        assertThat(envelope).isNotNull();
+        return envelope;
+    }
+
+    private ResponseEnvelope sendUnauthorized(RequestEnvelope request) throws Exception {
+        MockHttpServletResponse response = mockMvc.perform(post("/api")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(gson.toJson(request)))
+                .andExpect(status().isUnauthorized())
                 .andReturn()
                 .getResponse();
 
