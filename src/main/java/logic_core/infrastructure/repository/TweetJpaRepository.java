@@ -543,4 +543,45 @@ public interface TweetJpaRepository extends JpaRepository<TweetEntity, UUID> {
             @Param("actorId") UUID actorId,
             @Param("tweetId") UUID tweetId
     );
+
+    // =========================================================================
+    // Single tweet retrieval (TWEET_GET)
+    // =========================================================================
+
+    /**
+     * Loads one active (non-deleted) tweet in timeline shape with author info
+     * and interaction counts, but only when the {@code actorId} is not blocked
+     * (either direction) by the tweet author — the same block visibility
+     * semantics the timeline and reply-thread queries apply.
+     *
+     * @return empty when the tweet does not exist, is soft-deleted, or is not
+     *         visible to the actor due to a block relation in either direction
+     */
+    @Query("""
+        SELECT new logic_core.infrastructure.projection.TimelineTweetProjection(
+            t.id, a.id, a.username, a.displayName, a.avatarUrl,
+            t.content,
+            COUNT(DISTINCT l.user),
+            COUNT(DISTINCT r),
+            COUNT(DISTINCT rt),
+            t.publishedAt
+        )
+        FROM TweetEntity t
+        JOIN t.author a
+        LEFT JOIN t.likes l
+        LEFT JOIN t.replies r
+        LEFT JOIN t.retweets rt
+        WHERE t.isDeleted = false
+          AND t.id = :tweetId
+          AND NOT EXISTS (
+              SELECT 1 FROM BlockEntity b
+              WHERE (b.blocker.id = :actorId AND b.blocked.id = a.id)
+                 OR (b.blocker.id = a.id AND b.blocked.id = :actorId)
+          )
+        GROUP BY t.id, a.id, a.username, a.displayName, a.avatarUrl, t.content, t.publishedAt
+        """)
+    Optional<TimelineTweetProjection> findSingleTweetForActor(
+            @Param("actorId") UUID actorId,
+            @Param("tweetId") UUID tweetId
+    );
 }

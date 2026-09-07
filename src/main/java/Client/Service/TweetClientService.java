@@ -146,6 +146,17 @@ public final class TweetClientService
         );
     }
 
+    public CompletableFuture<Result<TimelineTweet>> getTweet(UUID tweetId)
+    {
+        GetTweetRequest request = new GetTweetRequest(tweetId, session.getToken());
+
+        return execute(
+                RequestType.TWEET_GET,
+                request,
+                TimelineTweet.class
+        );
+    }
+
     private <T> CompletableFuture<Result<T>> execute(
             RequestType type,
             Object request,

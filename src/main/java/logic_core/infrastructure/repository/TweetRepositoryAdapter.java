@@ -208,6 +208,13 @@ public class TweetRepositoryAdapter implements TweetRepository {
     }
 
     @Override
+    public Optional<TimelineTweet> findSingleTweet(UUID actorId, UUID tweetId) {
+        return tweetJpaRepository
+                .findSingleTweetForActor(actorId, tweetId)
+                .map(TweetRepositoryAdapter::toTimelineTweet);
+    }
+
+    @Override
     public long countTimeline(TimelineType type, UUID actorId, UUID targetUserId) {
         if (type == TimelineType.HOME) {
             return tweetJpaRepository.countHomeTimeline(actorId);

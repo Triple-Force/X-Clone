@@ -2,8 +2,12 @@ package logic_core.infrastructure.transport.http;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import logic_core.app.dto.request.BlockUserRequest;
 import logic_core.app.dto.request.CreateTweetRequest;
+import logic_core.app.dto.request.DeleteTweetRequest;
 import logic_core.app.dto.request.GetRepliesRequest;
+import logic_core.app.dto.request.GetTweetRequest;
+import logic_core.app.dto.request.LikeTweetRequest;
 import logic_core.app.dto.request.RegisterRequest;
 import logic_core.app.dto.request.ReplyTweetRequest;
 import logic_core.app.dto.response.AuthResponse;
@@ -36,10 +40,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Integration test for the TWEET_GET_REPLIES transport route (previously a
- * stub that returned {@code null}).
+ * Integration tests for the tweet read transport routes.
  *
- * <p>Drives the full stack through {@code POST /api}:
+ * <p>TWEET_GET_REPLIES (previously a stub that returned {@code null}):
  *
  * <pre>
  * register A, B
@@ -49,8 +52,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *     {@link TimelineTweet} that the existing client DTO can deserialize
  * </pre>
  *
- * Also verifies unauthenticated requests are rejected with a failure envelope
- * instead of a raw {@code null} body.
+ * <p>TWEET_GET (single active tweet retrieval): drives the same full stack through
+ * {@code POST /api} to verify an authenticated user can read an active tweet with
+ * server-authoritative counts, that missing/deleted tweets and block-hidden
+ * content surface as failures (not leaks), and that unauthenticated access is
+ * rejected with a failure envelope.
  */
 @SpringBootTest(classes = ServerMain.class)
 @AutoConfigureMockMvc
@@ -92,6 +98,21 @@ class TweetRepliesRouteIntegrationTest {
             if (!createdUserIds.isEmpty()) {
                 String placeholders = repeatPlaceholders(createdUserIds.size());
                 Object[] userArgs = createdUserIds.toArray();
+
+                // Blocks normally cascade with the user rows (FK ON DELETE CASCADE);
+                // explicit cleanup is belt-and-braces for schemas without it.
+                try {
+                    Object[] doubleArgs = new Object[createdUserIds.size() * 2];
+                    System.arraycopy(userArgs, 0, doubleArgs, 0, createdUserIds.size());
+                    System.arraycopy(userArgs, 0, doubleArgs, createdUserIds.size(), createdUserIds.size());
+                    jdbcTemplate.update(
+                            "DELETE FROM blocks WHERE blocker_id IN (" + placeholders + ")" +
+                                    " OR blocked_id IN (" + placeholders + ")",
+                            doubleArgs);
+                } catch (Exception ignored) {
+                    // Best-effort only; user deletion below remains authoritative.
+                }
+
                 jdbcTemplate.update(
                         "DELETE FROM sessions WHERE user_id IN (" + placeholders + ")", userArgs);
                 jdbcTemplate.update(
@@ -189,6 +210,126 @@ class TweetRepliesRouteIntegrationTest {
     }
 
     // ========================================================================
+    // TWEET_GET – single tweet retrieval
+    // ========================================================================
+
+    @Test
+    void singleTweet_authenticatedUser_canReadActiveTweet() throws Exception {
+        AuthResponse userA = registerUser("geta");
+        AuthResponse userB = registerUser("getb");
+
+        TweetResponse tweet = createTweet(userA, "single-tweet-1");
+
+        ResponseEnvelope envelope = sendGetTweet(tweet.id(), userB.token());
+        assertSuccess(envelope, "unrelated authenticated user fetches single tweet");
+
+        TimelineTweet single = gson.fromJson(envelope.getData(), TimelineTweet.class);
+        assertThat(single).isNotNull();
+        assertThat(single.tweetId()).isEqualTo(tweet.id());
+        assertThat(single.authorId()).isEqualTo(userA.userId());
+        assertThat(single.username()).isNotBlank();
+        assertThat(single.displayName()).isNotBlank();
+        assertThat(single.content()).isEqualTo("single-tweet-1");
+        assertThat(single.likeCount()).isZero();
+        assertThat(single.replyCount()).isZero();
+        assertThat(single.retweetCount()).isZero();
+        assertThat(single.publishedAt()).isNotNull();
+    }
+
+    @Test
+    void singleTweet_countsReflectServerState() throws Exception {
+        AuthResponse userA = registerUser("getc");
+        AuthResponse userB = registerUser("getd");
+
+        TweetResponse tweet = createTweet(userA, "single-tweet-2");
+        like(userB, tweet.id());
+        reply(userB, tweet.id(), "single-tweet-reply");
+
+        ResponseEnvelope envelope = sendGetTweet(tweet.id(), userB.token());
+        assertSuccess(envelope, "tweet with interactions fetched");
+
+        TimelineTweet single = gson.fromJson(envelope.getData(), TimelineTweet.class);
+        // Server-authoritative counts are the interaction state the response
+        // model exposes today (TimelineTweet carries no resolved viewer flag).
+        assertThat(single.likeCount()).isEqualTo(1L);
+        assertThat(single.replyCount()).isEqualTo(1L);
+        assertThat(single.retweetCount()).isZero();
+    }
+
+    @Test
+    void singleTweet_missingTweet_returnsNotFoundFailure() throws Exception {
+        AuthResponse userA = registerUser("gete");
+
+        ResponseEnvelope envelope = sendGetTweet(UUID.randomUUID(), userA.token());
+        assertThat(envelope.isSuccess()).isFalse();
+        assertThat(envelope.errorCode()).isEqualTo("TWEET_GET_FAILED");
+        assertThat(envelope.errorMessage()).containsIgnoringCase("not found");
+    }
+
+    @Test
+    void singleTweet_deletedTweet_notExposed() throws Exception {
+        AuthResponse userA = registerUser("getf");
+        AuthResponse userB = registerUser("getg");
+
+        TweetResponse tweet = createTweet(userA, "single-tweet-3");
+        deleteTweet(userA, tweet.id());
+
+        ResponseEnvelope envelope = sendGetTweet(tweet.id(), userB.token());
+        assertThat(envelope.isSuccess()).isFalse();
+        assertThat(envelope.errorCode()).isEqualTo("TWEET_GET_FAILED");
+        assertThat(envelope.errorMessage()).containsIgnoringCase("not found");
+    }
+
+    @Test
+    void singleTweet_authorBlocksViewer_notExposedToViewer() throws Exception {
+        AuthResponse userA = registerUser("geth");
+        AuthResponse userB = registerUser("geti");
+
+        TweetResponse tweet = createTweet(userA, "single-tweet-4");
+        block(userA, userB.userId());
+
+        // A viewer blocked by the author must not see the author's tweets.
+        ResponseEnvelope blockedView = sendGetTweet(tweet.id(), userB.token());
+        assertThat(blockedView.isSuccess()).isFalse();
+        assertThat(blockedView.errorCode()).isEqualTo("TWEET_GET_FAILED");
+
+        // The author's own view is unaffected by blocking a viewer.
+        ResponseEnvelope ownView = sendGetTweet(tweet.id(), userA.token());
+        assertSuccess(ownView, "author retrieves own tweet after blocking viewer");
+    }
+
+    @Test
+    void singleTweet_viewerBlocksAuthor_notExposedToViewer() throws Exception {
+        AuthResponse userA = registerUser("getj");
+        AuthResponse userB = registerUser("getk");
+
+        TweetResponse tweet = createTweet(userA, "single-tweet-5");
+        block(userB, userA.userId());
+
+        ResponseEnvelope envelope = sendGetTweet(tweet.id(), userB.token());
+        assertThat(envelope.isSuccess()).isFalse();
+        assertThat(envelope.errorCode()).isEqualTo("TWEET_GET_FAILED");
+    }
+
+    @Test
+    void singleTweet_unauthenticated_rejectedWithUnauthorized() throws Exception {
+        AuthResponse userA = registerUser("getl");
+        TweetResponse tweet = createTweet(userA, "single-tweet-6");
+
+        ResponseEnvelope envelope = sendUnauthorized(
+                new RequestEnvelope(
+                        UUID.randomUUID(),
+                        RequestType.TWEET_GET,
+                        gson.toJsonTree(new GetTweetRequest(tweet.id(), null)),
+                        null));
+        assertThat(envelope)
+                .as("route must return a failure envelope, not null")
+                .isNotNull();
+        assertThat(envelope.isSuccess()).isFalse();
+        assertThat(envelope.errorCode()).isEqualTo("AUTH_REQUIRED");
+    }
+
+    // ========================================================================
     // Helpers
     // ========================================================================
 
@@ -248,6 +389,45 @@ class TweetRepliesRouteIntegrationTest {
                 RequestType.TWEET_GET_REPLIES,
                 gson.toJsonTree(repliesRequest),
                 null));
+    }
+
+    private ResponseEnvelope sendGetTweet(UUID tweetId, String token) throws Exception {
+        GetTweetRequest getTweetRequest = new GetTweetRequest(tweetId, token);
+        return send(new RequestEnvelope(
+                UUID.randomUUID(),
+                RequestType.TWEET_GET,
+                gson.toJsonTree(getTweetRequest),
+                null));
+    }
+
+    private void like(AuthResponse liker, UUID tweetId) throws Exception {
+        LikeTweetRequest likeRequest = new LikeTweetRequest(tweetId, liker.token());
+        ResponseEnvelope envelope = send(new RequestEnvelope(
+                UUID.randomUUID(),
+                RequestType.TWEET_LIKE,
+                gson.toJsonTree(likeRequest),
+                null));
+        assertSuccess(envelope, "like tweet " + tweetId);
+    }
+
+    private void deleteTweet(AuthResponse author, UUID tweetId) throws Exception {
+        DeleteTweetRequest deleteRequest = new DeleteTweetRequest(tweetId, author.token());
+        ResponseEnvelope envelope = send(new RequestEnvelope(
+                UUID.randomUUID(),
+                RequestType.TWEET_DELETE,
+                gson.toJsonTree(deleteRequest),
+                null));
+        assertSuccess(envelope, "delete tweet " + tweetId);
+    }
+
+    private void block(AuthResponse blocker, UUID blockedUserId) throws Exception {
+        BlockUserRequest blockRequest = new BlockUserRequest(blockedUserId, blocker.token());
+        ResponseEnvelope envelope = send(new RequestEnvelope(
+                UUID.randomUUID(),
+                RequestType.RELATION_BLOCK,
+                gson.toJsonTree(blockRequest),
+                null));
+        assertSuccess(envelope, "block user " + blockedUserId);
     }
 
     private ResponseEnvelope send(RequestEnvelope request) throws Exception {

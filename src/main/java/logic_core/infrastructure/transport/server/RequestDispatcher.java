@@ -63,7 +63,8 @@ public class RequestDispatcher
                  TWEET_REPLY,
                  TWEET_RETWEET,
                  TWEET_LIKE,
-                 TWEET_UNLIKE ->
+                 TWEET_UNLIKE,
+                 TWEET_GET ->
 
                     dispatchTweet(request);
 
@@ -336,6 +337,8 @@ public class RequestDispatcher
                         case TWEET_REPLY -> handleReplyTweet(requestId, payload, facade);
 
                         case TWEET_RETWEET -> handleRetweet(requestId, payload, facade);
+
+                        case TWEET_GET -> handleGetTweet(requestId, payload, facade);
 
                         default -> throw new IllegalArgumentException("Unsupported tweet request: " + request.type());
                     };
@@ -1302,6 +1305,33 @@ public class RequestDispatcher
     }
 
 
+    private ResponseEnvelope handleGetTweet(
+            UUID requestId,
+            JsonElement payload,
+            TweetFacade facade)
+    {
+        GetTweetRequest request = gson.fromJson(payload, GetTweetRequest.class);
+
+        Result<TimelineTweet> result = facade.getTweet(request);
+
+        if (result.isFailure())
+        {
+            return failureResponse(
+                    requestId,
+                    ResponseType.TWEET_GET_RESPONSE,
+                    "TWEET_GET_FAILED",
+                    result.getError()
+            );
+        }
+
+        return successResponse(
+                requestId,
+                ResponseType.TWEET_GET_RESPONSE,
+                result.getData()
+        );
+    }
+
+
     private ResponseEnvelope handleRetweet(
             UUID requestId,
             JsonElement payload,
@@ -1889,6 +1919,7 @@ public class RequestDispatcher
             case TWEET_UNLIKE -> ResponseType.TWEET_UNLIKE_RESPONSE;
             case TWEET_REPLY -> ResponseType.TWEET_REPLY_RESPONSE;
             case TWEET_RETWEET -> ResponseType.TWEET_RETWEET_RESPONSE;
+            case TWEET_GET -> ResponseType.TWEET_GET_RESPONSE;
             case TWEET_GET_REPLIES -> ResponseType.TWEET_GET_REPLY_RESPONSE;
             case USER_GET_PROFILE -> ResponseType.USER_GET_PROFILE_RESPONSE;
             case USER_SEARCH -> ResponseType.USER_SEARCH_RESPONSE;
